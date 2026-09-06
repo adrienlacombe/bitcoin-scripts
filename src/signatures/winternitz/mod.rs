@@ -3,6 +3,7 @@
 mod api;
 mod chain_hash;
 mod fast;
+mod preimage;
 pub mod signing;
 pub mod utils;
 pub mod verification;
@@ -17,3 +18,5 @@ pub use fast::{
     FastWots32, FastWots4, FastWots64, FastWots80, InvalidFastPublicKeyLength,
 };
 pub use verification::*;
+
+pub use preimage::{FullWidth, Preimage16, PreimageSize, ShortChainValue};

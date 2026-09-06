@@ -929,8 +929,9 @@ It consumed 333 entry data items and zero auxiliary hints.
 
 ## NR-039: Wider Winternitz chains cost more despite SHA-256 pair fusion
 
-For the 67-chain, 32-byte-message fixture, SHA-256 adds 804 endpoint bytes
-and 804 serialized witness bytes to the corresponding HASH160 profile.
+For the 67-chain, 32-byte-message fixture with default `FullWidth` starts,
+SHA-256 adds 804 endpoint bytes and 804 serialized witness bytes to the
+corresponding HASH160 profile.
 The policy compiler fuses SHA256 pairs into HASH256, saving 461 script bytes
 for exact/bitwise profiles and 264 for lookup profiles. Net same-profile
 script-plus-witness increases are therefore 1,147 or 1,344 bytes. SHA-256 is
@@ -945,9 +946,33 @@ in the combined main/alt peak. Metric execution is `research-unlimited`
 tapscript with the stack check disabled; separate strict-stack tests pass,
 without establishing Core consensus or policy acceptance.
 
-A 16-byte master secret or truncated host value cannot make native SHA-256
-or HASH160 chain outputs 16 bytes. Their native outputs are 32 and 20 bytes,
-and current standard tapscript has no native 128-bit truncation operation.
-Naive host truncation would disagree with Script, so it is not offered as a
-configuration. This limitation is `inspected`; no general impossibility claim
-about alternative 128-bit commitment constructions is made.
+A 16-byte master secret cannot make native SHA-256 or HASH160 chain outputs
+16 bytes. Their native outputs are 32 and 20 bytes, and current standard
+tapscript has no native 128-bit truncation operation. Truncating every chain
+step on the host would disagree with these native Script steps, so full-chain
+truncation is not offered. This limitation is `inspected`; no general
+impossibility claim about alternative 128-bit commitment constructions is
+made.
+
+The optional `Preimage16` mode avoids that mismatch by truncating only the
+initial secret and leaving every hash output full width. It therefore saves
+witness bytes only for zero-valued digits, not every chain item or public
+commitment. For the zero-message fixture, the SHA-256 versus HASH160 witness
+difference falls from 804 to a measured 12 bytes, since 66 initial
+secrets now have the same 16-byte width. The corresponding clamped terminal
+sum difference is measured at 552 bytes instead of 1,344; retain the
+FullWidth result above under its original boundary. These whole-fragment
+results are `locally-reproduced` with the same `research-unlimited` tapscript
+metric helper and measurement boundary.
+
+Strict exact and lookup verification must distinguish a 16-byte zero-digit
+start from a native-width positive-digit node. The candidate width check
+compiles to 11 bytes instead of the FullWidth four-byte check; alternative
+arrangements measured 11 and 12 bytes through the centralized policy.
+Helper-only exhaustive strict-stack checks covered all digits 0–15 and input
+widths 0–33. That helper result is `locally-reproduced`, with deployment still
+`unclassified`; it is not whole-profile execution evidence. The separately measured
+469-byte whole-fragment cost for 67 chains can exceed HASH160 witness savings.
+The size/clamped/bitwise profiles already permit short unhashed inputs and
+need no additional width checks. Short starts require no new witness items
+or auxiliary hints; their counts and coexistence are unchanged from above.

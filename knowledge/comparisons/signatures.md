@@ -96,7 +96,8 @@ exact boundary and security obligations.
 
 ## One-time authentication
 
-The original Winternitz rows below use HASH160 (20-byte nodes).
+The original Winternitz rows below use HASH160 with full-width 20-byte starts
+and nodes. Optional `Preimage16` comparisons follow the hash comparison.
 
 | Construction | Authenticated object | Script bytes | Witness bytes (zero / upper bound) | Stack peak | Verification work / missing protocol work |
 | --- | --- | ---: | ---: | ---: | --- |
@@ -173,8 +174,8 @@ the stack, and whether tapscript `MINIMALIF` is available.
 ### HASH160 versus SHA-256 Winternitz
 
 Every Fast profile also supports `FastWinternitz<32, Sha256>`. SHA-256 uses
-32-byte nodes and endpoints, while HASH160 uses 20; neither uses 16. The
-following zero-message comparisons include fragment plus serialized data
+32-byte nodes and endpoints, while HASH160 uses 20. These rows use the
+default `FullWidth` start mode. The following zero-message comparisons include fragment plus serialized data
 witness, excluding the same terminal consumer and transaction framing:
 
 | Profile | HASH160 sum | SHA-256 sum | SHA-256 signer-node bound |
@@ -199,3 +200,40 @@ unchanged (137–143 numeric, 334/333 bitwise). All metric rows remain
 separate strict-stack tests and no Core/policy validation. See the
 [full hash comparison](../../src/signatures/winternitz/README.md#sha-256-onchain-comparison)
 for script, witness, static opcode counts, security assumptions and boundaries.
+
+
+### Initial-secret width
+
+`FastWinternitz<32, H, Preimage16>` shortens only digit-zero signature values
+to 16 bytes. Every hash output and endpoint retains the selected native
+width. It is a separately domain-separated mode; the default `FullWidth`
+keys and witnesses remain compatible with the tables above.
+
+For the same zero-message fixture, 66 of 67 digits are zero. The following
+measurements use the same fragment plus serialized data-witness boundary and
+excluded transaction framing:
+
+| Clamped terminal mode | Script bytes | Witness bytes | Sum | Saving from FullWidth |
+| --- | ---: | ---: | ---: | ---: |
+| HASH160 + Preimage16 | 4,409 | 1,212 | 5,621 | 264 |
+| SHA-256 + Preimage16 | 4,949 | 1,224 | 6,173 | 1,056 |
+
+Numeric size, clamped, and bitwise profiles need no new width validation and
+retain their existing stack schedules. Strict exact and lookup profiles pay
+469 extra script bytes for digit-dependent width checks, so a
+smaller witness need not lower their total cost. Savings for other messages
+are four bytes per zero digit with HASH160 and 16 with SHA-256, counting the
+checksum; the all-zero fixture is not a uniform-message average.
+
+Numeric signatures retain 134 coexisting entry data items and bitwise 333,
+with zero auxiliary hints in every profile. Narrower items do not reduce
+these counts or relax the 1,000-item combined stack bound. Consult the
+[Fast primitive page](../primitives/winternitz-fast-base16.md#optional-16-byte-initial-secrets)
+for metric evidence when comparing profiles. The table is `locally-reproduced`
+and `research-unlimited`: the tapscript metric helper disables the stack
+limit. It does not establish Core consensus or policy validation.
+
+The smaller secret restricts generic single-target classical search to at
+most 128 bits, with concrete chain/multi-target losses still unresolved. It
+does not change the native hash-output collision bounds (roughly 80 bits for
+HASH160, 128 for SHA-256) or make the two security profiles interchangeable.

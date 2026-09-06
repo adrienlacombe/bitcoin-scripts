@@ -2989,7 +2989,7 @@
       "id": "signature/winternitz-fast-base16",
       "name": "Fast base-16 Winternitz signatures",
       "class": "signature/one-time",
-      "summary": "Tapscript-specialized Winternitz with typed HASH160 (20-byte, default) or SHA-256 (32-byte) chains, measured script-plus-witness costs including SHA-256 pair fusion, clamped/strict numeric and canonical-bit profiles, mixed-radix checksums, and consuming keys.",
+      "summary": "Tapscript-specialized Winternitz with HASH160 or SHA-256 and optional 16-byte initial secrets, measured script-plus-witness costs, SHA-256 pair fusion, clamped/strict numeric and canonical-bit profiles, mixed-radix checksums, and consuming keys.",
       "status": "experimental",
       "evidence": "locally-reproduced",
       "execution": "research-unlimited",
@@ -3003,20 +3003,22 @@
         "signatures::winternitz::fast::clamped_chain_tests",
         "signatures::winternitz::fast::hash_choice_tests",
         "tools/winternitz_hash_vectors.py",
-        "tests/primitive_metrics.rs"
+        "tests/primitive_metrics.rs",
+        "tests/winternitz_preimages.rs"
       ],
       "references": [
         "rfc-8391",
         "bip-342",
         "bitcoin-script-locked",
         "bitcoin-scriptexec-locked",
-        "bitcoin-core-v29-hashes"
+        "bitcoin-core-v29-hashes",
+        "nist-hash-security-strengths"
       ],
       "techniques": [
         "hash-chain",
         "lookup-table"
       ],
-      "security": "Strictly one-time classic unkeyed hash-chain Winternitz, not WOTS+; durable seed-reuse prevention remains a caller obligation. Bitwise profiles bind canonical false/true items through tapscript MINIMALIF; numeric profiles do not bind raw in-range ScriptNum serialization. Explicit clamped profiles also accept above-range raw digits as their authenticated chain maximum, matching legacy saturation semantics; strict profiles retain upper rejection. Size profiles accept arbitrary-length selected-hash preimages whenever at least one hash executes, while signer nodes and strict-chain profiles require 20 bytes (HASH160) or 32 bytes (SHA-256). Idealized single-target classical preimage/collision bounds are 160/80 and 256/128 bits respectively, not end-to-end Winternitz security claims; multi-target and chain losses remain unquantified. The hash choice is bound to key types and separate derivation domains, not chosen by the witness.",
+      "security": "Strictly one-time classic unkeyed hash-chain Winternitz, not WOTS+; durable seed-reuse prevention remains a caller obligation. Bitwise profiles bind canonical false/true items through tapscript MINIMALIF; numeric profiles do not bind raw in-range ScriptNum serialization. Explicit clamped profiles also accept above-range raw digits as their authenticated chain maximum, matching legacy saturation semantics; strict profiles retain upper rejection. Size profiles accept arbitrary-length selected-hash preimages whenever at least one hash executes, while FullWidth signer nodes are native width (20/32 bytes); Preimage16 signer nodes and strict profiles use 16 bytes iff digit zero and native width otherwise. Idealized single-target classical preimage/collision bounds are 160/80 and 256/128 bits respectively, not end-to-end Winternitz security claims; multi-target and chain losses remain unquantified. The hash choice is bound to key types and separate derivation domains, not chosen by the witness. Preimage16 limits initial-secret exhaustive search to at most 128 single-target classical bits before multi-target effects; this is a security tradeoff, not proof of 128-bit Winternitz security. It does not raise HASH160 collision resistance. The preimage mode has a separate derivation namespace and is carried in key types.",
       "stack_contract": "Numeric witnesses contain 134 items; bitwise witnesses contain 333 items and peak at 334 for recovery or 333 for terminal verification. All profiles require zero auxiliary hint items and all data items coexist at entry. Recovery profiles return 64 message nibbles, while terminal profiles clear all signature state and require a terminal predicate.",
       "configurations": [
         {
@@ -3034,7 +3036,9 @@
             "script_plus_zero_witness_bytes": 5885,
             "script_plus_maximum_signer_witness_bytes": 5951,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded; witness is complete serialized zero-message data and maximum covers signer-produced 20-byte nodes and canonical in-range digits rather than adversarial accepted encodings",
           "script_bytes": 4409,
@@ -3067,7 +3071,9 @@
             "script_plus_zero_witness_bytes": 5947,
             "script_plus_maximum_signer_witness_bytes": 6013,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; terminal consumer excluded; witness is complete serialized zero-message data and maximum covers signer-produced 20-byte nodes and canonical in-range digits rather than adversarial accepted encodings",
           "script_bytes": 4471,
@@ -3101,7 +3107,9 @@
             "static_non_push_opcodes": 2716,
             "balanced_vector_hash160_calls": 498,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers 20-byte signer nodes with every bit item one byte",
           "script_bytes": 4325,
@@ -3134,7 +3142,9 @@
             "static_non_push_opcodes": 2586,
             "balanced_vector_hash160_calls": 498,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers 20-byte signer nodes with every bit item one byte",
           "script_bytes": 4206,
@@ -3163,7 +3173,9 @@
             "static_non_push_opcodes": 3061,
             "balanced_vector_hash160_calls": 729,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers signer-produced 20-byte nodes rather than adversarial accepted item lengths",
           "script_bytes": 4605,
@@ -3192,7 +3204,9 @@
             "static_non_push_opcodes": 2999,
             "balanced_vector_hash160_calls": 729,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers signer-produced 20-byte nodes rather than adversarial accepted item lengths",
           "script_bytes": 4543,
@@ -3221,7 +3235,9 @@
             "static_non_push_opcodes": 3325,
             "balanced_vector_hash160_calls": 498,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data",
           "script_bytes": 5267,
@@ -3250,7 +3266,9 @@
             "static_non_push_opcodes": 3262,
             "balanced_vector_hash160_calls": 729,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size and explicit numeric digit checks, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data",
           "script_bytes": 5007,
@@ -3279,7 +3297,9 @@
             "static_non_push_opcodes": 3263,
             "balanced_vector_hash160_calls": 498,
             "hash": "HASH160",
-            "chain_value_bytes": 20
+            "chain_value_bytes": 20,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, staged checksum reduction, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data",
           "script_bytes": 5205,
@@ -3313,7 +3333,9 @@
             "hash": "SHA-256",
             "chain_value_bytes": 32,
             "balanced_vector_sha256_chain_steps": 729,
-            "fused_sha256_pairs": 264
+            "fused_sha256_pairs": 264,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded; witness is complete serialized zero-message data and maximum covers signer-produced 32-byte nodes and canonical in-range digits rather than adversarial accepted encodings; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 4949,
@@ -3347,7 +3369,9 @@
             "hash": "SHA-256",
             "chain_value_bytes": 32,
             "balanced_vector_sha256_chain_steps": 729,
-            "fused_sha256_pairs": 264
+            "fused_sha256_pairs": 264,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; terminal consumer excluded; witness is complete serialized zero-message data and maximum covers signer-produced 32-byte nodes and canonical in-range digits rather than adversarial accepted encodings; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 5011,
@@ -3386,7 +3410,9 @@
             "script_plus_maximum_signer_witness_bytes": 7414,
             "fused_sha256_pairs": 461,
             "hint_stack_items": 0,
-            "witness_data_items": 333
+            "witness_data_items": 333,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers 32-byte signer nodes with every bit item one byte; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 4668,
@@ -3424,7 +3450,9 @@
             "script_plus_maximum_signer_witness_bytes": 7295,
             "fused_sha256_pairs": 461,
             "hint_stack_items": 0,
-            "witness_data_items": 333
+            "witness_data_items": 333,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers 32-byte signer nodes with every bit item one byte; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 4549,
@@ -3458,7 +3486,9 @@
             "script_plus_maximum_signer_witness_bytes": 7491,
             "fused_sha256_pairs": 264,
             "hint_stack_items": 0,
-            "witness_data_items": 134
+            "witness_data_items": 134,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers signer-produced 32-byte nodes rather than adversarial accepted item lengths; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 5145,
@@ -3492,7 +3522,9 @@
             "script_plus_maximum_signer_witness_bytes": 7429,
             "fused_sha256_pairs": 264,
             "hint_stack_items": 0,
-            "witness_data_items": 134
+            "witness_data_items": 134,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers signer-produced 32-byte nodes rather than adversarial accepted item lengths; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 5083,
@@ -3526,7 +3558,9 @@
             "script_plus_maximum_signer_witness_bytes": 7956,
             "fused_sha256_pairs": 461,
             "hint_stack_items": 0,
-            "witness_data_items": 134
+            "witness_data_items": 134,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 5610,
@@ -3560,7 +3594,9 @@
             "script_plus_maximum_signer_witness_bytes": 7893,
             "fused_sha256_pairs": 264,
             "hint_stack_items": 0,
-            "witness_data_items": 134
+            "witness_data_items": 134,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size and explicit numeric digit checks, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 5547,
@@ -3594,7 +3630,9 @@
             "script_plus_maximum_signer_witness_bytes": 7894,
             "fused_sha256_pairs": 461,
             "hint_stack_items": 0,
-            "witness_data_items": 134
+            "witness_data_items": 134,
+            "preimage_mode": "FullWidth",
+            "initial_secret_bytes": 32
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, staged checksum reduction, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
           "script_bytes": 5548,
@@ -3611,6 +3649,241 @@
             "sha256_wots32_clear_witness_max",
             "sha256_wots32_clear_stack"
           ]
+        },
+        {
+          "id": "fast-wots32-preimage16-hash160-clamped-clear",
+          "label": "FastWinternitz<32, Hash160, Preimage16> clamped-clear",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "upper-clamped symmetric eight-value OP_PICK lookup",
+            "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
+            "static_non_push_opcodes": 2865,
+            "balanced_vector_hash160_calls": 729,
+            "witness_data_items": 134,
+            "hint_stack_items": 0,
+            "script_plus_zero_witness_bytes": 5621,
+            "script_plus_maximum_signer_witness_bytes": 5951,
+            "hash": "HASH160",
+            "chain_value_bytes": 20,
+            "preimage_mode": "Preimage16",
+            "initial_secret_bytes": 16,
+            "zero_digit_count_fixture": 66,
+            "zero_fixture_witness_bytes_saved": 264
+          },
+          "includes": "fragment-only: embedded native-width endpoints, chain and checksum verification, message cleanup; relaxed raw opening width; signer emits 16 bytes iff digit zero, native width otherwise; excludes terminal consumer and transaction framing; witness is complete serialized zero-message data; maximum allows every opening to be a native-width signer node and is not a bound on hostile accepted encodings; zero auxiliary hints; all data items coexist at entry",
+          "script_bytes": 4409,
+          "witness_bytes": 1212,
+          "witness_bytes_max": 1542,
+          "max_stack_items": 141,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4409,
+          "metric_keys": [
+            "preimage16_hash160_clamped_clear_lock",
+            "preimage16_hash160_clamped_clear_witness",
+            "preimage16_hash160_clamped_clear_witness_max",
+            "preimage16_hash160_clamped_clear_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-preimage16-hash160-bitwise-recovery",
+          "label": "FastWinternitz<32, Hash160, Preimage16> bitwise-recovery",
+          "parameters": {
+            "message_bytes": 32,
+            "message_base": 16,
+            "checksum_radices": [
+              8,
+              8,
+              16
+            ],
+            "verifier": "canonical MINIMALIF bit branches with exact complementary hashes",
+            "checksum_order": "fused mixed-radix Horner decoding",
+            "static_non_push_opcodes": 2716,
+            "balanced_vector_hash160_calls": 498,
+            "hash": "HASH160",
+            "chain_value_bytes": 20,
+            "preimage_mode": "Preimage16",
+            "initial_secret_bytes": 16,
+            "zero_digit_count_fixture": 66,
+            "witness_data_items": 333,
+            "hint_stack_items": 0,
+            "script_plus_zero_witness_bytes": 5741,
+            "script_plus_maximum_signer_witness_bytes": 6267,
+            "zero_fixture_witness_bytes_saved": 264
+          },
+          "includes": "fragment-only: embedded native-width endpoints, chain and checksum verification, recovered 64 nibbles; relaxed raw opening width; signer emits 16 bytes iff digit zero, native width otherwise; excludes terminal consumer and transaction framing; witness is complete serialized zero-message data; maximum allows every opening to be a native-width signer node and is not a bound on hostile accepted encodings; zero auxiliary hints; all data items coexist at entry",
+          "script_bytes": 4325,
+          "witness_bytes": 1416,
+          "witness_bytes_max": 1942,
+          "max_stack_items": 334,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4325,
+          "metric_keys": [
+            "preimage16_hash160_bitwise_lock",
+            "preimage16_hash160_bitwise_witness",
+            "preimage16_hash160_bitwise_witness_max",
+            "preimage16_hash160_bitwise_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-preimage16-hash160-exact-clear",
+          "label": "FastWinternitz<32, Hash160, Preimage16> exact-clear",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "8/4/2/1 residual-digit exact conditional hash",
+            "checksum": "staged verified digits with Horner checksum reduction",
+            "static_non_push_opcodes": 3665,
+            "balanced_vector_hash160_calls": 498,
+            "hash": "HASH160",
+            "chain_value_bytes": 20,
+            "preimage_mode": "Preimage16",
+            "initial_secret_bytes": 16,
+            "zero_digit_count_fixture": 66,
+            "witness_data_items": 134,
+            "hint_stack_items": 0,
+            "script_plus_zero_witness_bytes": 6886,
+            "script_plus_maximum_signer_witness_bytes": 7216,
+            "zero_fixture_witness_bytes_saved": 264
+          },
+          "includes": "fragment-only: embedded native-width endpoints, chain and checksum verification, message cleanup; strict raw opening width: 16 bytes iff digit zero, native width otherwise; excludes terminal consumer and transaction framing; witness is complete serialized zero-message data; maximum allows every opening to be a native-width signer node and is not a bound on hostile accepted encodings; zero auxiliary hints; all data items coexist at entry",
+          "script_bytes": 5674,
+          "witness_bytes": 1212,
+          "witness_bytes_max": 1542,
+          "max_stack_items": 137,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 5674,
+          "metric_keys": [
+            "preimage16_hash160_exact_clear_lock",
+            "preimage16_hash160_exact_clear_witness",
+            "preimage16_hash160_exact_clear_witness_max",
+            "preimage16_hash160_exact_clear_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-preimage16-sha256-clamped-clear",
+          "label": "FastWinternitz<32, Sha256, Preimage16> clamped-clear",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "upper-clamped symmetric eight-value OP_PICK lookup",
+            "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
+            "static_non_push_opcodes": 2601,
+            "witness_data_items": 134,
+            "hint_stack_items": 0,
+            "script_plus_zero_witness_bytes": 6173,
+            "script_plus_maximum_signer_witness_bytes": 7295,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 729,
+            "fused_sha256_pairs": 264,
+            "preimage_mode": "Preimage16",
+            "initial_secret_bytes": 16,
+            "zero_digit_count_fixture": 66,
+            "zero_fixture_witness_bytes_saved": 1056
+          },
+          "includes": "fragment-only: embedded native-width endpoints, chain and checksum verification, message cleanup; relaxed raw opening width; signer emits 16 bytes iff digit zero, native width otherwise; excludes terminal consumer and transaction framing; witness is complete serialized zero-message data; maximum allows every opening to be a native-width signer node and is not a bound on hostile accepted encodings; zero auxiliary hints; all data items coexist at entry",
+          "script_bytes": 4949,
+          "witness_bytes": 1224,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 141,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4949,
+          "metric_keys": [
+            "preimage16_sha256_clamped_clear_lock",
+            "preimage16_sha256_clamped_clear_witness",
+            "preimage16_sha256_clamped_clear_witness_max",
+            "preimage16_sha256_clamped_clear_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-preimage16-sha256-bitwise-recovery",
+          "label": "FastWinternitz<32, Sha256, Preimage16> bitwise-recovery",
+          "parameters": {
+            "message_bytes": 32,
+            "message_base": 16,
+            "checksum_radices": [
+              8,
+              8,
+              16
+            ],
+            "verifier": "canonical MINIMALIF bit branches with exact complementary hashes",
+            "checksum_order": "fused mixed-radix Horner decoding",
+            "static_non_push_opcodes": 2255,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 498,
+            "script_plus_zero_witness_bytes": 6096,
+            "script_plus_maximum_signer_witness_bytes": 7414,
+            "fused_sha256_pairs": 461,
+            "hint_stack_items": 0,
+            "witness_data_items": 333,
+            "preimage_mode": "Preimage16",
+            "initial_secret_bytes": 16,
+            "zero_digit_count_fixture": 66,
+            "zero_fixture_witness_bytes_saved": 1056
+          },
+          "includes": "fragment-only: embedded native-width endpoints, chain and checksum verification, recovered 64 nibbles; relaxed raw opening width; signer emits 16 bytes iff digit zero, native width otherwise; excludes terminal consumer and transaction framing; witness is complete serialized zero-message data; maximum allows every opening to be a native-width signer node and is not a bound on hostile accepted encodings; zero auxiliary hints; all data items coexist at entry",
+          "script_bytes": 4668,
+          "witness_bytes": 1428,
+          "witness_bytes_max": 2746,
+          "max_stack_items": 334,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4668,
+          "metric_keys": [
+            "preimage16_sha256_bitwise_lock",
+            "preimage16_sha256_bitwise_witness",
+            "preimage16_sha256_bitwise_witness_max",
+            "preimage16_sha256_bitwise_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-preimage16-sha256-exact-clear",
+          "label": "FastWinternitz<32, Sha256, Preimage16> exact-clear",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "8/4/2/1 residual-digit exact conditional hash",
+            "checksum": "staged verified digits with Horner checksum reduction",
+            "static_non_push_opcodes": 3204,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 498,
+            "script_plus_zero_witness_bytes": 7241,
+            "script_plus_maximum_signer_witness_bytes": 8363,
+            "fused_sha256_pairs": 461,
+            "hint_stack_items": 0,
+            "witness_data_items": 134,
+            "preimage_mode": "Preimage16",
+            "initial_secret_bytes": 16,
+            "zero_digit_count_fixture": 66,
+            "zero_fixture_witness_bytes_saved": 1056
+          },
+          "includes": "fragment-only: embedded native-width endpoints, chain and checksum verification, message cleanup; strict raw opening width: 16 bytes iff digit zero, native width otherwise; excludes terminal consumer and transaction framing; witness is complete serialized zero-message data; maximum allows every opening to be a native-width signer node and is not a bound on hostile accepted encodings; zero auxiliary hints; all data items coexist at entry",
+          "script_bytes": 6017,
+          "witness_bytes": 1224,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 137,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 6017,
+          "metric_keys": [
+            "preimage16_sha256_exact_clear_lock",
+            "preimage16_sha256_exact_clear_witness",
+            "preimage16_sha256_exact_clear_witness_max",
+            "preimage16_sha256_exact_clear_stack"
+          ]
         }
       ],
       "limitations": [
@@ -3623,7 +3896,9 @@
         "Metric executor disables the stack limit and reports no executed-opcode count",
         "No Bitcoin Core consensus or policy reproduction",
         "SHA-256 keys and signatures are not wire-compatible with HASH160; persist the hash choice with the seed",
-        "No 16-byte chain mode; neither native hash opcode returns 16 bytes"
+        "Preimage16 shortens only initial secrets; intermediate hash outputs and endpoints remain native width",
+        "Preimage16 lowers initial-secret search space and adds 469 strict-width-check script bytes for 67 chains; savings depend on zero-digit count",
+        "Persist the preimage mode with the hash and seed; FullWidth keys/witnesses are not interchangeable with Preimage16"
       ],
       "open_problems": [
         "OP-002",

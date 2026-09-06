@@ -33,7 +33,9 @@ use bitcoin_lab::{
     hashes::{blake3, ripemd160, sha1, sha256, shake256},
     signatures::{
         hors, lamport, pointlocks, schnorr,
-        winternitz::{FastWinternitz, FastWots32, Sha256, Wots, Wots32},
+        winternitz::{
+            ChainHash, FastWinternitz, FastWots32, Hash160, Preimage16, Sha256, Wots, Wots32,
+        },
     },
     support::{
         execution::{execute_script_with_inputs, execute_script_with_inputs_strict},
@@ -688,6 +690,132 @@ fn winternitz_sha256_metrics() -> Vec<Metric> {
         }));
     }
     metrics
+}
+
+fn preimage16_hash_metrics<H: ChainHash>(keys: [[&'static str; 7]; 3]) -> Vec<Metric> {
+    let key = FastWinternitz::<32, H, Preimage16>::signing_key_from_seed([0x42; 32]);
+    let pk = FastWinternitz::<32, H, Preimage16>::public_key(&key);
+    let sig = FastWinternitz::<32, H, Preimage16>::sign(key, &[0; 32]);
+    assert_eq!(sig.digits().iter().filter(|&&digit| digit == 0).count(), 66);
+    let rows = [
+        (
+            FastWinternitz::<32, H, Preimage16>::checksig_verify_clamped_and_clear(&pk),
+            sig.to_size_optimized_witness(),
+            false,
+        ),
+        (
+            FastWinternitz::<32, H, Preimage16>::checksig_verify_bitwise_size_optimized(&pk),
+            sig.to_bitwise_size_optimized_witness(),
+            true,
+        ),
+        (
+            FastWinternitz::<32, H, Preimage16>::checksig_verify_and_clear(&pk),
+            sig.to_witness(),
+            false,
+        ),
+    ];
+    let mut metrics = Vec::new();
+    for (keys, (fragment, witness, recover)) in keys.into_iter().zip(rows) {
+        let script_bytes = script_len(fragment.clone());
+        let witness_bytes = serialize(&witness).len();
+        // Upper bound permits every chain opening to be a later, full-width node.
+        let maximum_items: Vec<Vec<u8>> = witness
+            .iter()
+            .map(|item| {
+                if item.len() <= 1 {
+                    vec![1]
+                } else {
+                    vec![0; H::VALUE_BYTES]
+                }
+            })
+            .collect();
+        let maximum_bytes = witness_size(&maximum_items);
+        let stack = max_stack_items(
+            script! {
+                { fragment.clone() }
+                if recover { for _ in 0..64 { OP_DROP } }
+                OP_TRUE
+            },
+            witness.to_vec(),
+        );
+        let values = [
+            script_bytes,
+            witness_bytes,
+            maximum_bytes,
+            stack,
+            static_non_push_opcodes(fragment),
+            script_bytes + witness_bytes,
+            script_bytes + maximum_bytes,
+        ];
+        metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key,
+            value,
+        }));
+    }
+    metrics
+}
+
+fn winternitz_preimage16_metrics() -> Vec<Metric> {
+    let hash160 = preimage16_hash_metrics::<Hash160>([
+        [
+            "preimage16_hash160_clamped_clear_lock",
+            "preimage16_hash160_clamped_clear_witness",
+            "preimage16_hash160_clamped_clear_witness_max",
+            "preimage16_hash160_clamped_clear_stack",
+            "preimage16_hash160_clamped_clear_static_opcodes",
+            "preimage16_hash160_clamped_clear_total_zero",
+            "preimage16_hash160_clamped_clear_total_max",
+        ],
+        [
+            "preimage16_hash160_bitwise_lock",
+            "preimage16_hash160_bitwise_witness",
+            "preimage16_hash160_bitwise_witness_max",
+            "preimage16_hash160_bitwise_stack",
+            "preimage16_hash160_bitwise_static_opcodes",
+            "preimage16_hash160_bitwise_total_zero",
+            "preimage16_hash160_bitwise_total_max",
+        ],
+        [
+            "preimage16_hash160_exact_clear_lock",
+            "preimage16_hash160_exact_clear_witness",
+            "preimage16_hash160_exact_clear_witness_max",
+            "preimage16_hash160_exact_clear_stack",
+            "preimage16_hash160_exact_clear_static_opcodes",
+            "preimage16_hash160_exact_clear_total_zero",
+            "preimage16_hash160_exact_clear_total_max",
+        ],
+    ]);
+    let sha256 = preimage16_hash_metrics::<Sha256>([
+        [
+            "preimage16_sha256_clamped_clear_lock",
+            "preimage16_sha256_clamped_clear_witness",
+            "preimage16_sha256_clamped_clear_witness_max",
+            "preimage16_sha256_clamped_clear_stack",
+            "preimage16_sha256_clamped_clear_static_opcodes",
+            "preimage16_sha256_clamped_clear_total_zero",
+            "preimage16_sha256_clamped_clear_total_max",
+        ],
+        [
+            "preimage16_sha256_bitwise_lock",
+            "preimage16_sha256_bitwise_witness",
+            "preimage16_sha256_bitwise_witness_max",
+            "preimage16_sha256_bitwise_stack",
+            "preimage16_sha256_bitwise_static_opcodes",
+            "preimage16_sha256_bitwise_total_zero",
+            "preimage16_sha256_bitwise_total_max",
+        ],
+        [
+            "preimage16_sha256_exact_clear_lock",
+            "preimage16_sha256_exact_clear_witness",
+            "preimage16_sha256_exact_clear_witness_max",
+            "preimage16_sha256_exact_clear_stack",
+            "preimage16_sha256_exact_clear_static_opcodes",
+            "preimage16_sha256_exact_clear_total_zero",
+            "preimage16_sha256_exact_clear_total_max",
+        ],
+    ]);
+    hash160.into_iter().chain(sha256).collect()
 }
 
 fn metrics() -> Vec<Metric> {
@@ -3349,6 +3477,7 @@ fn metrics() -> Vec<Metric> {
     .chain(prince_metrics())
     .chain(winternitz_metrics())
     .chain(winternitz_sha256_metrics())
+    .chain(winternitz_preimage16_metrics())
     .collect()
 }
 
@@ -3365,6 +3494,7 @@ fn winternitz_metrics_are_current() {
         winternitz_metrics()
             .into_iter()
             .chain(winternitz_sha256_metrics())
+            .chain(winternitz_preimage16_metrics())
             .collect(),
     );
 }

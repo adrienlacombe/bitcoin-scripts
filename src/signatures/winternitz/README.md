@@ -1,10 +1,10 @@
 # Winternitz one-time signatures
 
 This module contains a compatibility HASH160 API and an independent typed
-`FastWinternitz<N, H = Hash160>` API. The typed implementation supports
+`FastWinternitz<N, H = Hash160, P = FullWidth>` API. The typed implementation supports
 HASH160 and SHA-256 across every verification profile, with a consuming
-one-time signing key. The hash choice is fixed when creating the key and
-locking script; it is never selected by an untrusted witness.
+one-time signing key. The hash and preimage-width choices are fixed when creating the key and
+locking script; neither is selected by an untrusted witness.
 
 This is classic unkeyed-chain Winternitz, not the addressed, keyed WOTS+
 construction specified by RFC 8391. Changing the hash does not establish
@@ -15,6 +15,8 @@ WOTS+ security.
 - Base: 16; each message byte becomes high then low nibble.
 - Chain function: `Hash160` (default, 20 bytes) or `Sha256` (32 bytes);
   message chains have 15 links. SHA-2 means SHA-256 here, not SHA-512.
+- Initial secret width: `FullWidth` (default, native hash width) or
+  `Preimage16` (16 bytes, revealed only by digit zero).
 - Fast signing seed: 32 bytes.
 - Fast chain namespace: `H(domain || seed || message_bytes_be64)`, where
   the domains are `bitcoin-lab/winternitz-hash160/v1` and
@@ -44,8 +46,10 @@ so Script can use one short Horner pass. Its symmetric eight-value lookup
 strictly rejects numeric digits outside `0..=15`. It intentionally omits a
 separate chain-item length check. At digit 15 the direct endpoint equality
 already forces the selected hash width; below 15 at least one hash normalizes
-the selected value before equality. Signer nodes are always 20 or 32 bytes; the
-accepted relation also includes arbitrary-length preimages for digits below 15.
+the selected value before equality. FullWidth signer nodes are 20 or 32 bytes;
+Preimage16 signer nodes are 16 bytes at digit zero and native width otherwise.
+The accepted size-profile relation also includes arbitrary-length preimages
+for digits below the chain maximum.
 That is a deliberate four-byte-per-chain locking-size tradeoff, not a claim of
 canonical raw witness encoding.
 
@@ -75,7 +79,8 @@ outside `0..=15` leave a residual other than canonical false or true and fail.
 The minimal profile instead builds an eight-value lookup list. It is smaller,
 but executes 15 hashes when `d < 8` and seven otherwise. It explicitly checks
 the numeric digit range before `OP_PICK`. Both profiles validate that every
-chain input is exactly the selected hash width (20 or 32 bytes).
+chain input has the expected width: the selected hash width for FullWidth;
+16 bytes iff digit zero, otherwise the hash width, for Preimage16.
 
 Host key generation streams the domain and chain index into the selected hash and keeps
 each chain value in a fixed-size array. It performs no secret-vector clone,
@@ -84,11 +89,11 @@ per-chain heap allocation, or collision-list sort. `FastSigningKey` is neither
 
 ## Hash choice and preimage sizes
 
-Neither option uses 16-byte signature nodes. A 16-byte message (`FastWots16`)
-is unrelated to the chain width. A shorter master secret would not shorten
-intermediate hash outputs or public endpoints. Standard tapscript has no
-native 128-bit SHA-256/HASH160 truncation operation; simply truncating host
-values would break chain verification. No 16-byte chain mode is implemented.
+The default FullWidth modes use native-width signature nodes. A 16-byte
+message (`FastWots16`) is unrelated to the chain width. The optional
+[Preimage16 mode](#optional-16-byte-initial-preimages) shortens the initial
+secret only. Intermediate outputs and endpoints stay native width; truncating
+every host-side hash would disagree with native Script hashing.
 
 ```rust
 use bitcoin_lab::signatures::winternitz::{FastWinternitz, Hash160, Sha256};
@@ -105,8 +110,9 @@ let witness = signature.to_size_optimized_witness();
 // Append the protocol terminal predicate before executing a complete leaf.
 ```
 
-The hash parameter also appears on `FastSigningKey<N, H>`,
-`FastPublicKey<N, H>`, `FastSignature<N, H>`, and `FastChainValue<H>`.
+The hash and preimage-width parameters also appear on `FastSigningKey<N, H, P>`,
+`FastPublicKey<N, H, P>`, and `FastSignature<N, H, P>`.
+`FastChainValue<H>` remains a native-width node or public endpoint.
 Existing `FastWots4/16/32/64/80` aliases remain fixed to HASH160. All existing
 HASH160 key derivation, witness layouts, and metric sizes are preserved.
 Persist the hash choice alongside keys and seeds: SHA-256 uses a separate
@@ -262,6 +268,76 @@ not complete transaction weights.
 Native hash semantics are recorded in [Bitcoin Core v29.0 interpreter.cpp](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp).
 Pair fusion is in the pinned [rust-bitcoin-script optimizer](https://github.com/BitVM/rust-bitcoin-script/blob/124b561ed75ac3ec4c6ad99207d8dcdd3bc67180/src/optimizer.rs).
 
+## Optional 16-byte initial preimages
+
+Select `FastWinternitz<N, H, Preimage16>` to derive 16-byte initial secrets
+for either hash. `FullWidth` remains the default for compatibility. Only a
+signature digit of zero reveals the initial secret. Later chain positions
+and public endpoints retain 20 bytes (HASH160) or 32 bytes (SHA-256).
+The 32-byte master seed is unchanged.
+
+```rust
+use bitcoin_lab::signatures::winternitz::{FastWinternitz, Hash160, Preimage16};
+type Wots = FastWinternitz<32, Hash160, Preimage16>;
+assert_eq!(Wots::PREIMAGE_BYTES, 16);
+assert_eq!(Wots::HASH_BYTES, 20);
+let key = Wots::generate_signing_key();
+let public_key = Wots::public_key(&key);
+let signature = Wots::sign(key, &[0; 32]);
+let witness = signature.to_size_optimized_witness();
+let verifier = Wots::checksig_verify_clamped_and_clear(&public_key);
+```
+
+The mode also appears on `FastSigningKey`, `FastPublicKey`, and
+`FastSignature`; persist it with the seed and hash choice. FullWidth's
+`chain_values()` accessor still returns native hash arrays. Preimage16's
+accessor returns `ShortChainValue<H>` values (`Secret([u8;16])` or `Hashed`),
+all borrowable as byte slices. Changing the mode changes keys and witnesses.
+Its namespace is `H(prefix || hash_domain || seed || message_bytes_be64)`,
+where `prefix = bitcoin-lab/winternitz-preimage16/v1`. Derive chain `i` as
+before and take its first 16 bytes as the initial secret. After that, apply
+the untruncated native hash at every step.
+
+Each zero digit saves **4 witness bytes for HASH160** or **16 for SHA-256**.
+For the zero 32-byte message, 64 message and two checksum digits are zero,
+so witness savings are **264 / 1,056 bytes**. The numeric size, clamped, and
+bitwise profiles add no script bytes. Strict exact and strict lookup profiles
+validate 16 bytes iff the digit is zero and the native width otherwise; their
+per-chain size guard compiles to 11 bytes instead of four. The measured
+whole-script costs below include this tradeoff. Short preimages therefore
+need not reduce cost in every profile/message combination.
+
+Same seed `[0x42;32]`, zero message, `fragment-only` locking boundary and
+complete serialized data witness as the earlier tables. Compilation uses
+`CompileOptions::ALL` below 32 KiB. Witness upper bounds allow full-width nodes
+at every chain and are unchanged; they do not bound hostile accepted encodings.
+
+| Preimage16 profile | Script bytes | Witness bytes (zero / bound) | Combined stack peak | Static non-push opcodes | Script + witness (zero / bound) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Hash160 clamped terminal | <!-- metric:preimage16_hash160_clamped_clear_lock -->4409<!-- /metric:preimage16_hash160_clamped_clear_lock --> | <!-- metric:preimage16_hash160_clamped_clear_witness -->1212<!-- /metric:preimage16_hash160_clamped_clear_witness --> / <!-- metric:preimage16_hash160_clamped_clear_witness_max -->1542<!-- /metric:preimage16_hash160_clamped_clear_witness_max --> | <!-- metric:preimage16_hash160_clamped_clear_stack -->141<!-- /metric:preimage16_hash160_clamped_clear_stack --> | <!-- metric:preimage16_hash160_clamped_clear_static_opcodes -->2865<!-- /metric:preimage16_hash160_clamped_clear_static_opcodes --> | <!-- metric:preimage16_hash160_clamped_clear_total_zero -->5621<!-- /metric:preimage16_hash160_clamped_clear_total_zero --> / <!-- metric:preimage16_hash160_clamped_clear_total_max -->5951<!-- /metric:preimage16_hash160_clamped_clear_total_max --> |
+| Hash160 bitwise recovery | <!-- metric:preimage16_hash160_bitwise_lock -->4325<!-- /metric:preimage16_hash160_bitwise_lock --> | <!-- metric:preimage16_hash160_bitwise_witness -->1416<!-- /metric:preimage16_hash160_bitwise_witness --> / <!-- metric:preimage16_hash160_bitwise_witness_max -->1942<!-- /metric:preimage16_hash160_bitwise_witness_max --> | <!-- metric:preimage16_hash160_bitwise_stack -->334<!-- /metric:preimage16_hash160_bitwise_stack --> | <!-- metric:preimage16_hash160_bitwise_static_opcodes -->2716<!-- /metric:preimage16_hash160_bitwise_static_opcodes --> | <!-- metric:preimage16_hash160_bitwise_total_zero -->5741<!-- /metric:preimage16_hash160_bitwise_total_zero --> / <!-- metric:preimage16_hash160_bitwise_total_max -->6267<!-- /metric:preimage16_hash160_bitwise_total_max --> |
+| Hash160 strict exact terminal | <!-- metric:preimage16_hash160_exact_clear_lock -->5674<!-- /metric:preimage16_hash160_exact_clear_lock --> | <!-- metric:preimage16_hash160_exact_clear_witness -->1212<!-- /metric:preimage16_hash160_exact_clear_witness --> / <!-- metric:preimage16_hash160_exact_clear_witness_max -->1542<!-- /metric:preimage16_hash160_exact_clear_witness_max --> | <!-- metric:preimage16_hash160_exact_clear_stack -->137<!-- /metric:preimage16_hash160_exact_clear_stack --> | <!-- metric:preimage16_hash160_exact_clear_static_opcodes -->3665<!-- /metric:preimage16_hash160_exact_clear_static_opcodes --> | <!-- metric:preimage16_hash160_exact_clear_total_zero -->6886<!-- /metric:preimage16_hash160_exact_clear_total_zero --> / <!-- metric:preimage16_hash160_exact_clear_total_max -->7216<!-- /metric:preimage16_hash160_exact_clear_total_max --> |
+| Sha256 clamped terminal | <!-- metric:preimage16_sha256_clamped_clear_lock -->4949<!-- /metric:preimage16_sha256_clamped_clear_lock --> | <!-- metric:preimage16_sha256_clamped_clear_witness -->1224<!-- /metric:preimage16_sha256_clamped_clear_witness --> / <!-- metric:preimage16_sha256_clamped_clear_witness_max -->2346<!-- /metric:preimage16_sha256_clamped_clear_witness_max --> | <!-- metric:preimage16_sha256_clamped_clear_stack -->141<!-- /metric:preimage16_sha256_clamped_clear_stack --> | <!-- metric:preimage16_sha256_clamped_clear_static_opcodes -->2601<!-- /metric:preimage16_sha256_clamped_clear_static_opcodes --> | <!-- metric:preimage16_sha256_clamped_clear_total_zero -->6173<!-- /metric:preimage16_sha256_clamped_clear_total_zero --> / <!-- metric:preimage16_sha256_clamped_clear_total_max -->7295<!-- /metric:preimage16_sha256_clamped_clear_total_max --> |
+| Sha256 bitwise recovery | <!-- metric:preimage16_sha256_bitwise_lock -->4668<!-- /metric:preimage16_sha256_bitwise_lock --> | <!-- metric:preimage16_sha256_bitwise_witness -->1428<!-- /metric:preimage16_sha256_bitwise_witness --> / <!-- metric:preimage16_sha256_bitwise_witness_max -->2746<!-- /metric:preimage16_sha256_bitwise_witness_max --> | <!-- metric:preimage16_sha256_bitwise_stack -->334<!-- /metric:preimage16_sha256_bitwise_stack --> | <!-- metric:preimage16_sha256_bitwise_static_opcodes -->2255<!-- /metric:preimage16_sha256_bitwise_static_opcodes --> | <!-- metric:preimage16_sha256_bitwise_total_zero -->6096<!-- /metric:preimage16_sha256_bitwise_total_zero --> / <!-- metric:preimage16_sha256_bitwise_total_max -->7414<!-- /metric:preimage16_sha256_bitwise_total_max --> |
+| Sha256 strict exact terminal | <!-- metric:preimage16_sha256_exact_clear_lock -->6017<!-- /metric:preimage16_sha256_exact_clear_lock --> | <!-- metric:preimage16_sha256_exact_clear_witness -->1224<!-- /metric:preimage16_sha256_exact_clear_witness --> / <!-- metric:preimage16_sha256_exact_clear_witness_max -->2346<!-- /metric:preimage16_sha256_exact_clear_witness_max --> | <!-- metric:preimage16_sha256_exact_clear_stack -->137<!-- /metric:preimage16_sha256_exact_clear_stack --> | <!-- metric:preimage16_sha256_exact_clear_static_opcodes -->3204<!-- /metric:preimage16_sha256_exact_clear_static_opcodes --> | <!-- metric:preimage16_sha256_exact_clear_total_zero -->7241<!-- /metric:preimage16_sha256_exact_clear_total_zero --> / <!-- metric:preimage16_sha256_exact_clear_total_max -->8363<!-- /metric:preimage16_sha256_exact_clear_total_max --> |
+
+Every invocation needs **0 auxiliary hint items**. All **134 numeric** or
+**333 bitwise** data items coexist at entry and are included in the combined
+main/alt stack peaks. Adding protocol state must respect the same 1,000-item
+limit. These metrics are `locally-reproduced`, `research-unlimited` because
+the tapscript metric helper disables the stack check. Independent strict-stack
+tests pass; there is no Bitcoin Core consensus or policy validation.
+
+A 16-byte initial secret has at most **128-bit single-target classical
+exhaustive-search resistance**, before multi-target effects. This reduces the
+initial-secret search space compared with the full-width modes; it is not a
+security-free change or an end-to-end 128-bit Winternitz proof. SHA-256's
+generic hash collision bound stays 128 bits; HASH160's stays 80 bits. Initial
+secret entropy, hash collision resistance, and concrete one-time signature
+security are different quantities. [NIST's hash-security definitions](https://csrc.nist.gov/projects/hash-functions#security-strengths)
+separate collision, preimage, and second-preimage resistance. The construction
+remains unkeyed Winternitz, not RFC 8391 WOTS+.
+
 ## Security
 
 Every key is strictly one-time. Signing twice with the same seed and message
@@ -308,8 +384,9 @@ fragments.
 
 Speed/strict witness order is
 `[digit_0, chain_0, digit_1, chain_1, ...]`. Script consumes pairs backwards,
-so the 20-byte HASH160 or 32-byte SHA-256 chain value is on top and can be size-checked before the numeric
-digit is used. A zero digit is an empty item; positive digits use canonical
+so the chain value is on top. FullWidth checks its native 20/32-byte size
+before consuming the digit; Preimage16 checks its size against the digit-zero
+condition. Shortening the initial secret does not add witness items. A zero digit is an empty item; positive digits use canonical
 one-byte ScriptNum items. Size witness order is message `[chain_i, digit_i]` pairs
 followed by checksum pairs in reverse chain-index order; callers must use
 `to_size_optimized_witness` with a numeric size verifier. Bitwise recovery

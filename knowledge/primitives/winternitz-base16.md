@@ -41,6 +41,11 @@ See the [implementation README](../../src/signatures/winternitz/README.md),
 
 The legacy API remains fixed to HASH160 and 20-byte chain values. Hash selection
 is available in the independent [Fast implementation](winternitz-fast-base16.md)
-as `FastWinternitz<N, Hash160>` or `FastWinternitz<N, Sha256>`. SHA-256 uses
-32-byte nodes; neither implementation emits 16-byte chain values. Changing
-hashes requires new keys and witnesses.
+as `FastWinternitz<N, Hash160>` or `FastWinternitz<N, Sha256>`. Fast also
+supports `FastWinternitz<N, H, Preimage16>`: the initial secret is 16 bytes,
+while every hash output and endpoint keeps the native 20- or 32-byte width.
+Only zero-valued signature digits reveal the shorter item. The default Fast
+`FullWidth` mode and the legacy API retain their existing encodings. Changing
+hash or start mode requires new keys and witnesses; see the Fast page for the
+size savings, strict-width validation overhead, and reduced secret-search
+margin.

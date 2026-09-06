@@ -151,8 +151,8 @@ fn sha256_chain_binds_all_digits_and_rejects_wrong_widths() {
         let start = [0x42; 32];
         let end = hash_chain::<Sha256>(start, max);
         let leaves = [
-            verify_chain_exact::<Sha256>(end, width, true),
-            verify_chain_minimal::<Sha256>(end, width, true),
+            verify_chain_exact::<Sha256, FullWidth>(end, width, true),
+            verify_chain_minimal::<Sha256, FullWidth>(end, width, true),
             script! { { verify_chain_size_optimized::<Sha256>(end, width, false) } OP_FROMALTSTACK },
             script! { { verify_chain_size_optimized::<Sha256>(end, width, true) } OP_FROMALTSTACK },
         ];

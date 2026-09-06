@@ -225,6 +225,13 @@
       "kind": "upstream-source",
       "url": "https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp",
       "revision": "v29.0 release; inspected for SHA256/HASH160/HASH256 semantics, not an execution reproduction"
+    },
+    {
+      "id": "nist-hash-security-strengths",
+      "title": "NIST hash function security-strength definitions and table",
+      "kind": "specification",
+      "url": "https://csrc.nist.gov/projects/hash-functions#security-strengths",
+      "revision": "Page updated 2024-09-09; inspected 2026-09-05 for preimage/collision distinction; no Winternitz security proof"
     }
   ]
 }

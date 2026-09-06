@@ -21,7 +21,8 @@ Lamport helper authenticates only two bits. Winternitz provides typed message
 APIs but requires strict one-time key management and can make state transport
 witness-heavy.
 
-The following Fast costs use the default HASH160 chain.
+The following Fast costs use the default HASH160 chain and `FullWidth`
+initial secrets.
 
 The Fast Winternitz path makes the transport boundary more explicit. Numeric
 profiles use 134 digit/chain items; the 4,325-byte bitwise recovery profile uses
@@ -64,3 +65,29 @@ the profile ranking: bitwise recovery totals 7,152 bytes versus clamped's
 measurements under `research-unlimited` tapscript execution, not complete
 state-transport transaction weights. A wider hash does not replace a concrete
 multi-target security argument or durable one-time-key management.
+
+
+The independent start-mode choice is `FastWinternitz<N, H, Preimage16>`.
+Persist it together with the hash and message length: it has separate key
+namespace derivation, so existing commitments cannot be reused by changing a
+runtime witness encoding. Only zero-valued digits reveal 16-byte initial
+secrets; all subsequent nodes and public endpoints remain full width.
+The default `FullWidth` mode retains existing keys and witness encodings.
+
+With 66 zero digits, the same Wots32 fixture reduces the measured clamped
+terminal sum to 5,621 bytes for HASH160 or 6,173 for SHA-256. These results are
+`locally-reproduced` and `research-unlimited` under the tapscript metric helper
+with the stack limit disabled; they are not complete transaction weights or
+Core consensus/policy validation. Witness items and auxiliary hints stay at 134
+and zero, with the same measured 141-item clamped peak; bitwise still uses 333 entry
+data items and zero hints. All items coexist at entry. Strict raw-width
+profiles pay extra script bytes to select 16 or the native width from the
+authenticated digit. A protocol should evaluate its actual message/checksum
+distribution and the full transport transaction before choosing a profile.
+
+A 16-byte initial secret caps generic single-target classical start search at
+128 bits. Native-width endpoints preserve their hash-output collision bounds,
+which are a different security property; they do not restore the larger
+FullWidth secret-search space. Concrete multi-target/chain analysis and
+durable one-time-key state remain protocol obligations under
+[OP-009](../open-problems.md#op-009--one-time-authentication-security-profiles).
