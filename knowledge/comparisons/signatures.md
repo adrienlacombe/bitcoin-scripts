@@ -105,14 +105,14 @@ and nodes. Optional `Preimage16` comparisons follow the hash comparison.
 | HORS-like n32/t8 | Explicit subset | 809 | 280 | not recorded | Message-to-index derivation |
 | Legacy Wots32 list-pick | 32-byte message | 4,908 | 1,477 / 1,542 | 143 | 15 hashes for digits below 8, seven otherwise; clamps above-range digits |
 | Legacy Wots32 list-pick + clear | 32-byte message | 4,844 | 1,477 / 1,542 | 143 | Direct checksum reduction; consumes message; terminal predicate excluded |
-| FastWots32 clamped lookup | 32-byte message | 4,471 | 1,476 / 1,542 | 141 | Legacy-style upper saturation; recovers authenticated clamped digits |
-| FastWots32 clamped lookup + clear | 32-byte message | 4,409 | 1,476 / 1,542 | 141 | Same clamped relation; consumes message; terminal predicate excluded |
+| FastWots32 clamped lookup | 32-byte message | 4,465 | 1,476 / 1,542 | 143 | Legacy-style upper saturation; recovers authenticated clamped digits |
+| FastWots32 clamped lookup + clear | 32-byte message | 4,403 | 1,476 / 1,542 | 143 | Same clamped relation; consumes message; terminal predicate excluded |
 | FastWots32 bitwise | 32-byte message | 4,325 | 1,680 / 1,942 | 334 | Canonical bits; exact suffix hashes; relaxed chain-item length; recovers message |
 | FastWots32 bitwise + clear | 32-byte message | 4,206 | 1,938 / 1,942 | 333 | Branch-fused checksum; consumes message; terminal predicate excluded |
-| FastWots32 size lookup | 32-byte message | 4,605 | 1,476 / 1,542 | 141 | Strict numeric digits; relaxed raw chain-item length; recovers message |
-| FastWots32 size lookup + clear | 32-byte message | 4,543 | 1,476 / 1,542 | 141 | Same chain relation; consumes message; terminal predicate excluded |
+| FastWots32 size lookup | 32-byte message | 4,599 | 1,476 / 1,542 | 143 | Strict numeric digits; relaxed raw chain-item length; recovers message |
+| FastWots32 size lookup + clear | 32-byte message | 4,537 | 1,476 / 1,542 | 143 | Same chain relation; consumes message; terminal predicate excluded |
 | FastWots32 exact | 32-byte message | 5,267 | 1,476 / 1,542 | 137 | Residual-digit exact suffix hashes; 498 on the balanced vector |
-| FastWots32 strict lookup | 32-byte message | 5,007 | 1,476 / 1,542 | 143 | 729 hashes on the balanced vector; explicit range check |
+| FastWots32 strict lookup | 32-byte message | 4,934 | 1,476 / 1,542 | 143 | 733 hashes on the balanced vector; explicit range check |
 | FastWots32 exact + clear | 32-byte message | 5,205 | 1,476 / 1,542 | 137 | Staged digits and Horner checksum; terminal predicate excluded |
 
 Locking figures are `fragment-only`; witness figures are full serialized item
@@ -131,10 +131,17 @@ same 64 nibbles. The gain costs 333 witness items and a larger serialized
 witness. Like the numeric size profile, it omits an explicit 20-byte check on
 each chain item: a maximum digit equality forces 20 bytes, while smaller digits
 admit an arbitrary-length HASH160 preimage before the first hash. The
-strict-encoding lookup profile retains explicit 20-byte checks at 5,007 bytes.
+strict-encoding lookup profile retains explicit 20-byte checks at 4,934 bytes.
 
 The exact ladder and staged checksum preserve existing Fast witnesses while
 reducing recovery by 75 bytes and terminal verification by 203 bytes.
+Full tables replace the half-table selector for checksum widths up to three
+bits. The strict lookup also removes its redundant lower-bound check while
+retaining the upper bound and `OP_PICK`'s negative-index rejection. This
+reduces the HASH160 clamped/strict numeric fragments by six bytes and strict
+lookup by 73 bytes; the balanced lookup vector executes 733 hashes rather
+than 729, an execution-work tradeoff for smaller scripts. Numeric size/clamped
+peaks rise from 141 to 143 items because their narrow checksum table grows.
 All listed Fast profiles require zero auxiliary hint items; the 134 numeric or
 333 bitwise data items are present together at script entry.
 
@@ -148,11 +155,11 @@ be added. The zero-message and signer-node upper-bound sums are:
 
 | FastWots32 profile | Script + zero-message witness | Script + maximum signer-node witness |
 | --- | ---: | ---: |
-| Clamped lookup recovery | 5,947 | 6,013 |
-| Clamped lookup terminal | 5,885 | 5,951 |
-| Numeric size recovery | 6,081 | 6,147 |
+| Clamped lookup recovery | 5,941 | 6,007 |
+| Clamped lookup terminal | 5,879 | 5,945 |
+| Numeric size recovery | 6,075 | 6,141 |
 | Bitwise recovery | 6,005 | 6,267 |
-| Numeric size terminal | 6,019 | 6,085 |
+| Numeric size terminal | 6,013 | 6,079 |
 | Bitwise terminal | 6,144 | 6,148 |
 
 Clamped lookup minimizes both stated total-cost boundaries. It accepts an
@@ -160,7 +167,7 @@ above-range raw digit as the chain maximum and authenticates that clamped
 value in the checksum, matching the legacy behavior; strict upper rejection
 remains a separate profile. The witness format and honest recovered message
 are unchanged. Ordering can depend on the message: for `[0xff; 32]`, bitwise
-terminal totals 5,892 bytes versus 5,948 clamped. These sums exclude the same
+terminal totals 5,892 bytes versus 5,942 clamped. These sums exclude the same
 script/control-block framing, consumer, and transaction overhead; they are not
 complete transaction weights.
 
@@ -180,15 +187,15 @@ witness, excluding the same terminal consumer and transaction framing:
 
 | Profile | HASH160 sum | SHA-256 sum | SHA-256 signer-node bound |
 | --- | ---: | ---: | ---: |
-| Clamped recovery | 5,947 | 7,291 | 7,357 |
-| Clamped terminal | 5,885 | 7,229 | 7,295 |
+| Clamped recovery | 5,941 | 7,289 | 7,355 |
+| Clamped terminal | 5,879 | 7,227 | 7,293 |
 | Bitwise recovery | 6,005 | 7,152 | 7,414 |
 | Bitwise terminal | 6,144 | 7,291 | 7,295 |
 
 HASH160 is cheaper for matching profiles. SHA-256's larger hash width offers
 higher idealized hash-level security bounds, but is not a WOTS+ security
 claim. Adjacent SHA-256 steps compile into HASH256: exact/bitwise profiles
-save 461 script bytes from pair fusion, lookup profiles 264. This makes
+save 461 script bytes from pair fusion, lookup profiles 260. This makes
 bitwise the lowest zero-message recovery cost within SHA-256; clamped is the
 lowest zero-message terminal cost. Keys are hash-typed and domain-separated;
 changing the hash changes both keys and witnesses.
@@ -201,12 +208,57 @@ separate strict-stack tests and no Core/policy validation. See the
 [full hash comparison](../../src/signatures/winternitz/README.md#sha-256-onchain-comparison)
 for script, witness, static opcode counts, security assumptions and boundaries.
 
+### SHA-256 chains with smaller endpoint commitments
+
+`FastWinternitz<32, Sha256Hash160>` retains 32-byte SHA-256 intermediate nodes
+and uses a final HASH160 to produce each 20-byte public commitment. This
+combines SHA256-pair fusion with shorter endpoint pushes. The hash choice has
+a fresh key-derivation domain. All existing Fast verifier profiles support it;
+the additional strided terminal profile consumes one upper-clamped quotient,
+one chain node, and one canonical low bit per chain.
+
+For seed `[0x42;32]` and message `[0;32]`, the same policy-produced fragment
+and serialized data-witness boundary gives:
+
+| Hybrid terminal profile | Script bytes | FullWidth witness / sum | Preimage16 witness / sum | Entry data items / hints | Combined peak |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Clamped | 4,210 | 2,280 / 6,490 | 1,224 / 5,434 | 134 / 0 | 143 |
+| Bitwise | 3,812 | 2,742 / 6,554 | 1,686 / 5,498 | 333 / 0 | 333 |
+| Strided | 3,961 | 2,413 / 6,374 | 1,357 / 5,318 | 201 / 0 | 209 |
+
+The bitwise fragment saves 394 locking bytes relative to HASH160 bitwise.
+The strided profile trades 149 additional locking bytes for a smaller witness
+and stack. With Preimage16, its 5,318-byte zero-message sum is 297 bytes below
+the 5,615-byte HASH160 clamped terminal sum. The smallest locking fragment and
+the smallest measured zero-message total are therefore different choices.
+FullWidth hybrid totals exceed HASH160's matching zero-message costs because
+32-byte openings outweigh the locking savings. These are measured fixture
+comparisons, not uniform-message averages or global optima.
+
+All data items coexist at entry and are included in the combined peaks,
+together with temporary tables and checksum state. There are zero auxiliary
+hints per invocation. Both profiles consume the message and require a final
+protocol predicate; unrelated state still counts against the 1,000-item
+limit. Metrics remain `locally-reproduced` and `research-unlimited` under the
+stack-limit-disabled tapscript helper; strict-stack tests are separate and
+do not establish Core consensus or policy validation.
+
+The hybrid commitment retains a 160-bit output and about 80-bit generic
+collision bound, rather than the 128-bit collision bound of full SHA-256
+commitments. Size-oriented hybrid verifiers permit arbitrary raw node lengths
+even at the maximum digit, because the final commitment hash always executes.
+Strict exact/lookup retain raw-width checks. Strided authenticates the same
+clamped quotient and canonical bit in the chain selector and checksum;
+protocols requiring rejection of all raw numeric aliases need a strict
+profile. The security analysis and message distribution remain part of the
+cost comparison.
+
 
 ### Initial-secret width
 
 `FastWinternitz<32, H, Preimage16>` shortens only digit-zero signature values
-to 16 bytes. Every hash output and endpoint retains the selected native
-width. It is a separately domain-separated mode; the default `FullWidth`
+to 16 bytes. Every hash output retains the selected native width, and public
+commitments retain their selected width. It is a separately domain-separated mode; the default `FullWidth`
 keys and witnesses remain compatible with the tables above.
 
 For the same zero-message fixture, 66 of 67 digits are zero. The following
@@ -215,8 +267,8 @@ excluded transaction framing:
 
 | Clamped terminal mode | Script bytes | Witness bytes | Sum | Saving from FullWidth |
 | --- | ---: | ---: | ---: | ---: |
-| HASH160 + Preimage16 | 4,409 | 1,212 | 5,621 | 264 |
-| SHA-256 + Preimage16 | 4,949 | 1,224 | 6,173 | 1,056 |
+| HASH160 + Preimage16 | 4,403 | 1,212 | 5,615 | 264 |
+| SHA-256 + Preimage16 | 4,947 | 1,224 | 6,171 | 1,056 |
 
 Numeric size, clamped, and bitwise profiles need no new width validation and
 retain their existing stack schedules. Strict exact and lookup profiles pay

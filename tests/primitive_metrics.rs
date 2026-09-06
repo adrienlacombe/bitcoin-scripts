@@ -34,7 +34,8 @@ use bitcoin_lab::{
     signatures::{
         hors, lamport, pointlocks, schnorr,
         winternitz::{
-            ChainHash, FastWinternitz, FastWots32, Hash160, Preimage16, Sha256, Wots, Wots32,
+            ChainHash, FastWinternitz, FastWots32, FullWidth, Hash160, Preimage16, PreimageSize,
+            Sha256, Sha256Hash160, Wots, Wots32,
         },
     },
     support::{
@@ -227,7 +228,7 @@ fn winternitz_metrics() -> Vec<Metric> {
                     4
                 };
             let half = 1u8 << (digit_bits - 1);
-            if digit < half {
+            if digit_bits <= 3 || digit < half {
                 usize::from(2 * half - 1)
             } else {
                 usize::from(half - 1)
@@ -816,6 +817,127 @@ fn winternitz_preimage16_metrics() -> Vec<Metric> {
         ],
     ]);
     hash160.into_iter().chain(sha256).collect()
+}
+
+fn hybrid_metrics_for_mode<P: PreimageSize<Sha256Hash160>>(
+    keys: [[&'static str; 9]; 3],
+) -> Vec<Metric> {
+    let key = FastWinternitz::<32, Sha256Hash160, P>::signing_key_from_seed([0x42; 32]);
+    let pk = FastWinternitz::<32, Sha256Hash160, P>::public_key(&key);
+    let sig = FastWinternitz::<32, Sha256Hash160, P>::sign(key, &[0; 32]);
+    let rows = [
+        (FastWinternitz::<32, Sha256Hash160, P>::checksig_verify_clamped_and_clear(&pk), sig.to_size_optimized_witness()),
+        (FastWinternitz::<32, Sha256Hash160, P>::checksig_verify_bitwise_size_optimized_and_clear(&pk), sig.to_bitwise_terminal_witness()),
+        (FastWinternitz::<32, Sha256Hash160, P>::checksig_verify_strided_and_clear(&pk), sig.to_strided_witness()),
+    ];
+    let mut metrics = Vec::new();
+    for (keys, (fragment, witness)) in keys.into_iter().zip(rows) {
+        let script_bytes = script_len(fragment.clone());
+        let witness_bytes = serialize(&witness).len();
+        let maximum_items: Vec<Vec<u8>> = witness
+            .iter()
+            .map(|item| {
+                if item.len() <= 1 {
+                    vec![1]
+                } else {
+                    vec![0; 32]
+                }
+            })
+            .collect();
+        let maximum_bytes = witness_size(&maximum_items);
+        let stack = max_stack_items(script! { { fragment.clone() } OP_TRUE }, witness.to_vec());
+        let values = [
+            script_bytes,
+            witness_bytes,
+            maximum_bytes,
+            stack,
+            static_non_push_opcodes(fragment),
+            script_bytes + witness_bytes,
+            script_bytes + maximum_bytes,
+            witness.len(),
+            0,
+        ];
+        metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key,
+            value,
+        }));
+    }
+    metrics
+}
+
+fn winternitz_hybrid_metrics() -> Vec<Metric> {
+    let full = hybrid_metrics_for_mode::<FullWidth>([
+        [
+            "hybrid_full_clamped_lock",
+            "hybrid_full_clamped_witness",
+            "hybrid_full_clamped_witness_max",
+            "hybrid_full_clamped_stack",
+            "hybrid_full_clamped_static_opcodes",
+            "hybrid_full_clamped_total_zero",
+            "hybrid_full_clamped_total_max",
+            "hybrid_full_clamped_items",
+            "hybrid_full_clamped_hints",
+        ],
+        [
+            "hybrid_full_bitwise_lock",
+            "hybrid_full_bitwise_witness",
+            "hybrid_full_bitwise_witness_max",
+            "hybrid_full_bitwise_stack",
+            "hybrid_full_bitwise_static_opcodes",
+            "hybrid_full_bitwise_total_zero",
+            "hybrid_full_bitwise_total_max",
+            "hybrid_full_bitwise_items",
+            "hybrid_full_bitwise_hints",
+        ],
+        [
+            "hybrid_full_strided_lock",
+            "hybrid_full_strided_witness",
+            "hybrid_full_strided_witness_max",
+            "hybrid_full_strided_stack",
+            "hybrid_full_strided_static_opcodes",
+            "hybrid_full_strided_total_zero",
+            "hybrid_full_strided_total_max",
+            "hybrid_full_strided_items",
+            "hybrid_full_strided_hints",
+        ],
+    ]);
+    let short = hybrid_metrics_for_mode::<Preimage16>([
+        [
+            "hybrid_short_clamped_lock",
+            "hybrid_short_clamped_witness",
+            "hybrid_short_clamped_witness_max",
+            "hybrid_short_clamped_stack",
+            "hybrid_short_clamped_static_opcodes",
+            "hybrid_short_clamped_total_zero",
+            "hybrid_short_clamped_total_max",
+            "hybrid_short_clamped_items",
+            "hybrid_short_clamped_hints",
+        ],
+        [
+            "hybrid_short_bitwise_lock",
+            "hybrid_short_bitwise_witness",
+            "hybrid_short_bitwise_witness_max",
+            "hybrid_short_bitwise_stack",
+            "hybrid_short_bitwise_static_opcodes",
+            "hybrid_short_bitwise_total_zero",
+            "hybrid_short_bitwise_total_max",
+            "hybrid_short_bitwise_items",
+            "hybrid_short_bitwise_hints",
+        ],
+        [
+            "hybrid_short_strided_lock",
+            "hybrid_short_strided_witness",
+            "hybrid_short_strided_witness_max",
+            "hybrid_short_strided_stack",
+            "hybrid_short_strided_static_opcodes",
+            "hybrid_short_strided_total_zero",
+            "hybrid_short_strided_total_max",
+            "hybrid_short_strided_items",
+            "hybrid_short_strided_hints",
+        ],
+    ]);
+    full.into_iter().chain(short).collect()
 }
 
 fn metrics() -> Vec<Metric> {
@@ -3478,6 +3600,7 @@ fn metrics() -> Vec<Metric> {
     .chain(winternitz_metrics())
     .chain(winternitz_sha256_metrics())
     .chain(winternitz_preimage16_metrics())
+    .chain(winternitz_hybrid_metrics())
     .collect()
 }
 
@@ -3495,6 +3618,7 @@ fn winternitz_metrics_are_current() {
             .into_iter()
             .chain(winternitz_sha256_metrics())
             .chain(winternitz_preimage16_metrics())
+            .chain(winternitz_hybrid_metrics())
             .collect(),
     );
 }

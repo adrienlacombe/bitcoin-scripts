@@ -371,7 +371,7 @@ fn strict_widths<H: ChainHash>() {
                 for _ in digit + 1..15 {
                     endpoint = H::hash_parts(&[endpoint.as_ref()]);
                 }
-                (node, endpoint)
+                (node, H::commit(endpoint))
             };
             let mut ends = public_key.chain_ends().to_vec();
             ends[0] = endpoint;

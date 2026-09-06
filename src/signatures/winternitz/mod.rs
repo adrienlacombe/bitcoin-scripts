@@ -12,10 +12,10 @@ pub use api::{
     CompactWots, GenericWinternitzPublicKey, WinternitzSecret, WinternitzSigningInputs, Wots,
     Wots16, Wots32, Wots4, Wots64, Wots80, LOG2_BASE,
 };
-pub use chain_hash::{ChainHash, Hash160, Sha256};
+pub use chain_hash::{ChainHash, Hash160, Sha256, Sha256Hash160};
 pub use fast::{
-    FastChainValue, FastPublicKey, FastSignature, FastSigningKey, FastWinternitz, FastWots16,
-    FastWots32, FastWots4, FastWots64, FastWots80, InvalidFastPublicKeyLength,
+    FastChainValue, FastCommitment, FastPublicKey, FastSignature, FastSigningKey, FastWinternitz,
+    FastWots16, FastWots32, FastWots4, FastWots64, FastWots80, InvalidFastPublicKeyLength,
 };
 pub use verification::*;
 

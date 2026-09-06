@@ -1,7 +1,8 @@
 # Fast base-16 Winternitz signatures
 
-Implements a fixed-message-length Winternitz path with HASH160 (default) or
-SHA-256, optional 16-byte initial secrets, a consuming one-time key API,
+Implements a fixed-message-length Winternitz path with HASH160 (default),
+SHA-256, or SHA-256 chains with HASH160 endpoint commitments, optional
+16-byte initial secrets, a consuming one-time key API,
 domain-separated chain starts, canonical host-side message
 encoding, bitwise locking-size verifiers, lookup verifiers, a speed-oriented
 exact-hash verifier, and terminal variants.
@@ -10,30 +11,31 @@ exact-hash verifier, and terminal variants.
   locking fragment, can tapscript verification execute exactly the required
   chain suffix while keeping script and stack costs close to the existing
   list-pick implementation?
-- **Comparison objective:** minimize locking-script plus serialized witness
-  bytes for a fixed recovered-message or terminal contract; also report their
+- **Comparison objective:** minimize policy-produced locking-script bytes for
+  a fixed recovered-message or terminal contract, while reporting serialized
+  witness bytes and their sum to expose onchain tradeoffs. Also report
   components, executed HASH160 calls, static non-push opcodes, combined stack
   peak, and any accepted-relation tradeoff.
-- **Position:** the smallest recovery profile supplies canonical digit bits,
+- **Original HASH160 position:** the smallest recovery profile supplies canonical digit bits,
   shares complementary 8/4/2/1 conditional hashes, and reconstructs each
-  authenticated nibble. A `[8, 8, 16]` mixed-radix checksum minimizes checksum
-  chain and Horner bytes for the 0–960 `FastWots32` range. The terminal profile
+  authenticated nibble. A `[8, 8, 16]` mixed-radix checksum covers the 0–960
+  `FastWots32` range. The terminal profile
   accumulates remaining distances directly and avoids digit reconstruction;
   its first authenticated bit initializes the accumulator without an extra
   entry stack item.
 - **Representative FullWidth result:** `FastWots32` bitwise recovery is 4,325 bytes, or
   4,206 bytes when the message is consumed, with 1,680-byte and 1,938-byte
   deterministic zero-message witnesses and measured peaks of 334 and 333
-  items respectively. Clamped lookup recovery is 4,471 bytes, or 4,409 bytes
-  when consumed. Strict numeric lookup recovery is 4,605 bytes;
-  strict-chain lookup is 5,007 bytes and
+  items respectively. Clamped lookup recovery is 4,465 bytes, or 4,403 bytes
+  when consumed. Strict numeric lookup recovery is 4,599 bytes;
+  strict-chain lookup is 4,934 bytes and
   exact-hash recovery is 5,267 bytes. The exact-hash terminal fragment is
   5,205 bytes.
 - **FullWidth HASH160 combined on-chain size:** clamped lookup has the smallest measured sums
   for the deterministic zero message and signer-node witness upper bounds.
-  Its recovery totals are 5,947 and 6,013 bytes; its terminal totals are
-  5,885 and 5,951 bytes. The strict numeric counterparts total 6,081/6,147
-  recovery or 6,019/6,085 terminal bytes. Bitwise totals are 6,005/6,267
+  Its recovery totals are 5,941 and 6,007 bytes; its terminal totals are
+  5,879 and 5,945 bytes. The strict numeric counterparts total 6,075/6,141
+  recovery or 6,013/6,079 terminal bytes. Bitwise totals are 6,005/6,267
   recovery or 6,144/6,148 terminal bytes. These are fragment-plus-data
   comparisons; complete transaction framing and a terminal predicate are
   excluded on both sides. The smallest locking script is not necessarily
@@ -52,14 +54,24 @@ exact-hash verifier, and terminal variants.
   them, saving repeated accumulator transfers. These changes reduce the exact
   recovery and terminal fragments by 75 and 203 bytes respectively without
   changing key derivation, signatures, range checks, or output contracts.
+  Numeric lookup verifiers now build complete tables for checksum digits of
+  at most three bits and retain half tables for four-bit digits. This removes
+  the narrow-table selector branch without changing the witness. Strict
+  lookup also relies on `OP_PICK` to reject negative indices, while retaining
+  its upper bound so an index cannot reach preceding witness items. These
+  changes save six HASH160 clamped/strict numeric bytes and 73 strict lookup
+  bytes; SHA-256 saves two and 69 bytes respectively. Executed HASH160 calls
+  on the balanced lookup vector rise from 729 to 733: the objective is bytes.
+  The numeric size/clamped combined peak rises from 141 to 143 items because
+  the narrow checksum table is larger; the strict lookup peak remains 143.
 - **Legacy comparison:** bitwise recovery is 583 bytes (11.9%) smaller than the
   4,908-byte legacy list-pick path and preserves the recovered-message
   contract. The terminal profile is 638 bytes (13.2%) smaller than the
   4,844-byte legacy terminal fragment. Both Fast bitwise profiles use
   canonical `MINIMALIF` bits. They omit explicit chain-item length checks;
   strict-chain lookup retains those checks.
-- **Evidence:** `locally-reproduced` by host key/signature generation, two Script
-  verifier families, a separately generated fixed Python HASH160 vector,
+- **Evidence:** `locally-reproduced` by host key/signature generation, retained Script
+  verifier profiles, separately generated fixed Python hash vectors,
   malformed-input tests, checksum mutation with recomputed valid chains, and
   checked metric snapshots.
 - **Execution:** `research-unlimited`. Metrics use the local tapscript executor
@@ -77,6 +89,9 @@ exact-hash verifier, and terminal variants.
   least one hash executes. A maximum digit compares directly with its native
   endpoint. This changes raw signature canonicality, not the authenticated
   digit relation. SHA-256 uses the corresponding 32-byte native width.
+  `Sha256Hash160` applies a final commitment hash even at the maximum digit,
+  so its size profiles also admit arbitrary raw widths at that digit. Strict
+  exact and strict lookup keep the selected start/intermediate width checks.
 - **Compatibility:** `[8,8,16]` checksum endpoints replace the earlier Fast
   draft's three full base-16 checksum chains. Persisted public keys and
   signatures from that draft require regeneration and are not wire-compatible.
@@ -98,9 +113,12 @@ See the [implementation README](../../src/signatures/winternitz/README.md),
 ## Hash selection and measured tradeoffs
 
 `FastWinternitz<N, Hash160>` defaults to 20-byte nodes and endpoints;
-`FastWinternitz<N, Sha256>` defaults to 32-byte nodes and endpoints. The optional
+`FastWinternitz<N, Sha256>` defaults to 32-byte nodes and endpoints.
+`FastWinternitz<N, Sha256Hash160>` uses 32-byte SHA-256 nodes and commits to
+each completed endpoint with HASH160, producing a 20-byte public commitment.
+The optional
 third type parameter `Preimage16` shortens initial secrets only, as described
-below. All nine Fast profiles support both hashes; the old aliases and the
+below. All nine existing Fast profiles support all three choices; the old aliases and the
 legacy implementation retain HASH160. The selected hash controls both
 host derivation and Script steps, with separate key-derivation domains and
 hash-typed keys. Changing hashes requires new public commitments and witnesses.
@@ -110,18 +128,18 @@ starts, final compilation policy, and fragment-only boundary:
 
 | Profile | HASH160 script / witness / sum | SHA-256 script / witness / sum | Combined peak |
 | --- | ---: | ---: | ---: |
-| Clamped recovery | 4,471 / 1,476 / 5,947 | 5,011 / 2,280 / 7,291 | 141 |
-| Clamped terminal | 4,409 / 1,476 / 5,885 | 4,949 / 2,280 / 7,229 | 141 |
+| Clamped recovery | 4,465 / 1,476 / 5,941 | 5,009 / 2,280 / 7,289 | 143 |
+| Clamped terminal | 4,403 / 1,476 / 5,879 | 4,947 / 2,280 / 7,227 | 143 |
 | Bitwise recovery | 4,325 / 1,680 / 6,005 | 4,668 / 2,484 / 7,152 | 334 |
 | Bitwise terminal | 4,206 / 1,938 / 6,144 | 4,549 / 2,742 / 7,291 | 333 |
 
 SHA-256 grows 67 endpoint pushes and 67 witness nodes by 12 bytes each, but
-compiler pair fusion removes 461 bytes from exact/bitwise scripts and 264
-from lookup scripts. Net script-plus-witness increases are 1,147 and 1,344
+compiler pair fusion removes 461 bytes from exact/bitwise scripts and 260
+from lookup scripts. Net script-plus-witness increases are 1,147 and 1,348
 bytes respectively. Thus HASH160 is cheaper for matching profiles; SHA-256
 changes the internal ranking: bitwise wins zero-message recovery, clamped
 wins zero-message terminal. SHA-256 clamped/bitwise terminal signer-node bounds
-tie at 7,295 bytes. Full tables and metric markers are in the implementation
+are 7,293 and 7,295 bytes respectively. Full tables and metric markers are in the implementation
 README. This is not transaction weight and does not fix arbitrary hostile
 witness lengths.
 
@@ -134,17 +152,76 @@ compared with independent Python stdlib vectors; this does not establish
 Bitcoin Core consensus or policy validation.
 
 HASH160's idealized preimage/collision bounds are 160/80 bits; SHA-256's are
-256/128 bits. These are hash-level bounds, not a security proof for custom
+256/128 bits. `Sha256Hash160` retains the 160-bit commitment width and roughly
+80-bit generic collision bound, despite its 32-byte intermediate nodes.
+These are hash-level bounds, not a security proof for custom
 unkeyed Winternitz; multi-target and chain losses remain open under OP-009.
-The implementation does not claim RFC 8391 WOTS+ security for either hash.
+The implementation does not claim RFC 8391 WOTS+ security for any hash choice.
+
+## Smaller scripts with separate endpoint commitments
+
+`Sha256Hash160` separates the width of a chain node from the public commitment.
+The host computes `HASH160(SHA256^max(start))`, and every verifier first
+completes the selected SHA-256 chain and then applies the same HASH160
+commitment. A fresh derivation domain prevents reinterpretation of existing
+SHA-256 keys. Native SHA-256 pairs compile to one `OP_HASH256`; the final
+20-byte commitment preserves the original HASH160 endpoint push cost.
+
+The bitwise terminal fragment is 3,812 policy-produced bytes, 394 bytes
+smaller than the corresponding 4,206-byte HASH160 fragment. For seed
+`[0x42;32]` and message `[0;32]`, its FullWidth witness is 2,742 bytes and the
+sum is 6,554 bytes. With `Preimage16`, the witness is 1,686 bytes and the sum
+is 5,498. Both modes use 333 coexisting data items, zero auxiliary hints, a
+333-item combined peak, and 2,192 static non-push opcodes. The smaller script
+therefore has a witness tradeoff: intermediate openings grow to 32 bytes.
+
+The additional `checksig_verify_strided_and_clear` profile uses
+`to_strided_witness()`, whose chunks are `[digit / 2, node, 1 - (digit % 2)]`.
+A canonical low-bit branch performs an optional first hash. The quotient
+selects from a table containing every second subsequent chain node, allowing
+SHA-256 pairs to compile to `OP_HASH256`. The verifier authenticates
+`2 * min(raw_quotient, chain_max / 2) + 1 - bit` in both its chain and checksum.
+Negative and oversized quotients fail; an above-range quotient aliases either
+of the two largest digits depending on the canonical bit. This is an explicit
+new witness relation. Existing keys and signatures can use its serializer;
+existing numeric and bitwise witness encodings remain unchanged.
+
+For `Sha256Hash160`, this terminal fragment measures 3,961 bytes, with a
+2,413-byte FullWidth zero-message witness or a 1,357-byte Preimage16 witness.
+The respective sums are 6,374 and 5,318 bytes. It uses 201 data items at entry,
+zero auxiliary hints, a 209-item combined peak, and 2,480 static non-push
+opcodes. For comparison, the hybrid clamped terminal uses 4,210 script bytes,
+2,280/1,224 FullWidth/Preimage16 witness bytes, and totals 6,490/5,434 bytes.
+It consumes 134 data items, zero auxiliary hints, peaks at 143, and has 2,668
+static non-push opcodes. Within these measured
+terminal configurations, bitwise minimizes locking bytes while strided plus
+Preimage16 minimizes the zero-message script-plus-witness sum. This is not an
+optimum over all messages or signature constructions.
+
+Both terminal fragments leave no result and require the caller's final
+predicate. All data items coexist at entry, and their combined peaks include
+the checksum accumulator and lookup table; unrelated protocol state must fit
+within the same 1,000-item bound. These measurements are `locally-reproduced`
+and `research-unlimited`: the tapscript metric helper disables the stack
+limit. Separate strict-stack tests do not establish Bitcoin Core consensus or
+policy validation. Complete-leaf framing and transaction overhead remain
+excluded on both sides.
+
+The hybrid retains HASH160's 160-bit commitment output and approximately
+80-bit generic collision bound. Its 32-byte internal nodes do not establish
+SHA-256's 128-bit collision bound for the commitment. A 16-byte initial secret
+still caps generic single-target secret search at 128 bits before chain and
+multi-target losses. Those distinct properties and the one-time-key obligation
+remain part of the protocol security analysis.
 
 
 ## Optional 16-byte initial secrets
 
 `FastWinternitz<N, H, Preimage16>` selects a 16-byte chain start while retaining
-native `H` outputs: 20 bytes for HASH160 and 32 for SHA-256. A signature reveals
+native `H` outputs: 20 bytes for HASH160 and 32 for either SHA-256 choice. A signature reveals
 the short start exactly when its authenticated digit is zero. Other digits
-reveal full-width hash outputs, and every public endpoint stays full width.
+reveal full-width hash outputs; public commitments retain the selected
+commitment width (20 bytes for HASH160 or `Sha256Hash160`, 32 for SHA-256).
 This does not truncate a hash after each step or create 16-byte commitments.
 
 The default third parameter is `FullWidth`, preserving existing deterministic
@@ -168,7 +245,7 @@ checksum digits. The zero-message Wots32 fixture has 66 zero digits and one
 nonzero checksum digit, so its measured serialized numeric witness is
 1,212 bytes with HASH160 or 1,224 with SHA-256: 264 or 1,056 bytes smaller than
 `FullWidth`. The corresponding measured clamped terminal totals are
-5,621 and 6,173 bytes, from 5,885 and 7,229. These are fragment-plus-data sums,
+5,615 and 6,171 bytes, from 5,879 and 7,227. These are fragment-plus-data sums,
 with the same consumer and transaction framing excluded.
 There is no constant saving for every message: only zero-valued digits reveal
 16-byte items, and the existing full-width witness upper bounds remain safe
@@ -179,7 +256,7 @@ measurements are:
 
 | Preimage16 profile | HASH160 script / witness / sum | SHA-256 script / witness / sum | Combined peak | Static non-push opcodes HASH160 / SHA-256 |
 | --- | ---: | ---: | ---: | ---: |
-| Clamped terminal | 4,409 / 1,212 / 5,621 | 4,949 / 1,224 / 6,173 | 141 | 2,865 / 2,601 |
+| Clamped terminal | 4,403 / 1,212 / 5,615 | 4,947 / 1,224 / 6,171 | 143 | 2,861 / 2,601 |
 | Bitwise recovery | 4,325 / 1,416 / 5,741 | 4,668 / 1,428 / 6,096 | 334 | 2,716 / 2,255 |
 | Strict exact terminal | 5,674 / 1,212 / 6,886 | 6,017 / 1,224 / 7,241 | 137 | 3,665 / 3,204 |
 

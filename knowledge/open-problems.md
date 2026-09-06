@@ -153,20 +153,37 @@ lookup profile saves 134 script bytes by adopting the legacy upper-saturation
 relation; strict raw-digit rejection remains separate. These improvements do
 not resolve the remaining protocol criteria.
 
-Hash choice is now executable for HASH160 and SHA-256, including separate
+Hash choice is now executable for HASH160, SHA-256, and SHA-256 chains with
+HASH160 endpoint commitments, including separate
 derivation domains, all verifier profiles, independent host vectors, and
 compiled cost measurements that account for SHA256-pair fusion. Still open:
 quantify concrete forgery bounds for each choice at fixed chain count and
 reuse policy. **Acceptance criterion:** a reviewed multi-target analysis of
-this unkeyed construction for both widths, paired with complete-transaction
+this unkeyed construction for all three choices, paired with complete-transaction
 costs for the same protocol and security target; hash-width bounds alone do
 not satisfy it. The optional `Preimage16` mode now shortens initial secrets,
-while retaining native full-width hash outputs and endpoints. Include this
+while retaining native full-width hash outputs and the selected commitment
+width. Include this
 mode and the default `FullWidth` mode in that analysis: quantify the effect
 of the 128-bit start-search space, chain counts, and multi-target attacks,
 then compare complete transaction costs under the same stated forgery target.
 A 128-bit start is not itself evidence of 128-bit collision resistance or
 128-bit end-to-end forgery security.
+
+The SHA-256/HASH160 hybrid now separates 32-byte internal nodes from 20-byte
+public commitments. Its bitwise terminal is 3,812 script bytes; a strided
+quotient/bit terminal uses 3,961 script bytes but reduces the Preimage16
+zero-message fragment-plus-data total to 5,318 bytes. The latter uses 201
+coexisting entry data items, zero auxiliary hints, and a 209-item combined
+peak, versus 333/0/333 for bitwise. These are `locally-reproduced`,
+`research-unlimited` metric results, with separate strict-stack tests. They
+do not settle complete-transaction costs or the security criterion above.
+Include the hybrid's 160-bit commitment width, approximately 80-bit generic
+collision bound, maximum-digit raw-width relaxation, and strided quotient
+clamping in the reviewed security model. **Cost acceptance criterion:**
+compare all retained profiles over a specified message/checksum distribution
+and the same complete protocol transaction, with strict consensus execution;
+report both expected and worst-case total weight at the stated forgery target.
 
 ## OP-010 — External coverage review
 

@@ -1,82 +1,97 @@
 //! Hash-choice regression tests; all execution here enforces the stack limit.
 use super::*;
-use crate::signatures::winternitz::Sha256;
+use crate::signatures::winternitz::{Preimage16, Sha256, Sha256Hash160};
 use crate::support::{execution::execute_raw_script_with_inputs_strict, script::ScriptCompilation};
 use bitcoin::{
     hashes::{sha256, Hash},
     script::Instruction,
 };
 
-fn profiles<const N: usize, H: ChainHash>(
-    pk: &FastPublicKey<N, H>,
-    sig: &FastSignature<N, H>,
+fn profiles<const N: usize, H: ChainHash, P: PreimageSize<H>>(
+    pk: &FastPublicKey<N, H, P>,
+    sig: &FastSignature<N, H, P>,
 ) -> Vec<(Script, Witness, bool)> {
     vec![
         (
-            FastWinternitz::<N, H>::checksig_verify(pk),
+            FastWinternitz::<N, H, P>::checksig_verify(pk),
             sig.to_witness(),
             true,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_and_clear(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_and_clear(pk),
             sig.to_witness(),
             false,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_minimal(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_minimal(pk),
             sig.to_witness(),
             true,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_size_optimized(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_size_optimized(pk),
             sig.to_size_optimized_witness(),
             true,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_size_optimized_and_clear(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_size_optimized_and_clear(pk),
             sig.to_size_optimized_witness(),
             false,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_clamped(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_clamped(pk),
             sig.to_size_optimized_witness(),
             true,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_clamped_and_clear(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_clamped_and_clear(pk),
             sig.to_size_optimized_witness(),
             false,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_bitwise_size_optimized(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_bitwise_size_optimized(pk),
             sig.to_bitwise_size_optimized_witness(),
             true,
         ),
         (
-            FastWinternitz::<N, H>::checksig_verify_bitwise_size_optimized_and_clear(pk),
+            FastWinternitz::<N, H, P>::checksig_verify_bitwise_size_optimized_and_clear(pk),
             sig.to_bitwise_terminal_witness(),
+            false,
+        ),
+        (
+            FastWinternitz::<N, H, P>::checksig_verify_strided_and_clear(pk),
+            sig.to_strided_witness(),
             false,
         ),
     ]
 }
 
 fn roundtrip<const N: usize, H: ChainHash>() {
-    let key = FastWinternitz::<N, H>::signing_key_from_seed([0x42; 32]);
-    let pk = FastWinternitz::<N, H>::public_key(&key);
+    roundtrip_mode::<N, H, FullWidth>();
+}
+
+fn roundtrip_mode<const N: usize, H: ChainHash, P: PreimageSize<H>>() {
+    let key = FastWinternitz::<N, H, P>::signing_key_from_seed([0x42; 32]);
+    let pk = FastWinternitz::<N, H, P>::public_key(&key);
     assert_eq!(
-        FastPublicKey::<N, H>::from_chain_ends(pk.chain_ends().to_vec()).unwrap(),
+        FastPublicKey::<N, H, P>::from_chain_ends(pk.chain_ends().to_vec()).unwrap(),
         pk
     );
-    assert!(FastPublicKey::<N, H>::from_chain_ends(pk.chain_ends()[1..].to_vec()).is_err());
+    assert!(FastPublicKey::<N, H, P>::from_chain_ends(pk.chain_ends()[1..].to_vec()).is_err());
     for message in [[0; N], [0xff; N], core::array::from_fn(|i| (i * 37) as u8)] {
-        let sig = FastWinternitz::<N, H>::sign(
-            FastWinternitz::<N, H>::signing_key_from_seed([0x42; 32]),
+        let sig = FastWinternitz::<N, H, P>::sign(
+            FastWinternitz::<N, H, P>::signing_key_from_seed([0x42; 32]),
             &message,
         );
         assert!(sig
             .chain_values()
             .iter()
-            .all(|v| v.as_ref().len() == H::VALUE_BYTES));
+            .zip(sig.digits())
+            .all(|(v, &d)| v.as_ref().len()
+                == if d == 0 {
+                    P::START_BYTES
+                } else {
+                    H::VALUE_BYTES
+                }));
         for (profile, (fragment, witness, recover)) in profiles(&pk, &sig).into_iter().enumerate() {
             let leaf = script! {
                 { fragment }
@@ -112,12 +127,12 @@ fn both_hashes_roundtrip_all_profiles_and_message_boundaries() {
 }
 
 #[test]
-fn both_hashes_match_independent_python_vectors() {
+fn hash_profiles_match_independent_python_vectors() {
     // Reproduce with: python3 tools/winternitz_hash_vectors.py
-    fn check<H: ChainHash>(public_digest: &str, signature_digest: &str) {
-        let key = FastWinternitz::<32, H>::signing_key_from_seed([0x42; 32]);
-        let pk = FastWinternitz::<32, H>::public_key(&key);
-        let sig = FastWinternitz::<32, H>::sign(key, &core::array::from_fn(|i| i as u8));
+    fn check<H: ChainHash, P: PreimageSize<H>>(public_digest: &str, signature_digest: &str) {
+        let key = FastWinternitz::<32, H, P>::signing_key_from_seed([0x42; 32]);
+        let pk = FastWinternitz::<32, H, P>::public_key(&key);
+        let sig = FastWinternitz::<32, H, P>::sign(key, &core::array::from_fn(|i| i as u8));
         let public_bytes: Vec<_> = pk
             .chain_ends()
             .iter()
@@ -134,13 +149,21 @@ fn both_hashes_match_independent_python_vectors() {
             signature_digest
         );
     }
-    check::<Hash160>(
+    check::<Hash160, FullWidth>(
         "2af2fe53498dfaeba490d99a5be4057a7d0369abb6dd7968dcc3584f5f86a414",
         "bbf46492515d58525bbf57ba3b1d75b26a92416fbadbf5b4ce19fa3cee069fd7",
     );
-    check::<Sha256>(
+    check::<Sha256, FullWidth>(
         "b3adc3efa9a36dc3d0dc9a545ba390fa39131315d20b0bef27aba88a4f412ff5",
         "6850a0b422d98944a6596bbfd4865ca32dbb08178e6a8247ced71053ebd1e19e",
+    );
+    check::<Sha256Hash160, FullWidth>(
+        "3041d83147f7223e190a23484f837214b4c649cd48a44c8ff422a66357b9cffc",
+        "3240d1ca9ac3a1280b6070029ca2d121c292d85989ccedb579f442443c4b08df",
+    );
+    check::<Sha256Hash160, Preimage16>(
+        "f6794a012fa23aae6a65485386c1ad83e940156fe9c5b706f2b7a6c00457f7cd",
+        "bef5a56dbb0ea387e0ba749e47f643d7b9fc18c2514e2e0f9e2839ec7957563b",
     );
 }
 
@@ -317,4 +340,58 @@ fn hash_choice_accounts_for_width_and_sha256_pair_fusion() {
                 .collect::<Vec<_>>()
         );
     }
+}
+
+#[test]
+fn hybrid_roundtrips_all_profiles_and_preimage_modes() {
+    roundtrip_mode::<1, Sha256Hash160, FullWidth>();
+    roundtrip_mode::<4, Sha256Hash160, FullWidth>();
+    roundtrip_mode::<32, Sha256Hash160, FullWidth>();
+    roundtrip_mode::<1, Sha256Hash160, Preimage16>();
+    roundtrip_mode::<4, Sha256Hash160, Preimage16>();
+    roundtrip_mode::<32, Sha256Hash160, Preimage16>();
+}
+
+fn hybrid_mutations<P: PreimageSize<Sha256Hash160>>() {
+    type H = Sha256Hash160;
+    let key = FastWinternitz::<4, H, P>::signing_key_from_seed([0x42; 32]);
+    let pk = FastWinternitz::<4, H, P>::public_key(&key);
+    let sig = FastWinternitz::<4, H, P>::sign(key, &[0x01, 0x78, 0xab, 0xff]);
+    assert!(pk.chain_ends().iter().all(|v| v.len() == 20));
+    for (fragment, witness, recover) in profiles(&pk, &sig) {
+        let leaf = script! { { fragment } if recover { for _ in 0..8 { OP_DROP } } OP_TRUE }
+            .compile_with_policy();
+        for i in 0..witness.len() {
+            let mut bad = witness.to_vec();
+            if bad[i].is_empty() {
+                bad[i].push(1);
+            } else {
+                bad[i][0] ^= 1;
+            }
+            assert!(
+                !execute_raw_script_with_inputs_strict(leaf.to_bytes(), bad).success,
+                "item {i}"
+            );
+        }
+        let mut extra = witness.to_vec();
+        extra.insert(0, vec![1]);
+        assert!(!execute_raw_script_with_inputs_strict(leaf.to_bytes(), extra).success);
+        let mut missing = witness.to_vec();
+        missing.pop();
+        assert!(!execute_raw_script_with_inputs_strict(leaf.to_bytes(), missing).success);
+    }
+    let mut bad_ends = pk.chain_ends().to_vec();
+    bad_ends[0][0] ^= 1;
+    let bad_pk = FastPublicKey::<4, H, P>::from_chain_ends(bad_ends).unwrap();
+    for (fragment, witness, recover) in profiles(&bad_pk, &sig) {
+        let leaf = script! { { fragment } if recover { for _ in 0..8 { OP_DROP } } OP_TRUE }
+            .compile_with_policy();
+        assert!(!execute_raw_script_with_inputs_strict(leaf.to_bytes(), witness.to_vec()).success);
+    }
+}
+
+#[test]
+fn hybrid_rejects_changed_witnesses_and_commitments() {
+    hybrid_mutations::<FullWidth>();
+    hybrid_mutations::<Preimage16>();
 }

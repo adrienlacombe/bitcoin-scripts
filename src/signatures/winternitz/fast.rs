@@ -19,8 +19,14 @@ pub const BASE: u8 = 16;
 /// Maximum base-16 digit.
 pub const MAX_DIGIT: u8 = BASE - 1;
 
-/// One chain node or endpoint: 20 bytes for HASH160, 32 for SHA-256.
+#[path = "strided.rs"]
+mod strided;
+
+/// One intermediate chain node: 20 bytes for HASH160, 32 for SHA-256 profiles.
 pub type FastChainValue<H = Hash160> = <H as ChainHash>::Value;
+
+/// A stored endpoint commitment; it can be shorter than an intermediate node.
+pub type FastCommitment<H = Hash160> = <H as ChainHash>::Commitment;
 
 /// A one-time signing key bound to a fixed message length.
 ///
@@ -83,7 +89,7 @@ pub struct FastPublicKey<
     H: ChainHash = Hash160,
     P: PreimageSize<H> = FullWidth,
 > {
-    chain_ends: Box<[FastChainValue<H>]>,
+    chain_ends: Box<[FastCommitment<H>]>,
     preimage: PhantomData<P>,
 }
 
@@ -92,7 +98,7 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
 {
     /// Reconstructs a public key from persisted chain endpoints.
     pub fn from_chain_ends(
-        chain_ends: Vec<FastChainValue<H>>,
+        chain_ends: Vec<FastCommitment<H>>,
     ) -> Result<Self, InvalidFastPublicKeyLength> {
         FastWinternitz::<MESSAGE_BYTES>::assert_parameters();
         if chain_ends.len() != FastWinternitz::<MESSAGE_BYTES>::TOTAL_DIGITS {
@@ -107,8 +113,9 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
         })
     }
 
-    /// Returns the chain endpoints in message/checksum digit order.
-    pub fn chain_ends(&self) -> &[FastChainValue<H>] {
+    /// Returns endpoint commitments in message/checksum digit order.
+    /// Sha256Hash160 stores HASH160 of each completed SHA-256 chain.
+    pub fn chain_ends(&self) -> &[FastCommitment<H>] {
         &self.chain_ends
     }
 }
@@ -250,7 +257,7 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
 /// Fixed-message-length, base-16 Winternitz with a native hash choice.
 ///
 /// Use `FastWinternitz::<32, Sha256>` for SHA-256; omitting the hash keeps
-/// the existing HASH160 keys, signatures, and generated Script unchanged.
+/// the existing HASH160 key and signature formats.
 /// Keys carry the hash choice in their type, so algorithms cannot be mixed.
 ///
 /// ```
@@ -262,6 +269,22 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
 /// let signature = WotsSha256::sign(key, &[0x42; 32]);
 /// let verifier = WotsSha256::checksig_verify_clamped_and_clear(&public_key);
 /// let witness = signature.to_size_optimized_witness();
+/// ```
+///
+/// Use SHA-256 chain steps with 20-byte HASH160 endpoint commitments to reduce
+/// locking-script bytes. This retains HASH160's generic collision bound.
+///
+/// ```
+/// use bitcoin_lab::signatures::winternitz::{FastWinternitz, Sha256Hash160, Preimage16};
+/// type CompactWots = FastWinternitz<32, Sha256Hash160, Preimage16>;
+/// assert_eq!(CompactWots::HASH_BYTES, 32);
+/// assert_eq!(CompactWots::COMMITMENT_BYTES, 20);
+/// let key = CompactWots::generate_signing_key();
+/// let pk = CompactWots::public_key(&key);
+/// let signature = CompactWots::sign(key, &[0; 32]);
+/// let verifier = CompactWots::checksig_verify_strided_and_clear(&pk);
+/// let witness = signature.to_strided_witness();
+/// assert_eq!(witness.len(), 201);
 /// ```
 ///
 /// ```compile_fail
@@ -310,8 +333,11 @@ pub type FastWots80 = FastWinternitz<80>;
 impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
     FastWinternitz<MESSAGE_BYTES, H, P>
 {
-    /// Native hash output and public commitment width; initial secrets may be shorter.
+    /// Native hash output width; initial secrets and commitments may be shorter.
     pub const HASH_BYTES: usize = H::VALUE_BYTES;
+
+    /// Stored public commitment width.
+    pub const COMMITMENT_BYTES: usize = H::COMMITMENT_BYTES;
 
     /// Initial secret preimage width, exposed by a signature only at digit zero.
     pub const PREIMAGE_BYTES: usize = P::START_BYTES;
@@ -398,10 +424,10 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
                 let start = P::from_start(derive_chain_start::<H>(&namespace, chain_index as u32));
                 // Every supported chain has at least one link. Only its
                 // initial secret is shortened; all hashes remain full width.
-                hash_chain::<H>(
+                H::commit(hash_chain::<H>(
                     H::hash_parts(&[start.as_ref()]),
                     Self::chain_max_digit(chain_index) - 1,
-                )
+                ))
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();
@@ -507,11 +533,12 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
     /// Builds the smallest strict numeric verifier and recovers the message.
     ///
     /// This profile expects [`FastSignature::to_size_optimized_witness`]. It
-    /// rejects digits outside each chain's radix, uses a symmetric half-radix lookup,
-    /// and leaves the authenticated message nibbles on the main stack. To save
-    /// four locking bytes per chain it does not separately require the supplied
-    /// chain item to have the selected hash width; the accepted relation is documented on the
-    /// internal chain verifier below.
+    /// rejects digits outside each chain's radix, uses full tables up to three bits
+    /// and half tables for four-bit digits,
+    /// and leaves the authenticated message nibbles on the main stack. It omits
+    /// the explicit chain-item width guard, saving four bytes per chain for
+    /// FullWidth or eleven for Preimage16. The accepted raw-width relation is
+    /// documented on the internal chain verifier below.
     pub fn checksig_verify_size_optimized(
         public_key: &FastPublicKey<MESSAGE_BYTES, H, P>,
     ) -> Script {
@@ -539,6 +566,8 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
     /// Negative digits and oversized ScriptNums fail. Like the strict numeric
     /// size profile, this profile admits arbitrary-length chain preimages
     /// below the maximum digit rather than checking raw chain-item length.
+    /// With Sha256Hash160, the commitment hash also permits arbitrary raw
+    /// lengths at the maximum digit.
     pub fn checksig_verify_clamped(public_key: &FastPublicKey<MESSAGE_BYTES, H, P>) -> Script {
         Self::checksig_verify_numeric_size(public_key, true, false)
     }
@@ -756,7 +785,7 @@ fn verify_chain_input_size<H: ChainHash, P: PreimageSize<H>>() -> Script {
 /// the supplied digit. Precondition: `[... digit, chain_value]`.
 /// Postcondition: `[... digit]`.
 fn verify_chain_exact<H: ChainHash, P: PreimageSize<H>>(
-    expected: FastChainValue<H>,
+    expected: FastCommitment<H>,
     digit_bits: usize,
     return_digit: bool,
 ) -> Script {
@@ -787,6 +816,7 @@ fn verify_chain_exact<H: ChainHash, P: PreimageSize<H>>(
             { H::hash_script() }
         OP_ENDIF
 
+        { H::commit_script() }
         { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
         if return_digit {
@@ -870,41 +900,50 @@ mod exact_chain_tests {
     }
 }
 
-/// Verifies one chain using a symmetric half-radix lookup list.
+/// Verifies one chain using a full lookup for narrow checksum digits and a
+/// symmetric half-radix lookup for four-bit message/checksum digits.
 fn verify_chain_minimal<H: ChainHash, P: PreimageSize<H>>(
-    expected: FastChainValue<H>,
+    expected: FastCommitment<H>,
     digit_bits: usize,
     return_digit: bool,
 ) -> Script {
     let radix = 1usize << digit_bits;
     let half = radix / 2;
+    let table_len = if digit_bits <= 3 { radix } else { half };
     script! {
         { verify_chain_input_size::<H, P>() }
         OP_SWAP
-        OP_DUP OP_0 { radix } OP_WITHIN OP_VERIFY
+        // OP_PICK rejects negative indices; the explicit upper bound keeps
+        // every index inside this chain's own table.
+        OP_DUP { radix } OP_LESSTHAN OP_VERIFY
         OP_DUP OP_TOALTSTACK
 
-        { half }
-        OP_2DUP
-        OP_LESSTHAN
-        OP_IF
-            OP_DROP
+        if digit_bits <= 3 {
+            // At radix 2/4/8 the extra table entries cost less than the
+            // half-selector branch. The witness and returned digit agree
+            // with the half-table implementation.
             OP_TOALTSTACK
-            for _ in 0..half {
-                { H::hash_script() }
-            }
-        OP_ELSE
-            OP_SUB
-            OP_TOALTSTACK
-        OP_ENDIF
-        for _ in 1..half {
+        } else {
+            { half }
+            OP_2DUP OP_LESSTHAN
+            OP_IF
+                OP_DROP OP_TOALTSTACK
+                for _ in 0..half {
+                    { H::hash_script() }
+                }
+            OP_ELSE
+                OP_SUB OP_TOALTSTACK
+            OP_ENDIF
+        }
+        for _ in 1..table_len {
             OP_DUP { H::hash_script() }
         }
         OP_FROMALTSTACK
         OP_PICK
+        { H::commit_script() }
         { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
-        for _ in 0..(half / 2) {
+        for _ in 0..(table_len / 2) {
             OP_2DROP
         }
         if return_digit {
@@ -921,20 +960,21 @@ fn verify_chain_minimal<H: ChainHash, P: PreimageSize<H>>(
 /// the explicit upper bound. In both modes, negative digits fail at `OP_PICK`
 /// and oversized ScriptNums fail numeric decoding.
 ///
-/// The fragment intentionally omits the strict initial/intermediate width check. At the
-/// chain's maximum digit the item is compared directly with the `H::VALUE_BYTES`-byte
-/// endpoint, which enforces its length. Below the maximum, the selected hash executes
-/// before the comparison and normalizes it to the selected hash width. The
-/// signer always emits `H::VALUE_BYTES`-byte nodes, but the verifier relation also admits an
-/// arbitrary-length preimage for digits below the chain maximum. That tradeoff saves four
-/// serialized locking bytes per chain and is specific to this size profile.
+/// This fragment omits strict initial/intermediate width checks. With identity
+/// commitments, a maximum digit directly compares a native-width node; below
+/// the maximum at least one chain hash normalizes any input length. With
+/// Sha256Hash160, the final commitment hash also normalizes maximum-digit
+/// inputs, so every digit admits arbitrary-length raw openings if they satisfy
+/// the hash relation. Signers emit native-width nodes except for digit-zero
+/// Preimage16 starts. Strict profiles enforce those signer widths explicitly.
 fn verify_chain_size_optimized<H: ChainHash>(
-    expected: FastChainValue<H>,
+    expected: FastCommitment<H>,
     digit_bits: usize,
     clamp: bool,
 ) -> Script {
     let radix = 1usize << digit_bits;
     let half = radix / 2;
+    let table_len = if digit_bits <= 3 { radix } else { half };
     script! {
         if clamp {
             { radix - 1 } OP_MIN
@@ -943,27 +983,36 @@ fn verify_chain_size_optimized<H: ChainHash>(
         }
         OP_DUP OP_TOALTSTACK
 
-        { half }
-        OP_2DUP OP_LESSTHAN
-        OP_IF
-            OP_DROP OP_TOALTSTACK
-            for _ in 0..half {
-                { H::hash_script() }
-            }
-        OP_ELSE
-            OP_SUB OP_TOALTSTACK
-        OP_ENDIF
-        for _ in 1..half {
+        if digit_bits <= 3 {
+            OP_TOALTSTACK
+        } else {
+            { half }
+            OP_2DUP OP_LESSTHAN
+            OP_IF
+                OP_DROP OP_TOALTSTACK
+                for _ in 0..half {
+                    { H::hash_script() }
+                }
+            OP_ELSE
+                OP_SUB OP_TOALTSTACK
+            OP_ENDIF
+        }
+        for _ in 1..table_len {
             OP_DUP { H::hash_script() }
         }
         OP_FROMALTSTACK OP_PICK
+        { H::commit_script() }
         { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
-        for _ in 0..(half / 2) {
+        for _ in 0..(table_len / 2) {
             OP_2DROP
         }
     }
 }
+
+#[cfg(test)]
+#[path = "numeric_lookup_tests.rs"]
+mod numeric_lookup_tests;
 
 #[cfg(test)]
 mod clamped_chain_tests {
@@ -1117,7 +1166,7 @@ mod clamped_chain_tests {
 }
 
 /// Verifies one chain from canonical digit bits, leaving the bits on main.
-fn verify_chain_bitwise<H: ChainHash>(expected: FastChainValue<H>, digit_bits: usize) -> Script {
+fn verify_chain_bitwise<H: ChainHash>(expected: FastCommitment<H>, digit_bits: usize) -> Script {
     script! {
         OP_OVER
         OP_NOTIF
@@ -1133,6 +1182,7 @@ fn verify_chain_bitwise<H: ChainHash>(expected: FastChainValue<H>, digit_bits: u
                 }
             OP_ENDIF
         }
+        { H::commit_script() }
         { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
     }
@@ -1140,7 +1190,7 @@ fn verify_chain_bitwise<H: ChainHash>(expected: FastChainValue<H>, digit_bits: u
 
 /// Verifies one chain and stores its reconstructed digit on altstack.
 fn verify_chain_bitwise_and_recover<H: ChainHash>(
-    expected: FastChainValue<H>,
+    expected: FastCommitment<H>,
     digit_bits: usize,
 ) -> Script {
     script! {
@@ -1154,7 +1204,7 @@ fn verify_chain_bitwise_and_recover<H: ChainHash>(
 
 /// Verifies one checksum chain and fuses its bits into the Horner state.
 fn verify_chain_bitwise_and_fuse_horner<H: ChainHash>(
-    expected: FastChainValue<H>,
+    expected: FastCommitment<H>,
     digit_bits: usize,
 ) -> Script {
     script! {
@@ -1175,7 +1225,7 @@ fn verify_chain_bitwise_and_fuse_horner<H: ChainHash>(
 /// Postcondition: the five main stack items are consumed and the updated
 /// accumulator remains on altstack.
 fn verify_chain_bitwise_and_accumulate<H: ChainHash>(
-    expected: FastChainValue<H>,
+    expected: FastCommitment<H>,
     digit_bits: usize,
     place: usize,
     initialize: bool,
@@ -1208,6 +1258,7 @@ fn verify_chain_bitwise_and_accumulate<H: ChainHash>(
             OP_ENDIF
         }
 
+        { H::commit_script() }
         { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
     }
@@ -1998,7 +2049,7 @@ mod tests {
             .enumerate()
             .map(|(index, &digit)| {
                 let half = 1u8 << (FastWots32::chain_digit_bits(index) - 1);
-                if digit < half {
+                if FastWots32::chain_digit_bits(index) <= 3 || digit < half {
                     usize::from(2 * half - 1)
                 } else {
                     usize::from(half - 1)

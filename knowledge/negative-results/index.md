@@ -976,3 +976,102 @@ widths 0–33. That helper result is `locally-reproduced`, with deployment still
 The size/clamped/bitwise profiles already permit short unhashed inputs and
 need no additional width checks. Short starts require no new witness items
 or auxiliary hints; their counts and coexistence are unchanged from above.
+
+These same-profile comparisons do not establish that SHA-256 must also use
+32-byte public commitments. NR-040 separates the chain hash from its endpoint
+commitment and obtains a smaller locking fragment.
+
+## NR-040: Winternitz radix and encoding changes have profile-specific costs
+
+The question was whether the 256-bit-message terminal verifier could use
+fewer locking-script bytes by changing its radix, checksum representation, or
+endpoint commitment. An independent executable search retained canonical
+remaining-distance bits and compared whole fragments through
+`compile_with_policy()`. It confirmed that SHA-256 chains with a final HASH160
+commitment reduce the ordinary base-16 terminal fragment from 4,206 to
+**3,812 bytes**, without changing its `[3,3,4]` checksum widths. This hybrid
+is retained as `Sha256Hash160`; the alternative encodings below are not.
+
+The hybrid hashes full-width 32-byte intermediate nodes and commits to
+`HASH160(completed_node)` with a 20-byte constant. SHA256 pairs compile to
+HASH256. Relative to direct SHA-256 commitments, the final HASH160 opcode
+costs one byte and saves twelve endpoint bytes per chain. The endpoint has
+160 output bits and an approximately 80-bit generic collision bound, not a
+128-bit collision bound. Optional 16-byte initial secrets have at most
+128-bit exhaustive-search resistance; they do not shorten later nodes.
+
+The independent base-16 execution fixtures used initial node `i` filled with
+byte `i`, for chain indices 0–66, at the selected initial width. Message
+fixtures were `[0;32]`, `[0xff;32]`, and byte `i = (37*i) mod 256`:
+
+| Message | Initial bytes | Script bytes | Serialized witness bytes | Script + witness bytes |
+|---|---:|---:|---:|---:|
+| Zero | 16 | 3,812 | 1,686 | 5,498 |
+| Zero | 32 | 3,812 | 2,742 | 6,554 |
+| All `ff` | 16 | 3,812 | 2,442 | 6,254 |
+| All `ff` | 32 | 3,812 | 2,490 | 6,302 |
+| Varied | 16 | 3,812 | 2,493 | 6,305 |
+| Varied | 32 | 3,812 | 2,621 | 6,433 |
+
+All six fragments have 2,192 static non-push opcodes, **zero auxiliary hint
+items**, **333 complete witness/data items at entry**, and a measured
+**333-item combined main/alt-stack peak**. Every item coexists at entry.
+The isolated peak leaves 667 slots below the 1,000-item limit; surrounding
+protocol state and composition still require a combined measurement.
+Script size excludes the terminal `OP_TRUE`, input pushes, consumer checks,
+control block, script-item witness framing, and transaction overhead. Witness
+size includes the item count and all item length prefixes. The execution
+check appends `OP_TRUE` for clean-stack success. These sums are not complete
+transaction weights.
+
+All six roundtrips passed. Independently corrupting each of the 333 witness
+items for every fixture produced 1,998 rejected malformed witnesses. The
+search used strict-stack tapscript execution with
+[`bitcoin-scriptexec` revision `ba96bc2`](https://github.com/BitVM/rust-bitcoin-scriptexec/tree/ba96bc2bd76774c9d1b011461cb79d983c2c43a1)
+and the centralized
+[`bitcoin-script` revision `124b561e`](https://github.com/BitVM/rust-bitcoin-script/tree/124b561ed75ac3ec4c6ad99207d8dcdd3bc67180)
+compiler; all measured fragments were below the optimizer cutoff. This
+independent execution result is `locally-reproduced`, with deployment still
+`unclassified`: the stack check was enabled, but no Bitcoin Core consensus
+or policy comparison was performed. Executed-opcode and validation-budget
+measurements were not collected. The exploratory generator is not retained
+in the repository; production profile tests and metrics are recorded in the
+[primitive page](../primitives/winternitz-fast-base16.md).
+
+The power-of-two radix sweep found these alternatives:
+
+- HASH160 still selected base 16 for script size: bases 8, 16, and 32 used
+  4,282, 4,206, and 4,605 bytes respectively.
+- For the hybrid, replacing checksum widths `[3,3,4]` with `[5,5]` reduced
+  base-16 script size to 3,806 bytes. Its zero-message witness was 1,669 bytes
+  with 16-byte starts or 2,709 with 32-byte starts; both used 332 entry data
+  items and peaked at 332. Six bytes do not justify changing the established
+  key, signature, and checksum layout in this compatible profile.
+- Hybrid base 32 with checksum widths `[3,4,4]` used 3,878 script bytes. Its
+  zero-message witnesses were 1,514/2,346 bytes for 16/32-byte starts, with
+  322 entry data items and a 322-item peak. It loses script bytes but can win
+  the script-plus-witness objective, so it is not universally dominated.
+- Direct SHA-256 favors different layouts: base 16 with `[5,5]` used 4,532
+  bytes, while base 32 with `[5,6]` used 4,478. The latter's zero-message
+  witnesses were 1,481/2,313 bytes, with 321 entry data items and a 321-item
+  peak. A balanced partition of 48 five-bit and four four-bit message digits
+  is estimated to reduce that script to 4,461 bytes; this partition was not
+  executed. These formats would change the byte/nibble recovery contract.
+
+Each executed radix candidate had zero auxiliary hints and all its data
+items present at entry, with the same strict local execution classification
+and inclusion boundary as above. The sweep and checksum alternatives are
+`locally-reproduced` exploratory results; the balanced-partition estimate is
+`inspected`. None establishes an optimum outside the tested encoding family.
+
+A further constant-sum encoding is only an `inspected` design direction. The
+coefficient of `x^495` in `(1+x+...+x^15)^66` exceeds `2^256`, so 66 base-16
+digits constrained to sum to 495 can injectively encode a 256-bit message.
+An enumerative encoder could replace the weighted checksum with one constant
+sum check. The projected terminal fragment is 3,768 bytes, 44 bytes below the
+compatible profile; a compile-only check confirms that serialization, but
+no signer, witness measurement, or complete execution test is implemented.
+Its recovered values would be enumerative code digits rather
+than message nibbles; protocols requiring the original bytes would also need
+an onchain decoder or a different binding construction. This unmeasured
+composition cost prevents treating the estimate as a drop-in improvement.

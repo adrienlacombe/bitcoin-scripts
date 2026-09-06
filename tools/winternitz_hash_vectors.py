@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independent deterministic Fast Winternitz vectors for both native hashes.
+"""Independent deterministic Fast Winternitz vectors for all native hash/commitment profiles.
 
 Seed: 0x42 repeated 32 times. Message: bytes(range(32)). Base 16, checksum
 widths [3, 3, 4]. Prints SHA-256 digests of concatenated endpoints/signature
@@ -39,13 +39,14 @@ def vectors(name, short=False):
             if step == digit:
                 signature.append(value)
             if step == maximum:
-                endpoints.append(value)
+                endpoint = hashlib.new("ripemd160", hashlib.sha256(value).digest()).digest() if name == "sha256-hash160" else value
+                endpoints.append(endpoint)
             value = chain_hash(value)
     return tuple(hashlib.sha256(b"".join(nodes)).hexdigest() for nodes in (endpoints, signature))
 
 
 if __name__ == "__main__":
-    for hash_name in ("hash160", "sha256"):
+    for hash_name in ("hash160", "sha256", "sha256-hash160"):
         for short in (False, True):
             public_digest, signature_digest = vectors(hash_name, short)
             print(f"{hash_name}/preimage{16 if short else 'native'}: public={public_digest} signature={signature_digest}")

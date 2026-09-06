@@ -41,9 +41,13 @@ See the [implementation README](../../src/signatures/winternitz/README.md),
 
 The legacy API remains fixed to HASH160 and 20-byte chain values. Hash selection
 is available in the independent [Fast implementation](winternitz-fast-base16.md)
-as `FastWinternitz<N, Hash160>` or `FastWinternitz<N, Sha256>`. Fast also
+as `FastWinternitz<N, Hash160>`, `FastWinternitz<N, Sha256>`, or
+`FastWinternitz<N, Sha256Hash160>`. The hybrid retains 20-byte HASH160
+commitments with 32-byte SHA-256 chain nodes; its bitwise terminal fragment
+is 3,812 bytes. Fast also
 supports `FastWinternitz<N, H, Preimage16>`: the initial secret is 16 bytes,
-while every hash output and endpoint keeps the native 20- or 32-byte width.
+while every hash output keeps the native 20- or 32-byte width and commitments
+retain their selected width.
 Only zero-valued signature digits reveal the shorter item. The default Fast
 `FullWidth` mode and the legacy API retain their existing encodings. Changing
 hash or start mode requires new keys and witnesses; see the Fast page for the
