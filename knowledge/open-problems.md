@@ -161,10 +161,10 @@ quantify concrete forgery bounds for each choice at fixed chain count and
 reuse policy. **Acceptance criterion:** a reviewed multi-target analysis of
 this unkeyed construction for all three choices, paired with complete-transaction
 costs for the same protocol and security target; hash-width bounds alone do
-not satisfy it. The optional `Preimage16` mode now shortens initial secrets,
+not satisfy it. The default `Preimage16` mode now shortens initial secrets,
 while retaining native full-width hash outputs and the selected commitment
 width. Include this
-mode and the default `FullWidth` mode in that analysis: quantify the effect
+mode and the explicit `FullWidth` mode in that analysis: quantify the effect
 of the 128-bit start-search space, chain counts, and multi-target attacks,
 then compare complete transaction costs under the same stated forgery target.
 A 128-bit start is not itself evidence of 128-bit collision resistance or

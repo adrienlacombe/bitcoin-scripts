@@ -77,7 +77,7 @@ namespace derivation, so existing commitments cannot be reused by changing a
 runtime witness encoding. Only zero-valued digits reveal 16-byte initial
 secrets; subsequent nodes retain the native width and public commitments
 retain the selected commitment width.
-The default `FullWidth` mode retains existing keys and witness encodings.
+The explicit `FullWidth` mode retains existing keys and witness encodings.
 
 With 66 zero digits, the same Wots32 fixture reduces the measured clamped
 terminal sum to 5,615 bytes for HASH160 or 6,171 for SHA-256. These results are

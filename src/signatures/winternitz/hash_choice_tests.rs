@@ -1,5 +1,7 @@
 //! Hash-choice regression tests; all execution here enforces the stack limit.
 use super::*;
+type FullWidthWots4 = FastWinternitz<4, Hash160, FullWidth>;
+type FullWidthWots32 = FastWinternitz<32, Hash160, FullWidth>;
 use crate::signatures::winternitz::{Preimage16, Sha256, Sha256Hash160};
 use crate::support::{execution::execute_raw_script_with_inputs_strict, script::ScriptCompilation};
 use bitcoin::{
@@ -217,13 +219,13 @@ fn sha256_chain_binds_all_digits_and_rejects_wrong_widths() {
 
 #[test]
 fn sha256_profiles_reject_tampering_and_mismatched_hash_witnesses() {
-    let key = FastWinternitz::<4, Sha256>::signing_key_from_seed([0x42; 32]);
-    let pk = FastWinternitz::<4, Sha256>::public_key(&key);
+    let key = FastWinternitz::<4, Sha256, FullWidth>::signing_key_from_seed([0x42; 32]);
+    let pk = FastWinternitz::<4, Sha256, FullWidth>::public_key(&key);
     let message = [0x12, 0x34, 0x56, 0x78];
-    let sig = FastWinternitz::<4, Sha256>::sign(key, &message);
-    let old_key = FastWots4::signing_key_from_seed([0x42; 32]);
-    let old_pk = FastWots4::public_key(&old_key);
-    let old_sig = FastWots4::sign(old_key, &message);
+    let sig = FastWinternitz::<4, Sha256, FullWidth>::sign(key, &message);
+    let old_key = FullWidthWots4::signing_key_from_seed([0x42; 32]);
+    let old_pk = FullWidthWots4::public_key(&old_key);
+    let old_sig = FullWidthWots4::sign(old_key, &message);
     let old_profiles = profiles(&old_pk, &old_sig);
     for (index, (fragment, witness, recover)) in profiles(&pk, &sig).into_iter().enumerate() {
         let leaf = script! {
@@ -273,12 +275,12 @@ fn sha256_profiles_reject_tampering_and_mismatched_hash_witnesses() {
 
 #[test]
 fn hash_choice_accounts_for_width_and_sha256_pair_fusion() {
-    let key160 = FastWots32::signing_key_from_seed([0x42; 32]);
-    let pk160 = FastWots32::public_key(&key160);
-    let sig160 = FastWots32::sign(key160, &[0; 32]);
-    let key256 = FastWinternitz::<32, Sha256>::signing_key_from_seed([0x42; 32]);
-    let pk256 = FastWinternitz::<32, Sha256>::public_key(&key256);
-    let sig256 = FastWinternitz::<32, Sha256>::sign(key256, &[0; 32]);
+    let key160 = FullWidthWots32::signing_key_from_seed([0x42; 32]);
+    let pk160 = FullWidthWots32::public_key(&key160);
+    let sig160 = FullWidthWots32::sign(key160, &[0; 32]);
+    let key256 = FastWinternitz::<32, Sha256, FullWidth>::signing_key_from_seed([0x42; 32]);
+    let pk256 = FastWinternitz::<32, Sha256, FullWidth>::public_key(&key256);
+    let sig256 = FastWinternitz::<32, Sha256, FullWidth>::sign(key256, &[0; 32]);
     for ((s160, w160, _), (s256, w256, _)) in profiles(&pk160, &sig160)
         .into_iter()
         .zip(profiles(&pk256, &sig256))
@@ -394,4 +396,49 @@ fn hybrid_mutations<P: PreimageSize<Sha256Hash160>>() {
 fn hybrid_rejects_changed_witnesses_and_commitments() {
     hybrid_mutations::<FullWidth>();
     hybrid_mutations::<Preimage16>();
+}
+
+#[test]
+fn public_defaults_use_preimage16_for_every_hash_and_alias() {
+    fn check<H: ChainHash>() {
+        let seed = [0x29; 32];
+        let key = FastSigningKey::<4, H>::from_seed(seed);
+        // These annotations enforce that all public type defaults agree.
+        let pk: FastPublicKey<4, H> = FastWinternitz::<4, H>::public_key(&key);
+        let sig: FastSignature<4, H> = FastWinternitz::<4, H>::sign(key, &[0x01, 0x7f, 0x80, 0xee]);
+        let explicit_key = FastWinternitz::<4, H, Preimage16>::signing_key_from_seed(seed);
+        let explicit_pk = FastWinternitz::<4, H, Preimage16>::public_key(&explicit_key);
+        assert_eq!(pk, explicit_pk);
+        assert_eq!(
+            sig,
+            FastWinternitz::<4, H, Preimage16>::sign(explicit_key, &[0x01, 0x7f, 0x80, 0xee])
+        );
+        let old_key = FastWinternitz::<4, H, FullWidth>::signing_key_from_seed(seed);
+        assert_ne!(
+            pk.chain_ends(),
+            FastWinternitz::<4, H, FullWidth>::public_key(&old_key).chain_ends()
+        );
+        assert_eq!(FastWinternitz::<4, H>::PREIMAGE_BYTES, 16);
+        assert_eq!(sig.chain_values()[0].as_ref().len(), 16);
+        assert_eq!(sig.chain_values()[1].as_ref().len(), H::VALUE_BYTES);
+        for (fragment, witness, recover) in profiles(&pk, &sig) {
+            let leaf = script! {
+                { fragment }
+                if recover {
+                    for digit in sig.digits()[..8].iter().rev() { { *digit as usize } OP_EQUALVERIFY }
+                }
+                OP_TRUE
+            }.compile_with_policy();
+            let result = execute_raw_script_with_inputs_strict(leaf.to_bytes(), witness.to_vec());
+            assert!(result.success, "{result}");
+        }
+    }
+    check::<Hash160>();
+    check::<Sha256>();
+    check::<Sha256Hash160>();
+    assert_eq!(FastWots4::PREIMAGE_BYTES, 16);
+    assert_eq!(FastWots16::PREIMAGE_BYTES, 16);
+    assert_eq!(FastWots32::PREIMAGE_BYTES, 16);
+    assert_eq!(FastWots64::PREIMAGE_BYTES, 16);
+    assert_eq!(FastWots80::PREIMAGE_BYTES, 16);
 }

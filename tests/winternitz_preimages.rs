@@ -8,7 +8,8 @@ use bitcoin::{
 };
 use bitcoin_lab::{
     signatures::winternitz::{
-        ChainHash, FastPublicKey, FastSignature, FastWinternitz, Hash160, Preimage16, Sha256,
+        ChainHash, FastPublicKey, FastSignature, FastWinternitz, FullWidth, Hash160, Preimage16,
+        Sha256,
     },
     support::{execution::execute_raw_script_with_inputs_strict, script::ScriptCompilation},
 };
@@ -131,8 +132,8 @@ fn chain_bits<const N: usize, H: ChainHash>(index: usize) -> usize {
 fn round_trips<const N: usize, H: ChainHash>() {
     let key = FastWinternitz::<N, H, Preimage16>::signing_key_from_seed(SEED);
     let public_key = FastWinternitz::<N, H, Preimage16>::public_key(&key);
-    let native_key = FastWinternitz::<N, H>::signing_key_from_seed(SEED);
-    let native_public_key = FastWinternitz::<N, H>::public_key(&native_key);
+    let native_key = FastWinternitz::<N, H, FullWidth>::signing_key_from_seed(SEED);
+    let native_public_key = FastWinternitz::<N, H, FullWidth>::public_key(&native_key);
     assert_ne!(
         public_key.chain_ends(),
         native_public_key.chain_ends(),
@@ -150,8 +151,8 @@ fn round_trips<const N: usize, H: ChainHash>() {
             FastWinternitz::<N, H, Preimage16>::signing_key_from_seed(SEED),
             &message,
         );
-        let native_signature = FastWinternitz::<N, H>::sign(
-            FastWinternitz::<N, H>::signing_key_from_seed(SEED),
+        let native_signature = FastWinternitz::<N, H, FullWidth>::sign(
+            FastWinternitz::<N, H, FullWidth>::signing_key_from_seed(SEED),
             &message,
         );
         assert_eq!(signature.digits(), native_signature.digits());

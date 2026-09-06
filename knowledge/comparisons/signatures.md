@@ -182,7 +182,7 @@ the stack, and whether tapscript `MINIMALIF` is available.
 
 Every Fast profile also supports `FastWinternitz<32, Sha256>`. SHA-256 uses
 32-byte nodes and endpoints, while HASH160 uses 20. These rows use the
-default `FullWidth` start mode. The following zero-message comparisons include fragment plus serialized data
+explicit `FullWidth` start mode. The following zero-message comparisons include fragment plus serialized data
 witness, excluding the same terminal consumer and transaction framing:
 
 | Profile | HASH160 sum | SHA-256 sum | SHA-256 signer-node bound |
@@ -258,7 +258,7 @@ cost comparison.
 
 `FastWinternitz<32, H, Preimage16>` shortens only digit-zero signature values
 to 16 bytes. Every hash output retains the selected native width, and public
-commitments retain their selected width. It is a separately domain-separated mode; the default `FullWidth`
+commitments retain their selected width. It is a separately domain-separated mode; the explicit `FullWidth`
 keys and witnesses remain compatible with the tables above.
 
 For the same zero-message fixture, 66 of 67 digits are zero. The following
@@ -280,7 +280,7 @@ checksum; the all-zero fixture is not a uniform-message average.
 Numeric signatures retain 134 coexisting entry data items and bitwise 333,
 with zero auxiliary hints in every profile. Narrower items do not reduce
 these counts or relax the 1,000-item combined stack bound. Consult the
-[Fast primitive page](../primitives/winternitz-fast-base16.md#optional-16-byte-initial-secrets)
+[Fast primitive page](../primitives/winternitz-fast-base16.md#default-16-byte-initial-secrets)
 for metric evidence when comparing profiles. The table is `locally-reproduced`
 and `research-unlimited`: the tapscript metric helper disables the stack
 limit. It does not establish Core consensus or policy validation.

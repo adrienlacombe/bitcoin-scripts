@@ -2989,7 +2989,7 @@
       "id": "signature/winternitz-fast-base16",
       "name": "Fast base-16 Winternitz signatures",
       "class": "signature/one-time",
-      "summary": "Tapscript-specialized Winternitz with typed HASH160, SHA-256, or SHA-256 chains/HASH160 commitments, optional 16-byte initial secrets, canonical-bit and strided terminal profiles, narrow full-table numeric lookups, measured onchain costs, and consuming keys.",
+      "summary": "Tapscript-specialized Winternitz with typed HASH160, SHA-256, or SHA-256 chains/HASH160 commitments, default 16-byte initial secrets, canonical-bit and strided terminal profiles, narrow full-table numeric lookups, measured onchain costs, and consuming keys.",
       "status": "experimental",
       "evidence": "locally-reproduced",
       "execution": "research-unlimited",
@@ -3025,7 +3025,7 @@
       "configurations": [
         {
           "id": "fast-wots32-clamped-clear",
-          "label": "FastWots32 clamped lookup terminal verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> clamped lookup terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3061,7 +3061,7 @@
         },
         {
           "id": "fast-wots32-clamped-recovery",
-          "label": "FastWots32 clamped lookup recovery verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> clamped lookup recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3097,7 +3097,7 @@
         },
         {
           "id": "fast-wots32-bitwise-recovery",
-          "label": "FastWots32 canonical-bit recovery verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> canonical-bit recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "message_base": 16,
@@ -3138,7 +3138,7 @@
         },
         {
           "id": "fast-wots32-bitwise-clear",
-          "label": "FastWots32 canonical-bit terminal verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> canonical-bit terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "message_base": 16,
@@ -3178,7 +3178,7 @@
         },
         {
           "id": "fast-wots32-size-recovery",
-          "label": "FastWots32 locking-size lookup recovery verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> locking-size lookup recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3214,7 +3214,7 @@
         },
         {
           "id": "fast-wots32-size-clear",
-          "label": "FastWots32 locking-size lookup terminal verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> locking-size lookup terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3250,7 +3250,7 @@
         },
         {
           "id": "fast-wots32-exact",
-          "label": "FastWots32 exact-hash recovery verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> exact-hash recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3286,7 +3286,7 @@
         },
         {
           "id": "fast-wots32-strict-lookup",
-          "label": "FastWots32 strict eight-value lookup verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> strict eight-value lookup verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3322,7 +3322,7 @@
         },
         {
           "id": "fast-wots32-exact-clear",
-          "label": "FastWots32 exact-hash staged terminal verifier",
+          "label": "FastWinternitz<32, Hash160, FullWidth> exact-hash staged terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3358,7 +3358,7 @@
         },
         {
           "id": "fast-wots32-sha256-clamped-clear",
-          "label": "FastWinternitz<32, Sha256> clamped lookup terminal verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> clamped lookup terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3395,7 +3395,7 @@
         },
         {
           "id": "fast-wots32-sha256-clamped-recovery",
-          "label": "FastWinternitz<32, Sha256> clamped lookup recovery verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> clamped lookup recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3432,7 +3432,7 @@
         },
         {
           "id": "fast-wots32-sha256-bitwise-recovery",
-          "label": "FastWinternitz<32, Sha256> canonical-bit recovery verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> canonical-bit recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "message_base": 16,
@@ -3474,7 +3474,7 @@
         },
         {
           "id": "fast-wots32-sha256-bitwise-clear",
-          "label": "FastWinternitz<32, Sha256> canonical-bit terminal verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> canonical-bit terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "message_base": 16,
@@ -3515,7 +3515,7 @@
         },
         {
           "id": "fast-wots32-sha256-size-recovery",
-          "label": "FastWinternitz<32, Sha256> locking-size lookup recovery verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> locking-size lookup recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3552,7 +3552,7 @@
         },
         {
           "id": "fast-wots32-sha256-size-clear",
-          "label": "FastWinternitz<32, Sha256> locking-size lookup terminal verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> locking-size lookup terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3589,7 +3589,7 @@
         },
         {
           "id": "fast-wots32-sha256-exact",
-          "label": "FastWinternitz<32, Sha256> exact-hash recovery verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> exact-hash recovery verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3626,7 +3626,7 @@
         },
         {
           "id": "fast-wots32-sha256-strict-lookup",
-          "label": "FastWinternitz<32, Sha256> strict eight-value lookup verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> strict eight-value lookup verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -3663,7 +3663,7 @@
         },
         {
           "id": "fast-wots32-sha256-exact-clear",
-          "label": "FastWinternitz<32, Sha256> exact-hash staged terminal verifier",
+          "label": "FastWinternitz<32, Sha256, FullWidth> exact-hash staged terminal verifier",
           "parameters": {
             "message_bytes": 32,
             "base": 16,
@@ -4220,7 +4220,8 @@
         "Sha256Hash160 needs newly derived keys and has HASH160-width collision security; raw size-profile nodes may have arbitrary length even at the maximum digit",
         "Strided terminal verification accepts upper-clamped quotient aliases and uses 201 data items; bitwise remains the smallest measured locking fragment",
         "Full checksum lookup tables save numeric script bytes but raise the measured lookup stack peak from 141 to 143",
-        "Hybrid nonzero witness nodes are 32 bytes; smaller scripts do not guarantee smaller total onchain cost for every message/profile"
+        "Hybrid nonzero witness nodes are 32 bytes; smaller scripts do not guarantee smaller total onchain cost for every message/profile",
+        "Preimage16 is now the default, including FastWots aliases; restoring old native-width keys requires explicit FullWidth types. Persist the mode rather than relying on defaults."
       ],
       "open_problems": [
         "OP-002",

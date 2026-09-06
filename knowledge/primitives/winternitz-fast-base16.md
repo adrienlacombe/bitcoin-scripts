@@ -123,7 +123,7 @@ legacy implementation retain HASH160. The selected hash controls both
 host derivation and Script steps, with separate key-derivation domains and
 hash-typed keys. Changing hashes requires new public commitments and witnesses.
 
-For the same 32-byte zero message, seed `[0x42;32]`, default `FullWidth`
+For the same 32-byte zero message, seed `[0x42;32]`, explicit `FullWidth`
 starts, final compilation policy, and fragment-only boundary:
 
 | Profile | HASH160 script / witness / sum | SHA-256 script / witness / sum | Combined peak |
@@ -215,7 +215,7 @@ multi-target losses. Those distinct properties and the one-time-key obligation
 remain part of the protocol security analysis.
 
 
-## Optional 16-byte initial secrets
+## Default 16-byte initial secrets
 
 `FastWinternitz<N, H, Preimage16>` selects a 16-byte chain start while retaining
 native `H` outputs: 20 bytes for HASH160 and 32 for either SHA-256 choice. A signature reveals
@@ -224,8 +224,10 @@ reveal full-width hash outputs; public commitments retain the selected
 commitment width (20 bytes for HASH160 or `Sha256Hash160`, 32 for SHA-256).
 This does not truncate a hash after each step or create 16-byte commitments.
 
-The default third parameter is `FullWidth`, preserving existing deterministic
-keys, witnesses, and aliases. `Preimage16` uses a separate derivation namespace:
+The default third parameter is now `Preimage16`, including every `FastWots*`
+alias. Restore old native-width keys with explicit `FullWidth` on the verifier,
+signing key, public key, and signature types; do not reinterpret persisted
+keys using the changed default. `Preimage16` uses a separate derivation namespace:
 `H("bitcoin-lab/winternitz-preimage16/v1" || H::DOMAIN || seed || BE64(N))`.
 Chain-index derivation retains its existing order; only its initial output is
 truncated to the first 16 bytes. The mode is part of the key/signature/public-key

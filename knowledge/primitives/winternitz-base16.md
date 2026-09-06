@@ -48,8 +48,8 @@ is 3,812 bytes. Fast also
 supports `FastWinternitz<N, H, Preimage16>`: the initial secret is 16 bytes,
 while every hash output keeps the native 20- or 32-byte width and commitments
 retain their selected width.
-Only zero-valued signature digits reveal the shorter item. The default Fast
-`FullWidth` mode and the legacy API retain their existing encodings. Changing
+Only zero-valued signature digits reveal the shorter item. Fast defaults now use `Preimage16`; explicit `FullWidth` and the legacy API
+retain their existing encodings. Changing
 hash or start mode requires new keys and witnesses; see the Fast page for the
 size savings, strict-width validation overhead, and reduced secret-search
 margin.

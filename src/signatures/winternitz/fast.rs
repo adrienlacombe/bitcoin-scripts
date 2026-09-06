@@ -5,7 +5,9 @@
 //! chain value before touching the digit and saves one stack swap per chain.
 
 use super::chain_hash::{ChainHash, Hash160};
-use super::preimage::{FullWidth, PreimageSize};
+#[cfg(test)]
+use super::preimage::FullWidth;
+use super::preimage::{Preimage16, PreimageSize};
 use crate::support::script::{script, Script};
 use bitcoin::Witness;
 use core::{fmt, marker::PhantomData};
@@ -37,7 +39,7 @@ pub type FastCommitment<H = Hash160> = <H as ChainHash>::Commitment;
 pub struct FastSigningKey<
     const MESSAGE_BYTES: usize,
     H: ChainHash = Hash160,
-    P: PreimageSize<H> = FullWidth,
+    P: PreimageSize<H> = Preimage16,
 > {
     seed: [u8; 32],
     hash: PhantomData<(H, P)>,
@@ -87,7 +89,7 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>> fmt::Debug
 pub struct FastPublicKey<
     const MESSAGE_BYTES: usize,
     H: ChainHash = Hash160,
-    P: PreimageSize<H> = FullWidth,
+    P: PreimageSize<H> = Preimage16,
 > {
     chain_ends: Box<[FastCommitment<H>]>,
     preimage: PhantomData<P>,
@@ -146,7 +148,7 @@ impl std::error::Error for InvalidFastPublicKeyLength {}
 pub struct FastSignature<
     const MESSAGE_BYTES: usize,
     H: ChainHash = Hash160,
-    P: PreimageSize<H> = FullWidth,
+    P: PreimageSize<H> = Preimage16,
 > {
     chain_values: Box<[P::Value]>,
     digits: Box<[u8]>,
@@ -257,7 +259,8 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
 /// Fixed-message-length, base-16 Winternitz with a native hash choice.
 ///
 /// Use `FastWinternitz::<32, Sha256>` for SHA-256; omitting the hash keeps
-/// the existing HASH160 key and signature formats.
+/// HASH160. Initial secrets default to 16 bytes for every hash choice.
+/// To restore older native-width keys, specify `FullWidth` explicitly.
 /// Keys carry the hash choice in their type, so algorithms cannot be mixed.
 ///
 /// ```
@@ -293,11 +296,11 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
 /// FastWinternitz::<32, Sha256>::public_key(&key);
 /// ```
 ///
-/// Select 16-byte initial secrets explicitly; later hash nodes remain native width:
+/// Initial secrets default to 16 bytes; later hash nodes remain native width:
 ///
 /// ```
-/// use bitcoin_lab::signatures::winternitz::{FastWinternitz, Hash160, Preimage16};
-/// type ShortWots = FastWinternitz<32, Hash160, Preimage16>;
+/// use bitcoin_lab::signatures::winternitz::FastWinternitz;
+/// type ShortWots = FastWinternitz<32>;
 /// assert_eq!(ShortWots::PREIMAGE_BYTES, 16);
 /// assert_eq!(ShortWots::HASH_BYTES, 20);
 /// let key = ShortWots::generate_signing_key();
@@ -309,14 +312,14 @@ impl<const MESSAGE_BYTES: usize, H: ChainHash, P: PreimageSize<H>>
 /// ```
 ///
 /// ```compile_fail
-/// use bitcoin_lab::signatures::winternitz::{FastWinternitz, Hash160, Preimage16};
-/// let key = FastWinternitz::<32, Hash160, Preimage16>::generate_signing_key();
-/// FastWinternitz::<32, Hash160>::public_key(&key);
+/// use bitcoin_lab::signatures::winternitz::{FastWinternitz, Hash160, FullWidth};
+/// let key = FastWinternitz::<32>::generate_signing_key();
+/// FastWinternitz::<32, Hash160, FullWidth>::public_key(&key);
 /// ```
 pub struct FastWinternitz<
     const MESSAGE_BYTES: usize,
     H: ChainHash = Hash160,
-    P: PreimageSize<H> = FullWidth,
+    P: PreimageSize<H> = Preimage16,
 >(PhantomData<(H, P)>);
 
 /// Fast Winternitz over a 4-byte message.
@@ -1016,8 +1019,11 @@ mod numeric_lookup_tests;
 
 #[cfg(test)]
 mod clamped_chain_tests {
+    // Preserve the historical native-width regression vectors explicitly.
+    type FullWidthWots32 = FastWinternitz<32, Hash160, FullWidth>;
+
     use super::{
-        hash_chain, verify_chain_size_optimized, FastWinternitz, FastWots32, Hash160, HASH_BYTES,
+        hash_chain, verify_chain_size_optimized, FastWinternitz, FullWidth, Hash160, HASH_BYTES,
     };
     use crate::support::{
         execution::execute_raw_script_with_inputs_strict,
@@ -1089,19 +1095,19 @@ mod clamped_chain_tests {
     }
 
     fn check_message_sizes<const N: usize>() {
-        let key = FastWinternitz::<N>::signing_key_from_seed([0x62; 32]);
-        let public_key = FastWinternitz::<N>::public_key(&key);
+        let key = FastWinternitz::<N, Hash160, FullWidth>::signing_key_from_seed([0x62; 32]);
+        let public_key = FastWinternitz::<N, Hash160, FullWidth>::public_key(&key);
         for message in [[0; N], [0xff; N], std::array::from_fn(|i| (i * 37) as u8)] {
-            let signature = FastWinternitz::<N>::sign(
-                FastWinternitz::<N>::signing_key_from_seed([0x62; 32]),
+            let signature = FastWinternitz::<N, Hash160, FullWidth>::sign(
+                FastWinternitz::<N, Hash160, FullWidth>::signing_key_from_seed([0x62; 32]),
                 &message,
             );
             for verifier in [
                 recover_and_check(
-                    FastWinternitz::<N>::checksig_verify_clamped(&public_key),
+                    FastWinternitz::<N, Hash160, FullWidth>::checksig_verify_clamped(&public_key),
                     &message,
                 ),
-                script! { { FastWinternitz::<N>::checksig_verify_clamped_and_clear(&public_key) } OP_TRUE },
+                script! { { FastWinternitz::<N, Hash160, FullWidth>::checksig_verify_clamped_and_clear(&public_key) } OP_TRUE },
             ] {
                 let result = execute_raw_script_with_inputs_strict(
                     verifier.compile_with_policy().to_bytes(),
@@ -1126,26 +1132,29 @@ mod clamped_chain_tests {
     #[test]
     fn clamped_checksum_binds_forwardable_chain_nodes_and_normalizes_raw_maxima() {
         let message = std::array::from_fn(|i| (i * 37) as u8);
-        let key = FastWots32::signing_key_from_seed([0x42; 32]);
-        let public_key = FastWots32::public_key(&key);
-        let signature = FastWots32::sign(key, &message);
+        let key = FullWidthWots32::signing_key_from_seed([0x42; 32]);
+        let public_key = FullWidthWots32::public_key(&key);
+        let signature = FullWidthWots32::sign(key, &message);
         let witness = signature.to_size_optimized_witness().to_vec();
-        let recovery =
-            recover_and_check(FastWots32::checksig_verify_clamped(&public_key), &message)
-                .compile_with_policy();
+        let recovery = recover_and_check(
+            FullWidthWots32::checksig_verify_clamped(&public_key),
+            &message,
+        )
+        .compile_with_policy();
         let terminal =
-            script! { { FastWots32::checksig_verify_clamped_and_clear(&public_key) } OP_TRUE }
+            script! { { FullWidthWots32::checksig_verify_clamped_and_clear(&public_key) } OP_TRUE }
                 .compile_with_policy();
-        for index in 0..FastWots32::TOTAL_DIGITS {
-            let pair = 2 * if index < FastWots32::MESSAGE_DIGITS {
+        for index in 0..FullWidthWots32::TOTAL_DIGITS {
+            let pair = 2 * if index < FullWidthWots32::MESSAGE_DIGITS {
                 index
             } else {
-                FastWots32::MESSAGE_DIGITS + FastWots32::TOTAL_DIGITS - 1 - index
+                FullWidthWots32::MESSAGE_DIGITS + FullWidthWots32::TOTAL_DIGITS - 1 - index
             };
             let mut changed = witness.clone();
             changed[pair] = public_key.chain_ends[index].to_vec();
             changed[pair + 1] = integer(127);
-            let already_maximum = signature.digits[index] == FastWots32::chain_max_digit(index);
+            let already_maximum =
+                signature.digits[index] == FullWidthWots32::chain_max_digit(index);
             for leaf in [&recovery, &terminal] {
                 let result =
                     execute_raw_script_with_inputs_strict(leaf.to_bytes(), changed.clone());
@@ -1368,6 +1377,9 @@ fn verify_checksum_and_clear_horner<const MESSAGE_BYTES: usize>() -> Script {
 
 #[cfg(test)]
 mod tests {
+    // Preserve the historical native-width regression vectors explicitly.
+    type FullWidthWots32 = FastWinternitz<32, Hash160, FullWidth>;
+
     use super::*;
     use crate::{
         signatures::winternitz::{
@@ -1389,10 +1401,13 @@ mod tests {
         0xe1, 0xf0,
     ];
 
-    fn fixture() -> (FastPublicKey<32>, FastSignature<32>) {
-        let key = FastWots32::signing_key_from_seed(SEED);
-        let public_key = FastWots32::public_key(&key);
-        let signature = FastWots32::sign(key, &MESSAGE);
+    fn fixture() -> (
+        FastPublicKey<32, Hash160, FullWidth>,
+        FastSignature<32, Hash160, FullWidth>,
+    ) {
+        let key = FullWidthWots32::signing_key_from_seed(SEED);
+        let public_key = FullWidthWots32::public_key(&key);
+        let signature = FullWidthWots32::sign(key, &MESSAGE);
         (public_key, signature)
     }
 
@@ -1402,7 +1417,7 @@ mod tests {
         best: &mut usize,
     ) {
         if remaining_slots == 0 {
-            if widths.iter().sum::<usize>() < FastWots32::CHECKSUM_BITS {
+            if widths.iter().sum::<usize>() < FullWidthWots32::CHECKSUM_BITS {
                 return;
             }
             let mut place = 1usize;
@@ -1432,26 +1447,26 @@ mod tests {
 
     fn assert_terminal_round_trip<const MESSAGE_BYTES: usize>(message: [u8; MESSAGE_BYTES]) {
         let seed = [MESSAGE_BYTES as u8; 32];
-        let key = FastWinternitz::<MESSAGE_BYTES>::signing_key_from_seed(seed);
-        let public_key = FastWinternitz::<MESSAGE_BYTES>::public_key(&key);
-        let signature = FastWinternitz::<MESSAGE_BYTES>::sign(key, &message);
+        let key = FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::signing_key_from_seed(seed);
+        let public_key = FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::public_key(&key);
+        let signature = FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::sign(key, &message);
         let result = execute_script(script! {
             { signature.to_witness() }
-            { FastWinternitz::<MESSAGE_BYTES>::checksig_verify_and_clear(&public_key) }
+            { FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::checksig_verify_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(result.success, "length {MESSAGE_BYTES}: {result}");
         assert_eq!(result.final_stack.len(), 1);
         assert!(result.stats.max_nb_stack_items <= 1000);
 
-        let bitwise_signature = FastWinternitz::<MESSAGE_BYTES>::sign(
-            FastWinternitz::<MESSAGE_BYTES>::signing_key_from_seed(seed),
+        let bitwise_signature = FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::sign(
+            FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::signing_key_from_seed(seed),
             &message,
         );
         let result = execute_script(script! {
             { bitwise_signature.to_bitwise_size_optimized_witness() }
-            { FastWinternitz::<MESSAGE_BYTES>::checksig_verify_bitwise_size_optimized(&public_key) }
-            for _ in 0..FastWinternitz::<MESSAGE_BYTES>::MESSAGE_DIGITS {
+            { FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::checksig_verify_bitwise_size_optimized(&public_key) }
+            for _ in 0..FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::MESSAGE_DIGITS {
                 OP_DROP
             }
             OP_TRUE
@@ -1465,7 +1480,7 @@ mod tests {
 
         let result = execute_script(script! {
             { bitwise_signature.to_bitwise_terminal_witness() }
-            { FastWinternitz::<MESSAGE_BYTES>::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
+            { FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(
@@ -1475,13 +1490,13 @@ mod tests {
         assert_eq!(result.final_stack.len(), 1);
         assert!(result.stats.max_nb_stack_items <= 1000);
 
-        let size_signature = FastWinternitz::<MESSAGE_BYTES>::sign(
-            FastWinternitz::<MESSAGE_BYTES>::signing_key_from_seed(seed),
+        let size_signature = FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::sign(
+            FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::signing_key_from_seed(seed),
             &message,
         );
         let result = execute_script(script! {
             { size_signature.to_size_optimized_witness() }
-            { FastWinternitz::<MESSAGE_BYTES>::checksig_verify_size_optimized_and_clear(&public_key) }
+            { FastWinternitz::<MESSAGE_BYTES, Hash160, FullWidth>::checksig_verify_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(
@@ -1511,19 +1526,19 @@ mod tests {
 
     #[test]
     fn parameters_match_wots16_profile() {
-        assert_eq!(FastWots32::MESSAGE_DIGITS, 64);
-        assert_eq!(FastWots32::CHECKSUM_BITS, 10);
-        assert_eq!(FastWots32::CHECKSUM_DIGITS, 3);
-        assert_eq!(FastWots32::TOTAL_DIGITS, 67);
+        assert_eq!(FullWidthWots32::MESSAGE_DIGITS, 64);
+        assert_eq!(FullWidthWots32::CHECKSUM_BITS, 10);
+        assert_eq!(FullWidthWots32::CHECKSUM_DIGITS, 3);
+        assert_eq!(FullWidthWots32::TOTAL_DIGITS, 67);
         assert_eq!(
-            (0..FastWots32::CHECKSUM_DIGITS)
-                .map(FastWots32::checksum_digit_bits)
+            (0..FullWidthWots32::CHECKSUM_DIGITS)
+                .map(FullWidthWots32::checksum_digit_bits)
                 .collect::<Vec<_>>(),
             [3, 3, 4]
         );
         assert_eq!(
-            (0..FastWots32::CHECKSUM_DIGITS)
-                .map(FastWots32::checksum_digit_place)
+            (0..FullWidthWots32::CHECKSUM_DIGITS)
+                .map(FullWidthWots32::checksum_digit_place)
                 .collect::<Vec<_>>(),
             [1, 8, 64]
         );
@@ -1531,15 +1546,15 @@ mod tests {
 
     #[test]
     fn mixed_checksum_encoding_is_exhaustive_and_canonical() {
-        for checksum in 0..=FastWots32::MESSAGE_DIGITS * MAX_DIGIT as usize {
+        for checksum in 0..=FullWidthWots32::MESSAGE_DIGITS * MAX_DIGIT as usize {
             let digits = mixed_checksum_digits::<32>(checksum);
-            assert_eq!(digits.len(), FastWots32::CHECKSUM_DIGITS);
+            assert_eq!(digits.len(), FullWidthWots32::CHECKSUM_DIGITS);
             let decoded = digits
                 .iter()
                 .enumerate()
                 .map(|(index, &digit)| {
-                    assert!(digit <= (1u8 << FastWots32::checksum_digit_bits(index)) - 1);
-                    usize::from(digit) * FastWots32::checksum_digit_place(index)
+                    assert!(digit <= (1u8 << FullWidthWots32::checksum_digit_bits(index)) - 1);
+                    usize::from(digit) * FullWidthWots32::checksum_digit_place(index)
                 })
                 .sum::<usize>();
             assert_eq!(decoded, checksum);
@@ -1552,7 +1567,7 @@ mod tests {
                     .iter()
                     .enumerate()
                     .map(|(index, &digit)| {
-                        usize::from(digit) * FastWots32::checksum_digit_place(index)
+                        usize::from(digit) * FullWidthWots32::checksum_digit_place(index)
                     })
                     .sum::<usize>(),
                 boundary
@@ -1658,13 +1673,16 @@ mod tests {
             "fe39bed9c9449e7c5ee3df13b048b2e6168baef4"
         );
         assert_eq!(signature.digits()[..4], [0, 0, 1, 1]);
-        assert_eq!(signature.digits()[FastWots32::MESSAGE_DIGITS..], [0, 4, 7]);
         assert_eq!(
-            public_key.chain_ends()[FastWots32::MESSAGE_DIGITS].to_lower_hex_string(),
+            signature.digits()[FullWidthWots32::MESSAGE_DIGITS..],
+            [0, 4, 7]
+        );
+        assert_eq!(
+            public_key.chain_ends()[FullWidthWots32::MESSAGE_DIGITS].to_lower_hex_string(),
             "0ed29109fb0a775c1661d461cb6dad3310c1a445"
         );
         assert_eq!(
-            signature.chain_values()[FastWots32::MESSAGE_DIGITS].to_lower_hex_string(),
+            signature.chain_values()[FullWidthWots32::MESSAGE_DIGITS].to_lower_hex_string(),
             "a86d4917608f262f138b776b30e87028659b96a1"
         );
     }
@@ -1686,13 +1704,16 @@ mod tests {
     #[test]
     fn public_key_round_trips_and_rejects_wrong_endpoint_count() {
         let (public_key, _) = fixture();
-        let restored = FastPublicKey::<32>::from_chain_ends(public_key.chain_ends().to_vec())
-            .expect("valid endpoint count");
+        let restored = FastPublicKey::<32, Hash160, FullWidth>::from_chain_ends(
+            public_key.chain_ends().to_vec(),
+        )
+        .expect("valid endpoint count");
         assert_eq!(restored, public_key);
 
-        let error = FastPublicKey::<32>::from_chain_ends(vec![[0; HASH_BYTES]; 66])
-            .expect_err("short public key must fail");
-        assert_eq!(error.expected, FastWots32::TOTAL_DIGITS);
+        let error =
+            FastPublicKey::<32, Hash160, FullWidth>::from_chain_ends(vec![[0; HASH_BYTES]; 66])
+                .expect_err("short public key must fail");
+        assert_eq!(error.expected, FullWidthWots32::TOTAL_DIGITS);
         assert_eq!(error.actual, 66);
     }
 
@@ -1700,14 +1721,20 @@ mod tests {
     fn exact_and_minimal_verifiers_recover_message() {
         let (public_key, signature) = fixture();
         let witness = signature.to_witness();
-        assert_message_output(FastWots32::checksig_verify(&public_key), witness.clone());
-        assert_message_output(FastWots32::checksig_verify_minimal(&public_key), witness);
         assert_message_output(
-            FastWots32::checksig_verify_size_optimized(&public_key),
+            FullWidthWots32::checksig_verify(&public_key),
+            witness.clone(),
+        );
+        assert_message_output(
+            FullWidthWots32::checksig_verify_minimal(&public_key),
+            witness,
+        );
+        assert_message_output(
+            FullWidthWots32::checksig_verify_size_optimized(&public_key),
             signature.to_size_optimized_witness(),
         );
         assert_message_output(
-            FastWots32::checksig_verify_bitwise_size_optimized(&public_key),
+            FullWidthWots32::checksig_verify_bitwise_size_optimized(&public_key),
             signature.to_bitwise_size_optimized_witness(),
         );
     }
@@ -1717,7 +1744,7 @@ mod tests {
         let (public_key, signature) = fixture();
         let result = execute_script(script! {
             { signature.to_witness() }
-            { FastWots32::checksig_verify_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(result.success, "{result}");
@@ -1726,7 +1753,7 @@ mod tests {
 
         let result = execute_script(script! {
             { signature.to_size_optimized_witness() }
-            { FastWots32::checksig_verify_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(result.success, "size profile: {result}");
@@ -1741,7 +1768,7 @@ mod tests {
         bad_witness[1][0] ^= 1;
         let result = execute_script(script! {
             { bad_witness }
-            { FastWots32::checksig_verify_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
@@ -1750,7 +1777,7 @@ mod tests {
         bad_size_witness[0][0] ^= 1;
         let result = execute_script(script! {
             { bad_size_witness }
-            { FastWots32::checksig_verify_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
@@ -1759,14 +1786,14 @@ mod tests {
         wrong_public_key.chain_ends[0][0] ^= 1;
         let result = execute_script(script! {
             { signature.to_witness() }
-            { FastWots32::checksig_verify_and_clear(&wrong_public_key) }
+            { FullWidthWots32::checksig_verify_and_clear(&wrong_public_key) }
             OP_TRUE
         });
         assert!(!result.success);
 
         let result = execute_script(script! {
             { signature.to_size_optimized_witness() }
-            { FastWots32::checksig_verify_size_optimized_and_clear(&wrong_public_key) }
+            { FullWidthWots32::checksig_verify_size_optimized_and_clear(&wrong_public_key) }
             OP_TRUE
         });
         assert!(!result.success);
@@ -1775,8 +1802,8 @@ mod tests {
         bad_bitwise_witness[4][0] ^= 1;
         let result = execute_script(script! {
             { bad_bitwise_witness }
-            { FastWots32::checksig_verify_bitwise_size_optimized(&public_key) }
-            for _ in 0..FastWots32::MESSAGE_DIGITS {
+            { FullWidthWots32::checksig_verify_bitwise_size_optimized(&public_key) }
+            for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
                 OP_DROP
             }
             OP_TRUE
@@ -1785,7 +1812,7 @@ mod tests {
 
         let result = execute_script(script! {
             { signature.to_bitwise_terminal_witness() }
-            { FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&wrong_public_key) }
+            { FullWidthWots32::checksig_verify_bitwise_size_optimized_and_clear(&wrong_public_key) }
             OP_TRUE
         });
         assert!(!result.success);
@@ -1799,7 +1826,7 @@ mod tests {
             witness[0] = invalid.clone();
             let result = execute_script(script! {
                 { witness }
-                { FastWots32::checksig_verify_and_clear(&public_key) }
+                { FullWidthWots32::checksig_verify_and_clear(&public_key) }
                 OP_TRUE
             });
             assert!(!result.success);
@@ -1808,7 +1835,7 @@ mod tests {
             size_witness[1] = invalid;
             let result = execute_script(script! {
                 { size_witness }
-                { FastWots32::checksig_verify_size_optimized_and_clear(&public_key) }
+                { FullWidthWots32::checksig_verify_size_optimized_and_clear(&public_key) }
                 OP_TRUE
             });
             assert!(!result.success);
@@ -1823,8 +1850,8 @@ mod tests {
             recovery_witness[0] = invalid.clone();
             let result = execute_script(script! {
                 { recovery_witness }
-                { FastWots32::checksig_verify_bitwise_size_optimized(&public_key) }
-                for _ in 0..FastWots32::MESSAGE_DIGITS {
+                { FullWidthWots32::checksig_verify_bitwise_size_optimized(&public_key) }
+                for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
                     OP_DROP
                 }
                 OP_TRUE
@@ -1835,7 +1862,7 @@ mod tests {
             terminal_witness[0] = invalid;
             let result = execute_script(script! {
                 { terminal_witness }
-                { FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
+                { FullWidthWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
                 OP_TRUE
             });
             assert!(!result.success);
@@ -1845,7 +1872,7 @@ mod tests {
         missing.pop();
         let result = execute_script(script! {
             { missing }
-            { FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
@@ -1854,7 +1881,7 @@ mod tests {
         extra.insert(0, Vec::new());
         let result = execute_script(script! {
             { extra }
-            { FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(
@@ -1871,7 +1898,7 @@ mod tests {
             witness[1] = vec![0; invalid_length];
             let result = execute_script(script! {
                 { witness }
-                { FastWots32::checksig_verify_and_clear(&public_key) }
+                { FullWidthWots32::checksig_verify_and_clear(&public_key) }
                 OP_TRUE
             });
             assert!(!result.success);
@@ -1881,7 +1908,7 @@ mod tests {
         missing.pop();
         let result = execute_script(script! {
             { missing }
-            { FastWots32::checksig_verify_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
@@ -1890,7 +1917,7 @@ mod tests {
         extra.insert(0, Vec::new());
         let result = execute_script(script! {
             { extra }
-            { FastWots32::checksig_verify_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(
@@ -1902,7 +1929,7 @@ mod tests {
         size_missing.pop();
         let result = execute_script(script! {
             { size_missing }
-            { FastWots32::checksig_verify_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
@@ -1911,7 +1938,7 @@ mod tests {
         size_extra.insert(0, Vec::new());
         let result = execute_script(script! {
             { size_extra }
-            { FastWots32::checksig_verify_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(
@@ -1922,10 +1949,10 @@ mod tests {
 
     #[test]
     fn rejects_wrong_checksum_even_with_valid_chains() {
-        let key = FastWots32::signing_key_from_seed(SEED);
-        let public_key = FastWots32::public_key(&key);
-        let mut signature = FastWots32::sign(key, &MESSAGE);
-        let checksum_index = FastWots32::MESSAGE_DIGITS;
+        let key = FullWidthWots32::signing_key_from_seed(SEED);
+        let public_key = FullWidthWots32::public_key(&key);
+        let mut signature = FullWidthWots32::sign(key, &MESSAGE);
+        let checksum_index = FullWidthWots32::MESSAGE_DIGITS;
         signature.digits[checksum_index] ^= 1;
         let namespace = derive_chain_namespace::<32, Hash160>(&SEED);
         signature.chain_values[checksum_index] = hash_chain::<Hash160>(
@@ -1935,29 +1962,29 @@ mod tests {
 
         let result = execute_script(script! {
             { signature.to_witness() }
-            { FastWots32::checksig_verify_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
 
         let result = execute_script(script! {
             { signature.to_size_optimized_witness() }
-            { FastWots32::checksig_verify_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
 
         let result = execute_script(script! {
             { signature.to_bitwise_terminal_witness() }
-            { FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
+            { FullWidthWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key) }
             OP_TRUE
         });
         assert!(!result.success);
 
         let result = execute_script(script! {
             { signature.to_bitwise_size_optimized_witness() }
-            { FastWots32::checksig_verify_bitwise_size_optimized(&public_key) }
-            for _ in 0..FastWots32::MESSAGE_DIGITS {
+            { FullWidthWots32::checksig_verify_bitwise_size_optimized(&public_key) }
+            for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
                 OP_DROP
             }
             OP_TRUE
@@ -1969,21 +1996,21 @@ mod tests {
     fn performance_profiles_are_measurably_distinct() {
         let (public_key, signature) = fixture();
         let witness = signature.to_witness();
-        let exact = FastWots32::checksig_verify(&public_key);
-        let minimal = FastWots32::checksig_verify_minimal(&public_key);
-        let clear = FastWots32::checksig_verify_and_clear(&public_key);
-        let size = FastWots32::checksig_verify_size_optimized(&public_key);
-        let size_clear = FastWots32::checksig_verify_size_optimized_and_clear(&public_key);
+        let exact = FullWidthWots32::checksig_verify(&public_key);
+        let minimal = FullWidthWots32::checksig_verify_minimal(&public_key);
+        let clear = FullWidthWots32::checksig_verify_and_clear(&public_key);
+        let size = FullWidthWots32::checksig_verify_size_optimized(&public_key);
+        let size_clear = FullWidthWots32::checksig_verify_size_optimized_and_clear(&public_key);
         let size_witness = signature.to_size_optimized_witness();
-        let bitwise = FastWots32::checksig_verify_bitwise_size_optimized(&public_key);
+        let bitwise = FullWidthWots32::checksig_verify_bitwise_size_optimized(&public_key);
         let bitwise_clear =
-            FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key);
+            FullWidthWots32::checksig_verify_bitwise_size_optimized_and_clear(&public_key);
         let bitwise_witness = signature.to_bitwise_size_optimized_witness();
         let bitwise_terminal_witness = signature.to_bitwise_terminal_witness();
         let exact_result = execute_script_with_inputs(
             script! {
                 { exact.clone() }
-                for _ in 0..FastWots32::MESSAGE_DIGITS {
+                for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
                     OP_DROP
                 }
                 OP_TRUE
@@ -1993,7 +2020,7 @@ mod tests {
         let minimal_result = execute_script_with_inputs(
             script! {
                 { minimal.clone() }
-                for _ in 0..FastWots32::MESSAGE_DIGITS {
+                for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
                     OP_DROP
                 }
                 OP_TRUE
@@ -2005,7 +2032,7 @@ mod tests {
         let size_result = execute_script_with_inputs(
             script! {
                 { size.clone() }
-                for _ in 0..FastWots32::MESSAGE_DIGITS {
+                for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
                     OP_DROP
                 }
                 OP_TRUE
@@ -2023,7 +2050,7 @@ mod tests {
         let bitwise_result = execute_script_with_inputs(
             script! {
                 { bitwise.clone() }
-                for _ in 0..FastWots32::MESSAGE_DIGITS {
+                for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
                     OP_DROP
                 }
                 OP_TRUE
@@ -2041,15 +2068,15 @@ mod tests {
             .digits()
             .iter()
             .enumerate()
-            .map(|(index, &digit)| usize::from(FastWots32::chain_max_digit(index) - digit))
+            .map(|(index, &digit)| usize::from(FullWidthWots32::chain_max_digit(index) - digit))
             .sum::<usize>();
         let minimal_hashes = signature
             .digits()
             .iter()
             .enumerate()
             .map(|(index, &digit)| {
-                let half = 1u8 << (FastWots32::chain_digit_bits(index) - 1);
-                if FastWots32::chain_digit_bits(index) <= 3 || digit < half {
+                let half = 1u8 << (FullWidthWots32::chain_digit_bits(index) - 1);
+                if FullWidthWots32::chain_digit_bits(index) <= 3 || digit < half {
                     usize::from(2 * half - 1)
                 } else {
                     usize::from(half - 1)

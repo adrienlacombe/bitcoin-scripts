@@ -22,11 +22,11 @@ pub trait PreimageSize<H: ChainHash>: private::Sealed + Copy + core::fmt::Debug 
     fn from_hash(value: H::Value) -> Self::Value;
 }
 
-/// Original full-width initial secrets; preserves existing keys and vectors.
+/// Explicit compatibility mode for original native-width initial secrets.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FullWidth;
 
-/// 16-byte initial secret preimages; native hash outputs remain untruncated.
+/// Default 16-byte initial secret preimages; native hash outputs remain untruncated.
 ///
 /// This limits exhaustive initial-secret search to at most 128 classical bits
 /// before multi-target losses. It does not increase HASH160 collision strength.

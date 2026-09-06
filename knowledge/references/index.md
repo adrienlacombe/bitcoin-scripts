@@ -22,7 +22,7 @@ compiled measurements use `bitcoin-script-locked` at
 `124b561ed75ac3ec4c6ad99207d8dcdd3bc67180`, including SHA256-pair fusion.
 That Core source inspection is not a Core execution or policy reproduction.
 
-The optional Preimage16 discussion uses `nist-hash-security-strengths` for the
+The default Preimage16 discussion uses `nist-hash-security-strengths` for the
 distinction between collision, preimage, and second-preimage resistance. The
 128-bit initial-secret exhaustive-search ceiling is a local inference from
 the 16-byte secret space, before multi-target effects; the NIST table is not

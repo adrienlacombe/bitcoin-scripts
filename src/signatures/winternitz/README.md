@@ -1,7 +1,41 @@
 # Winternitz one-time signatures
 
+The table compares our size-focused **terminal verifiers**: every row verifies
+and consumes a **32-byte message**, using the default **16-byte initial secrets**.
+Totals are **exact script + serialized signature-witness bytes** for each stated
+message, not averages or witness-size bounds. “Mixed” is the byte sequence
+`00 01 02 … 1f`; the other columns use 32 bytes of `00` or `ff`.
+Rows are ordered by mixed-message total.
+
+| Chain / commitment | Verifier | Script bytes | Mixed witness bytes | **Mixed total** | All-`00` total | All-`ff` total |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| HASH160 / 20-byte endpoint | Clamped | <!-- metric:overview_hash160_clamped_script -->4403<!-- /metric:overview_hash160_clamped_script --> | <!-- metric:overview_hash160_clamped_mixed_witness -->1442<!-- /metric:overview_hash160_clamped_mixed_witness --> | <!-- metric:overview_hash160_clamped_mixed_total -->5845<!-- /metric:overview_hash160_clamped_mixed_total --> | <!-- metric:overview_hash160_clamped_zero_total -->5615<!-- /metric:overview_hash160_clamped_zero_total --> | <!-- metric:overview_hash160_clamped_ff_total -->5930<!-- /metric:overview_hash160_clamped_ff_total --> |
+| HASH160 / 20-byte endpoint | Strided | <!-- metric:overview_hash160_strided_script -->4355<!-- /metric:overview_hash160_strided_script --> | <!-- metric:overview_hash160_strided_mixed_witness -->1525<!-- /metric:overview_hash160_strided_mixed_witness --> | <!-- metric:overview_hash160_strided_mixed_total -->5880<!-- /metric:overview_hash160_strided_mixed_total --> | <!-- metric:overview_hash160_strided_zero_total -->5700<!-- /metric:overview_hash160_strided_zero_total --> | <!-- metric:overview_hash160_strided_ff_total -->5952<!-- /metric:overview_hash160_strided_ff_total --> |
+| HASH160 / 20-byte endpoint | Bitwise | <!-- metric:overview_hash160_bitwise_script -->4206<!-- /metric:overview_hash160_bitwise_script --> | <!-- metric:overview_hash160_bitwise_mixed_witness -->1779<!-- /metric:overview_hash160_bitwise_mixed_witness --> | <!-- metric:overview_hash160_bitwise_mixed_total -->5985<!-- /metric:overview_hash160_bitwise_mixed_total --> | <!-- metric:overview_hash160_bitwise_zero_total -->5880<!-- /metric:overview_hash160_bitwise_zero_total --> | <!-- metric:overview_hash160_bitwise_ff_total -->5880<!-- /metric:overview_hash160_bitwise_ff_total --> |
+| SHA-256 / 20-byte HASH160 commitment | Strided | <!-- metric:overview_hybrid_strided_script -->3961<!-- /metric:overview_hybrid_strided_script --> | <!-- metric:overview_hybrid_strided_mixed_witness -->2089<!-- /metric:overview_hybrid_strided_mixed_witness --> | <!-- metric:overview_hybrid_strided_mixed_total -->6050<!-- /metric:overview_hybrid_strided_mixed_total --> | <!-- metric:overview_hybrid_strided_zero_total -->5318<!-- /metric:overview_hybrid_strided_zero_total --> | <!-- metric:overview_hybrid_strided_ff_total -->6326<!-- /metric:overview_hybrid_strided_ff_total --> |
+| SHA-256 / 20-byte HASH160 commitment | Bitwise | <!-- metric:overview_hybrid_bitwise_script -->3812<!-- /metric:overview_hybrid_bitwise_script --> | <!-- metric:overview_hybrid_bitwise_mixed_witness -->2343<!-- /metric:overview_hybrid_bitwise_mixed_witness --> | <!-- metric:overview_hybrid_bitwise_mixed_total -->6155<!-- /metric:overview_hybrid_bitwise_mixed_total --> | <!-- metric:overview_hybrid_bitwise_zero_total -->5498<!-- /metric:overview_hybrid_bitwise_zero_total --> | <!-- metric:overview_hybrid_bitwise_ff_total -->6254<!-- /metric:overview_hybrid_bitwise_ff_total --> |
+| SHA-256 / 20-byte HASH160 commitment | Clamped | <!-- metric:overview_hybrid_clamped_script -->4210<!-- /metric:overview_hybrid_clamped_script --> | <!-- metric:overview_hybrid_clamped_mixed_witness -->2006<!-- /metric:overview_hybrid_clamped_mixed_witness --> | <!-- metric:overview_hybrid_clamped_mixed_total -->6216<!-- /metric:overview_hybrid_clamped_mixed_total --> | <!-- metric:overview_hybrid_clamped_zero_total -->5434<!-- /metric:overview_hybrid_clamped_zero_total --> | <!-- metric:overview_hybrid_clamped_ff_total -->6505<!-- /metric:overview_hybrid_clamped_ff_total --> |
+| SHA-256 / 32-byte endpoint | Strided | <!-- metric:overview_sha256_strided_script -->4698<!-- /metric:overview_sha256_strided_script --> | <!-- metric:overview_sha256_strided_mixed_witness -->2089<!-- /metric:overview_sha256_strided_mixed_witness --> | <!-- metric:overview_sha256_strided_mixed_total -->6787<!-- /metric:overview_sha256_strided_mixed_total --> | <!-- metric:overview_sha256_strided_zero_total -->6055<!-- /metric:overview_sha256_strided_zero_total --> | <!-- metric:overview_sha256_strided_ff_total -->7063<!-- /metric:overview_sha256_strided_ff_total --> |
+| SHA-256 / 32-byte endpoint | Bitwise | <!-- metric:overview_sha256_bitwise_script -->4549<!-- /metric:overview_sha256_bitwise_script --> | <!-- metric:overview_sha256_bitwise_mixed_witness -->2343<!-- /metric:overview_sha256_bitwise_mixed_witness --> | <!-- metric:overview_sha256_bitwise_mixed_total -->6892<!-- /metric:overview_sha256_bitwise_mixed_total --> | <!-- metric:overview_sha256_bitwise_zero_total -->6235<!-- /metric:overview_sha256_bitwise_zero_total --> | <!-- metric:overview_sha256_bitwise_ff_total -->6991<!-- /metric:overview_sha256_bitwise_ff_total --> |
+| SHA-256 / 32-byte endpoint | Clamped | <!-- metric:overview_sha256_clamped_script -->4947<!-- /metric:overview_sha256_clamped_script --> | <!-- metric:overview_sha256_clamped_mixed_witness -->2006<!-- /metric:overview_sha256_clamped_mixed_witness --> | <!-- metric:overview_sha256_clamped_mixed_total -->6953<!-- /metric:overview_sha256_clamped_mixed_total --> | <!-- metric:overview_sha256_clamped_zero_total -->6171<!-- /metric:overview_sha256_clamped_zero_total --> | <!-- metric:overview_sha256_clamped_ff_total -->7242<!-- /metric:overview_sha256_clamped_ff_total --> |
+
+**Boundary:** policy-compiled locking fragments, with embedded commitments and
+checksum/message cleanup, plus full serialized data-witness vectors. The common
+terminal `OP_TRUE`, script-item framing, Taproot control block, and transaction
+overhead are excluded. These sums are not complete-transaction weights or fees.
+Seed: `[0x42; 32]`. All scripts are below 32 KiB and use `CompileOptions::ALL`.
+
+All rows need **0 auxiliary hint items**. Clamped / strided / bitwise witnesses
+contain **134 / 201 / 333 data items** together at entry, with measured combined
+main-plus-alt-stack peaks **143 / 209 / 333**. Measurements are
+`locally-reproduced`, `research-unlimited`: the tapscript metric helper disables
+the stack check; separate strict-stack tests are not Bitcoin Core or policy
+validation. The schemes also differ in digit-encoding acceptance and commitment
+security; see the detailed comparisons below. Short-secret savings depend on
+the message's zero digits, so no fixture establishes a universal winner.
+
 This module contains a compatibility HASH160 API and an independent typed
-`FastWinternitz<N, H = Hash160, P = FullWidth>` API. The typed implementation supports
+`FastWinternitz<N, H = Hash160, P = Preimage16>` API. The typed implementation supports
 HASH160, SHA-256, and SHA-256 chains with HASH160 commitments across every verification profile, with a consuming
 one-time signing key. The hash and preimage-width choices are fixed when creating the key and
 locking script; neither is selected by an untrusted witness.
@@ -16,8 +50,8 @@ WOTS+ security.
 - Chain function: `Hash160` (default, 20-byte nodes/commitments), `Sha256`
   (32-byte nodes/commitments), or `Sha256Hash160` (32-byte nodes, 20-byte commitments);
   message chains have 15 links. SHA-2 means SHA-256 here, not SHA-512.
-- Initial secret width: `FullWidth` (default, native hash width) or
-  `Preimage16` (16 bytes, revealed only by digit zero).
+- Initial secret width: `Preimage16` (default, 16 bytes, revealed only by
+  digit zero), or explicit `FullWidth` for native-width initial secrets.
 - Fast signing seed: 32 bytes.
 - Fast chain namespace: `H(domain || seed || message_bytes_be64)`, where
   the domains are `bitcoin-lab/winternitz-hash160/v1` and
@@ -92,9 +126,7 @@ per-chain heap allocation, or collision-list sort. `FastSigningKey` is neither
 
 ## Hash choice and preimage sizes
 
-The default FullWidth modes use native-width signature nodes. A 16-byte
-message (`FastWots16`) is unrelated to the chain width. The optional
-[Preimage16 mode](#optional-16-byte-initial-preimages) shortens the initial
+The default [Preimage16 mode](#default-16-byte-initial-preimages) shortens the initial
 secret only. Intermediate outputs stay native width; the original hash profiles
 also retain native-width endpoints. The hybrid hashes completed endpoints to 20 bytes; truncating
 every host-side hash would disagree with native Script hashing.
@@ -118,15 +150,22 @@ The hash and preimage-width parameters also appear on `FastSigningKey<N, H, P>`,
 `FastPublicKey<N, H, P>`, and `FastSignature<N, H, P>`.
 `FastChainValue<H>` is a native-width node; `FastCommitment<H>` is the
 stored endpoint commitment, which is shorter for Sha256Hash160.
-Existing `FastWots4/16/32/64/80` aliases remain fixed to HASH160. All existing
-HASH160 key derivation and witness layouts are preserved. Numeric lookup
-script sizes improve as documented below.
+The `FastWots4/16/32/64/80` aliases use HASH160 with Preimage16.
+**Migration:** defaults now derive different keys from the same seed and use
+16-byte digit-zero openings. To restore previously created native-width keys,
+use `FastWinternitz<N, H, FullWidth>` and matching `FastSigningKey`,
+`FastPublicKey`, and `FastSignature` types with explicit `FullWidth`. The
+FullWidth derivation and witness formats remain unchanged. Do not restore
+old persisted keys using the new implicit default; persist the mode explicitly.
 Persist the hash choice alongside keys and seeds: SHA-256 uses a separate
 domain and its keys, endpoints, and signatures are not wire-compatible with
 HASH160. Every choice still requires durable one-time-key management.
 The legacy `Wots`/`CompactWots` API remains HASH160-only.
 
 ## Script metrics
+
+The Fast rows in this section use explicit **FullWidth** for historical
+comparison. The new default costs are in [Default 16-byte initial preimages](#default-16-byte-initial-preimages).
 
 Locking sizes are `fragment-only`: chain checks, embedded public endpoints,
 checksum verification, and the documented message/cleanup postcondition are
@@ -140,7 +179,7 @@ execution ends cleanly.
 
 The following table uses **HASH160** throughout.
 
-| `Wots32` configuration | Locking script | Unlocking witness (zero / upper bound) | Maximum stack items |
+| 32-byte FullWidth configuration | Locking script | Unlocking witness (zero / upper bound) | Maximum stack items |
 | --- | ---: | ---: | ---: |
 | Legacy list-pick, recover message | <!-- metric:wots32_lock -->4908<!-- /metric:wots32_lock --> bytes | <!-- metric:wots32_witness -->1477<!-- /metric:wots32_witness --> / <!-- metric:wots32_witness_max -->1542<!-- /metric:wots32_witness_max --> bytes | <!-- metric:wots32_stack -->143<!-- /metric:wots32_stack --> |
 | Legacy list-pick, clear message | <!-- metric:wots32_clear_lock -->4844<!-- /metric:wots32_clear_lock --> bytes | same as legacy recovery | <!-- metric:wots32_clear_stack -->143<!-- /metric:wots32_clear_stack --> |
@@ -156,43 +195,36 @@ The following table uses **HASH160** throughout.
 
 For onchain cost, add the script and serialized signature witness: both are
 witness-weight bytes in a tapscript spend. Script-item framing, the control
-block, and the enclosing transaction are excluded equally here. The clamped
-recovery profile totals <!-- metric:fast_wots32_clamped_total_zero -->5941<!-- /metric:fast_wots32_clamped_total_zero -->
-bytes for the zero vector, with a signer-node upper bound of
-<!-- metric:fast_wots32_clamped_total_max -->6007<!-- /metric:fast_wots32_clamped_total_max -->.
-The clamped terminal profile totals
-<!-- metric:fast_wots32_clamped_clear_total_zero -->5879<!-- /metric:fast_wots32_clamped_clear_total_zero -->
-and <!-- metric:fast_wots32_clamped_clear_total_max -->5945<!-- /metric:fast_wots32_clamped_clear_total_max -->
-bytes respectively. These minimize the measured zero-message totals and
-signer-node upper bounds within the original HASH160 profiles above. The winner can depend on
-the actual message: for an all-`ff` message the bitwise terminal profile totals
-5,892 bytes, compared with 5,942 for clamped numeric. The bitwise profiles also
-minimize the script alone.
-Their static non-push counts are
-<!-- metric:fast_wots32_clamped_static_opcodes -->2923<!-- /metric:fast_wots32_clamped_static_opcodes -->
-and <!-- metric:fast_wots32_clamped_clear_static_opcodes -->2861<!-- /metric:fast_wots32_clamped_clear_static_opcodes -->.
+block, and the enclosing transaction are excluded equally here.
 
-The legacy terminal fragment contains
-<!-- metric:wots32_clear_static_opcodes -->3166<!-- /metric:wots32_clear_static_opcodes -->
-static non-push opcodes.
+| Clamped profile | Script + zero-message witness (bytes) | Script + signer-node witness upper bound (bytes) |
+| --- | ---: | ---: |
+| Recovery | <!-- metric:fast_wots32_clamped_total_zero -->5941<!-- /metric:fast_wots32_clamped_total_zero --> | <!-- metric:fast_wots32_clamped_total_max -->6007<!-- /metric:fast_wots32_clamped_total_max --> |
+| Terminal | <!-- metric:fast_wots32_clamped_clear_total_zero -->5879<!-- /metric:fast_wots32_clamped_clear_total_zero --> | <!-- metric:fast_wots32_clamped_clear_total_max -->5945<!-- /metric:fast_wots32_clamped_clear_total_max --> |
 
-The Fast maximum serialized witness is
-<!-- metric:fast_wots32_witness_max -->1542<!-- /metric:fast_wots32_witness_max -->
-bytes. The exact, lookup, and clear fragments contain respectively
-<!-- metric:fast_wots32_exact_static_opcodes -->3325<!-- /metric:fast_wots32_exact_static_opcodes -->,
-<!-- metric:fast_wots32_minimal_static_opcodes -->3258<!-- /metric:fast_wots32_minimal_static_opcodes -->,
-and <!-- metric:fast_wots32_clear_static_opcodes -->3263<!-- /metric:fast_wots32_clear_static_opcodes -->
-static non-push opcodes. The size recovery and terminal fragments contain
-<!-- metric:fast_wots32_size_static_opcodes -->3057<!-- /metric:fast_wots32_size_static_opcodes -->
-and <!-- metric:fast_wots32_size_clear_static_opcodes -->2995<!-- /metric:fast_wots32_size_clear_static_opcodes -->
-respectively.
+These minimize the measured zero-message totals and signer-node upper bounds
+within the original HASH160 profiles above. The winner can depend on the
+actual message: for an all-`ff` message the bitwise terminal profile totals
+5,892 bytes, compared with 5,942 for clamped numeric. The bitwise profiles
+also minimize the script alone.
 
-The bitwise recovery and terminal fragments contain
-<!-- metric:fast_wots32_bitwise_static_opcodes -->2716<!-- /metric:fast_wots32_bitwise_static_opcodes -->
-and <!-- metric:fast_wots32_bitwise_clear_static_opcodes -->2586<!-- /metric:fast_wots32_bitwise_clear_static_opcodes -->
-static non-push opcodes. Their signer-node witness upper bound is
-<!-- metric:fast_wots32_bitwise_witness_max -->1942<!-- /metric:fast_wots32_bitwise_witness_max -->
-bytes.
+| Profile | Static non-push opcodes |
+| --- | ---: |
+| Legacy list-pick, terminal | <!-- metric:wots32_clear_static_opcodes -->3166<!-- /metric:wots32_clear_static_opcodes --> |
+| Fast clamped lookup, recovery | <!-- metric:fast_wots32_clamped_static_opcodes -->2923<!-- /metric:fast_wots32_clamped_static_opcodes --> |
+| Fast clamped lookup, terminal | <!-- metric:fast_wots32_clamped_clear_static_opcodes -->2861<!-- /metric:fast_wots32_clamped_clear_static_opcodes --> |
+| Fast exact-hash, recovery | <!-- metric:fast_wots32_exact_static_opcodes -->3325<!-- /metric:fast_wots32_exact_static_opcodes --> |
+| Fast eight-value lookup, recovery | <!-- metric:fast_wots32_minimal_static_opcodes -->3258<!-- /metric:fast_wots32_minimal_static_opcodes --> |
+| Fast exact-hash, terminal | <!-- metric:fast_wots32_clear_static_opcodes -->3263<!-- /metric:fast_wots32_clear_static_opcodes --> |
+| Fast size lookup, recovery | <!-- metric:fast_wots32_size_static_opcodes -->3057<!-- /metric:fast_wots32_size_static_opcodes --> |
+| Fast size lookup, terminal | <!-- metric:fast_wots32_size_clear_static_opcodes -->2995<!-- /metric:fast_wots32_size_clear_static_opcodes --> |
+| Fast bitwise, recovery | <!-- metric:fast_wots32_bitwise_static_opcodes -->2716<!-- /metric:fast_wots32_bitwise_static_opcodes --> |
+| Fast bitwise, terminal | <!-- metric:fast_wots32_bitwise_clear_static_opcodes -->2586<!-- /metric:fast_wots32_bitwise_clear_static_opcodes --> |
+
+| Fast witness format | Serialized signer-node witness upper bound (bytes) |
+| --- | ---: |
+| Numeric | <!-- metric:fast_wots32_witness_max -->1542<!-- /metric:fast_wots32_witness_max --> |
+| Bitwise | <!-- metric:fast_wots32_bitwise_witness_max -->1942<!-- /metric:fast_wots32_bitwise_witness_max --> |
 
 Relative to the strict numeric size profiles, clamped verification reduces
 the same witness's combined cost by 134 bytes: recovery 6,075 → 5,941 and
@@ -207,11 +239,13 @@ First-bit initialization saves two bytes and one stack item in the bitwise
 terminal, 4,208 → 4,206. Existing public keys and witness layouts are unchanged.
 
 For the deterministic balanced message
-`00112233445566778899aabbccddeeff0f1e2d3c4b5a69788796a5b4c3d2e1f0`,
-the exact profile executes
-<!-- metric:fast_wots32_exact_hashes -->498<!-- /metric:fast_wots32_exact_hashes -->
-HASH160 calls; the lookup profile executes
-<!-- metric:fast_wots32_minimal_hashes -->733<!-- /metric:fast_wots32_minimal_hashes -->.
+`00112233445566778899aabbccddeeff0f1e2d3c4b5a69788796a5b4c3d2e1f0`:
+
+| Profile | HASH160 calls |
+| --- | ---: |
+| Exact | <!-- metric:fast_wots32_exact_hashes -->498<!-- /metric:fast_wots32_exact_hashes --> |
+| Lookup | <!-- metric:fast_wots32_minimal_hashes -->733<!-- /metric:fast_wots32_minimal_hashes --> |
+
 These are algorithmic counts derived from the authenticated digits, not the
 executor's currently unimplemented opcode counter. For uniformly distributed
 message digits, the exact message-chain expectation is 7.5 hashes per digit,
@@ -274,18 +308,21 @@ not complete transaction weights.
 Native hash semantics are recorded in [Bitcoin Core v29.0 interpreter.cpp](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp).
 Pair fusion is in the pinned [rust-bitcoin-script optimizer](https://github.com/BitVM/rust-bitcoin-script/blob/124b561ed75ac3ec4c6ad99207d8dcdd3bc67180/src/optimizer.rs).
 
-## Optional 16-byte initial preimages
+<a id="optional-16-byte-initial-preimages"></a>
 
-Select `FastWinternitz<N, H, Preimage16>` to derive 16-byte initial secrets
-for any supported hash profile. `FullWidth` remains the default for compatibility. Only a
+## Default 16-byte initial preimages
+
+`FastWinternitz<N, H>` derives 16-byte initial secrets for every supported
+hash profile; this is equivalent to explicit `Preimage16`. Choose
+`FastWinternitz<N, H, FullWidth>` for native-width initial secrets. Only a
 signature digit of zero reveals the initial secret. Later chain positions
 retain 20 bytes (HASH160) or 32 bytes (both SHA-256 profiles). Public
 commitments are 20 bytes for Hash160/Sha256Hash160 and 32 for Sha256.
 The 32-byte master seed is unchanged.
 
 ```rust
-use bitcoin_lab::signatures::winternitz::{FastWinternitz, Hash160, Preimage16};
-type Wots = FastWinternitz<32, Hash160, Preimage16>;
+use bitcoin_lab::signatures::winternitz::FastWinternitz;
+type Wots = FastWinternitz<32>; // HASH160, Preimage16 by default.
 assert_eq!(Wots::PREIMAGE_BYTES, 16);
 assert_eq!(Wots::HASH_BYTES, 20);
 let key = Wots::generate_signing_key();

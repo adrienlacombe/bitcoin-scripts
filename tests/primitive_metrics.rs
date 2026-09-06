@@ -34,8 +34,8 @@ use bitcoin_lab::{
     signatures::{
         hors, lamport, pointlocks, schnorr,
         winternitz::{
-            ChainHash, FastWinternitz, FastWots32, FullWidth, Hash160, Preimage16, PreimageSize,
-            Sha256, Sha256Hash160, Wots, Wots32,
+            ChainHash, FastWinternitz, FullWidth, Hash160, Preimage16, PreimageSize, Sha256,
+            Sha256Hash160, Wots, Wots32,
         },
     },
     support::{
@@ -46,6 +46,9 @@ use bitcoin_lab::{
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
 use num_traits::One;
+
+// FullWidth comparison rows remain stable when the public default changes.
+type FullWidthWots32 = FastWinternitz<32, Hash160, FullWidth>;
 
 struct Metric {
     readme: &'static str,
@@ -142,36 +145,36 @@ fn winternitz_metrics() -> Vec<Metric> {
     let wots_public_key = Wots32::generate_public_key(&wots_secret);
     let wots_witness = Wots32::sign_to_raw_witness(&wots_secret, &wots_message);
 
-    let fast_wots_key = FastWots32::signing_key_from_seed([0x42; 32]);
-    let fast_wots_public_key = FastWots32::public_key(&fast_wots_key);
-    let fast_wots_signature = FastWots32::sign(fast_wots_key, &wots_message);
+    let fast_wots_key = FullWidthWots32::signing_key_from_seed([0x42; 32]);
+    let fast_wots_public_key = FullWidthWots32::public_key(&fast_wots_key);
+    let fast_wots_signature = FullWidthWots32::sign(fast_wots_key, &wots_message);
     let fast_wots_witness = fast_wots_signature.to_witness();
     let fast_wots_size_witness = fast_wots_signature.to_size_optimized_witness();
     let fast_wots_bitwise_witness = fast_wots_signature.to_bitwise_size_optimized_witness();
     let fast_wots_bitwise_terminal_witness = fast_wots_signature.to_bitwise_terminal_witness();
-    let fast_wots_exact = FastWots32::checksig_verify(&fast_wots_public_key);
-    let fast_wots_minimal = FastWots32::checksig_verify_minimal(&fast_wots_public_key);
-    let fast_wots_clear = FastWots32::checksig_verify_and_clear(&fast_wots_public_key);
-    let fast_wots_size = FastWots32::checksig_verify_size_optimized(&fast_wots_public_key);
+    let fast_wots_exact = FullWidthWots32::checksig_verify(&fast_wots_public_key);
+    let fast_wots_minimal = FullWidthWots32::checksig_verify_minimal(&fast_wots_public_key);
+    let fast_wots_clear = FullWidthWots32::checksig_verify_and_clear(&fast_wots_public_key);
+    let fast_wots_size = FullWidthWots32::checksig_verify_size_optimized(&fast_wots_public_key);
     let fast_wots_size_clear =
-        FastWots32::checksig_verify_size_optimized_and_clear(&fast_wots_public_key);
-    let fast_wots_clamped = FastWots32::checksig_verify_clamped(&fast_wots_public_key);
+        FullWidthWots32::checksig_verify_size_optimized_and_clear(&fast_wots_public_key);
+    let fast_wots_clamped = FullWidthWots32::checksig_verify_clamped(&fast_wots_public_key);
     let fast_wots_clamped_clear =
-        FastWots32::checksig_verify_clamped_and_clear(&fast_wots_public_key);
+        FullWidthWots32::checksig_verify_clamped_and_clear(&fast_wots_public_key);
     let fast_wots_bitwise =
-        FastWots32::checksig_verify_bitwise_size_optimized(&fast_wots_public_key);
+        FullWidthWots32::checksig_verify_bitwise_size_optimized(&fast_wots_public_key);
     let fast_wots_bitwise_clear =
-        FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&fast_wots_public_key);
+        FullWidthWots32::checksig_verify_bitwise_size_optimized_and_clear(&fast_wots_public_key);
     let fast_wots_exact_complete = script! {
         { fast_wots_exact.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
+        for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
             OP_DROP
         }
         OP_TRUE
     };
     let fast_wots_minimal_complete = script! {
         { fast_wots_minimal.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
+        for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
             OP_DROP
         }
         OP_TRUE
@@ -179,7 +182,7 @@ fn winternitz_metrics() -> Vec<Metric> {
     let fast_wots_clear_complete = script! {{ fast_wots_clear.clone() } OP_TRUE};
     let fast_wots_size_complete = script! {
         { fast_wots_size.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
+        for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
             OP_DROP
         }
         OP_TRUE
@@ -187,7 +190,7 @@ fn winternitz_metrics() -> Vec<Metric> {
     let fast_wots_size_clear_complete = script! {{ fast_wots_size_clear.clone() } OP_TRUE};
     let fast_wots_bitwise_complete = script! {
         { fast_wots_bitwise.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
+        for _ in 0..FullWidthWots32::MESSAGE_DIGITS {
             OP_DROP
         }
         OP_TRUE
@@ -198,8 +201,8 @@ fn winternitz_metrics() -> Vec<Metric> {
         0xff, 0x0f, 0x1e, 0x2d, 0x3c, 0x4b, 0x5a, 0x69, 0x78, 0x87, 0x96, 0xa5, 0xb4, 0xc3, 0xd2,
         0xe1, 0xf0,
     ];
-    let fast_wots_performance_signature = FastWots32::sign(
-        FastWots32::signing_key_from_seed([0x42; 32]),
+    let fast_wots_performance_signature = FullWidthWots32::sign(
+        FullWidthWots32::signing_key_from_seed([0x42; 32]),
         &fast_wots_performance_message,
     );
     let fast_wots_exact_hashes = fast_wots_performance_signature
@@ -207,12 +210,13 @@ fn winternitz_metrics() -> Vec<Metric> {
         .iter()
         .enumerate()
         .map(|(index, &digit)| {
-            let maximum =
-                if index == FastWots32::MESSAGE_DIGITS || index == FastWots32::MESSAGE_DIGITS + 1 {
-                    7
-                } else {
-                    15
-                };
+            let maximum = if index == FullWidthWots32::MESSAGE_DIGITS
+                || index == FullWidthWots32::MESSAGE_DIGITS + 1
+            {
+                7
+            } else {
+                15
+            };
             usize::from(maximum - digit)
         })
         .sum::<usize>();
@@ -221,12 +225,13 @@ fn winternitz_metrics() -> Vec<Metric> {
         .iter()
         .enumerate()
         .map(|(index, &digit)| {
-            let digit_bits =
-                if index == FastWots32::MESSAGE_DIGITS || index == FastWots32::MESSAGE_DIGITS + 1 {
-                    3
-                } else {
-                    4
-                };
+            let digit_bits = if index == FullWidthWots32::MESSAGE_DIGITS
+                || index == FullWidthWots32::MESSAGE_DIGITS + 1
+            {
+                3
+            } else {
+                4
+            };
             let half = 1u8 << (digit_bits - 1);
             if digit_bits <= 3 || digit < half {
                 usize::from(2 * half - 1)
@@ -320,7 +325,7 @@ fn winternitz_metrics() -> Vec<Metric> {
             key: "fast_wots32_clamped_total_max",
             value: fast_wots_clamped.clone().compile_with_policy().len()
                 + witness_size(
-                    &(0..FastWots32::TOTAL_DIGITS)
+                    &(0..FullWidthWots32::TOTAL_DIGITS)
                         .flat_map(|_| [vec![15], vec![0; 20]])
                         .collect::<Vec<_>>(),
                 ),
@@ -354,7 +359,7 @@ fn winternitz_metrics() -> Vec<Metric> {
             key: "fast_wots32_clamped_clear_total_max",
             value: fast_wots_clamped_clear.clone().compile_with_policy().len()
                 + witness_size(
-                    &(0..FastWots32::TOTAL_DIGITS)
+                    &(0..FullWidthWots32::TOTAL_DIGITS)
                         .flat_map(|_| [vec![15], vec![0; 20]])
                         .collect::<Vec<_>>(),
                 ),
@@ -403,7 +408,7 @@ fn winternitz_metrics() -> Vec<Metric> {
             readme: "src/signatures/winternitz/README.md",
             key: "fast_wots32_witness_max",
             value: witness_size(
-                &(0..FastWots32::TOTAL_DIGITS)
+                &(0..FullWidthWots32::TOTAL_DIGITS)
                     .flat_map(|_| [vec![15], vec![0; 20]])
                     .collect::<Vec<_>>(),
             ),
@@ -516,7 +521,7 @@ fn winternitz_metrics() -> Vec<Metric> {
 }
 
 fn winternitz_sha256_metrics() -> Vec<Metric> {
-    type WotsSha256 = FastWinternitz<32, Sha256>;
+    type WotsSha256 = FastWinternitz<32, Sha256, FullWidth>;
     let key = WotsSha256::signing_key_from_seed([0x42; 32]);
     let public_key = WotsSha256::public_key(&key);
     let signature = WotsSha256::sign(key, &[0; 32]);
@@ -938,6 +943,133 @@ fn winternitz_hybrid_metrics() -> Vec<Metric> {
         ],
     ]);
     full.into_iter().chain(short).collect()
+}
+
+/// Exact message-specific totals for the README's opening comparison.
+fn overview_hash_metrics<H: ChainHash>(keys: [[&'static str; 5]; 3]) -> Vec<Metric> {
+    let key = FastWinternitz::<32, H>::signing_key_from_seed([0x42; 32]);
+    let pk = FastWinternitz::<32, H>::public_key(&key);
+    let fragments = [
+        FastWinternitz::<32, H>::checksig_verify_clamped_and_clear(&pk),
+        FastWinternitz::<32, H>::checksig_verify_strided_and_clear(&pk),
+        FastWinternitz::<32, H>::checksig_verify_bitwise_size_optimized_and_clear(&pk),
+    ];
+    let messages = [core::array::from_fn(|i| i as u8), [0; 32], [0xff; 32]];
+    let witnesses = messages.map(|message| {
+        // Restored seeds are deterministic test fixtures, never production reuse.
+        let signature = FastWinternitz::<32, H>::sign(
+            FastWinternitz::<32, H>::signing_key_from_seed([0x42; 32]),
+            &message,
+        );
+        [
+            signature.to_size_optimized_witness(),
+            signature.to_strided_witness(),
+            signature.to_bitwise_terminal_witness(),
+        ]
+    });
+    let mut metrics = Vec::new();
+    for (index, (keys, fragment)) in keys.into_iter().zip(fragments).enumerate() {
+        let script_bytes = script_len(fragment.clone());
+        let witness_bytes = witnesses
+            .each_ref()
+            .map(|items| serialize(&items[index]).len());
+        // All signature data coexist at entry; no auxiliary hints are supplied.
+        // Verify each fixture and the shared item/peak counts stated below the table.
+        for items in &witnesses {
+            assert_eq!(items[index].len(), [134, 201, 333][index]);
+            let peak = max_stack_items(
+                script! { { fragment.clone() } OP_TRUE },
+                items[index].to_vec(),
+            );
+            assert_eq!(peak, [143, 209, 333][index]);
+        }
+        let values = [
+            script_bytes,
+            witness_bytes[0],
+            script_bytes + witness_bytes[0],
+            script_bytes + witness_bytes[1],
+            script_bytes + witness_bytes[2],
+        ];
+        metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key,
+            value,
+        }));
+    }
+    metrics
+}
+
+fn winternitz_overview_metrics() -> Vec<Metric> {
+    let hash160 = overview_hash_metrics::<Hash160>([
+        [
+            "overview_hash160_clamped_script",
+            "overview_hash160_clamped_mixed_witness",
+            "overview_hash160_clamped_mixed_total",
+            "overview_hash160_clamped_zero_total",
+            "overview_hash160_clamped_ff_total",
+        ],
+        [
+            "overview_hash160_strided_script",
+            "overview_hash160_strided_mixed_witness",
+            "overview_hash160_strided_mixed_total",
+            "overview_hash160_strided_zero_total",
+            "overview_hash160_strided_ff_total",
+        ],
+        [
+            "overview_hash160_bitwise_script",
+            "overview_hash160_bitwise_mixed_witness",
+            "overview_hash160_bitwise_mixed_total",
+            "overview_hash160_bitwise_zero_total",
+            "overview_hash160_bitwise_ff_total",
+        ],
+    ]);
+    let hybrid = overview_hash_metrics::<Sha256Hash160>([
+        [
+            "overview_hybrid_clamped_script",
+            "overview_hybrid_clamped_mixed_witness",
+            "overview_hybrid_clamped_mixed_total",
+            "overview_hybrid_clamped_zero_total",
+            "overview_hybrid_clamped_ff_total",
+        ],
+        [
+            "overview_hybrid_strided_script",
+            "overview_hybrid_strided_mixed_witness",
+            "overview_hybrid_strided_mixed_total",
+            "overview_hybrid_strided_zero_total",
+            "overview_hybrid_strided_ff_total",
+        ],
+        [
+            "overview_hybrid_bitwise_script",
+            "overview_hybrid_bitwise_mixed_witness",
+            "overview_hybrid_bitwise_mixed_total",
+            "overview_hybrid_bitwise_zero_total",
+            "overview_hybrid_bitwise_ff_total",
+        ],
+    ]);
+    let sha256 = overview_hash_metrics::<Sha256>([
+        [
+            "overview_sha256_clamped_script",
+            "overview_sha256_clamped_mixed_witness",
+            "overview_sha256_clamped_mixed_total",
+            "overview_sha256_clamped_zero_total",
+            "overview_sha256_clamped_ff_total",
+        ],
+        [
+            "overview_sha256_strided_script",
+            "overview_sha256_strided_mixed_witness",
+            "overview_sha256_strided_mixed_total",
+            "overview_sha256_strided_zero_total",
+            "overview_sha256_strided_ff_total",
+        ],
+        [
+            "overview_sha256_bitwise_script",
+            "overview_sha256_bitwise_mixed_witness",
+            "overview_sha256_bitwise_mixed_total",
+            "overview_sha256_bitwise_zero_total",
+            "overview_sha256_bitwise_ff_total",
+        ],
+    ]);
+    hash160.into_iter().chain(hybrid).chain(sha256).collect()
 }
 
 fn metrics() -> Vec<Metric> {
@@ -3601,6 +3733,7 @@ fn metrics() -> Vec<Metric> {
     .chain(winternitz_sha256_metrics())
     .chain(winternitz_preimage16_metrics())
     .chain(winternitz_hybrid_metrics())
+    .chain(winternitz_overview_metrics())
     .collect()
 }
 
@@ -3619,6 +3752,7 @@ fn winternitz_metrics_are_current() {
             .chain(winternitz_sha256_metrics())
             .chain(winternitz_preimage16_metrics())
             .chain(winternitz_hybrid_metrics())
+            .chain(winternitz_overview_metrics())
             .collect(),
     );
 }

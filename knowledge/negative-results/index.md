@@ -929,7 +929,7 @@ It consumed 333 entry data items and zero auxiliary hints.
 
 ## NR-039: Wider Winternitz chains cost more despite SHA-256 pair fusion
 
-For the 67-chain, 32-byte-message fixture with default `FullWidth` starts,
+For the 67-chain, 32-byte-message fixture with explicit `FullWidth` starts,
 SHA-256 adds 804 endpoint bytes and 804 serialized witness bytes to the
 corresponding HASH160 profile.
 The policy compiler fuses SHA256 pairs into HASH256, saving 461 script bytes
@@ -954,7 +954,7 @@ truncation is not offered. This limitation is `inspected`; no general
 impossibility claim about alternative 128-bit commitment constructions is
 made.
 
-The optional `Preimage16` mode avoids that mismatch by truncating only the
+The default `Preimage16` mode avoids that mismatch by truncating only the
 initial secret and leaving every hash output full width. It therefore saves
 witness bytes only for zero-valued digits, not every chain item or public
 commitment. For the zero-message fixture, the SHA-256 versus HASH160 witness
@@ -997,7 +997,7 @@ The hybrid hashes full-width 32-byte intermediate nodes and commits to
 HASH256. Relative to direct SHA-256 commitments, the final HASH160 opcode
 costs one byte and saves twelve endpoint bytes per chain. The endpoint has
 160 output bits and an approximately 80-bit generic collision bound, not a
-128-bit collision bound. Optional 16-byte initial secrets have at most
+128-bit collision bound. Default 16-byte initial secrets have at most
 128-bit exhaustive-search resistance; they do not shorten later nodes.
 
 The independent base-16 execution fixtures used initial node `i` filled with
