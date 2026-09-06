@@ -925,3 +925,29 @@ distribution and is not covered by that argument; it can still win for
 messages with many maximum digits. The recovery-witness terminal scratch
 generator was removed, leaving this experiment `inspected` and `unclassified`.
 It consumed 333 entry data items and zero auxiliary hints.
+
+
+## NR-039: Wider Winternitz chains cost more despite SHA-256 pair fusion
+
+For the 67-chain, 32-byte-message fixture, SHA-256 adds 804 endpoint bytes
+and 804 serialized witness bytes to the corresponding HASH160 profile.
+The policy compiler fuses SHA256 pairs into HASH256, saving 461 script bytes
+for exact/bitwise profiles and 264 for lookup profiles. Net same-profile
+script-plus-witness increases are therefore 1,147 or 1,344 bytes. SHA-256 is
+dominated for this byte-only objective, but retained as an explicit wider-hash
+option. This is `locally-reproduced` by hash-choice and metric tests, not an
+argument that the security profiles are interchangeable.
+
+All profiles use zero auxiliary hint items. Numeric witnesses have 134 entry
+data items and peaks 137–143; bitwise has 333 entry data items and peaks
+334/333 for recovery/terminal. Every item coexists at entry and is included
+in the combined main/alt peak. Metric execution is `research-unlimited`
+tapscript with the stack check disabled; separate strict-stack tests pass,
+without establishing Core consensus or policy acceptance.
+
+A 16-byte master secret or truncated host value cannot make native SHA-256
+or HASH160 chain outputs 16 bytes. Their native outputs are 32 and 20 bytes,
+and current standard tapscript has no native 128-bit truncation operation.
+Naive host truncation would disagree with Script, so it is not offered as a
+configuration. This limitation is `inspected`; no general impossibility claim
+about alternative 128-bit commitment constructions is made.

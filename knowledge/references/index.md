@@ -14,3 +14,10 @@ Source classes include:
 A rolling branch is discovery evidence, not immutable reproduction provenance.
 Before promoting a reported result, record the exact commit or document version
 used by the reproduction.
+
+
+The Fast Winternitz hash-choice comparison inspects Bitcoin Core **v29.0**
+native SHA256/HASH160/HASH256 semantics (`bitcoin-core-v29-hashes`). Its local
+compiled measurements use `bitcoin-script-locked` at
+`124b561ed75ac3ec4c6ad99207d8dcdd3bc67180`, including SHA256-pair fusion.
+That Core source inspection is not a Core execution or policy reproduction.

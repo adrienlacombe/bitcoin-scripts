@@ -1,11 +1,11 @@
 # Fast base-16 Winternitz signatures
 
-Implements a fixed-message-length HASH160 Winternitz path with a consuming
+Implements a fixed-message-length Winternitz path with HASH160 (default) or SHA-256 with a consuming
 one-time key API, domain-separated chain starts, canonical host-side message
 encoding, bitwise locking-size verifiers, lookup verifiers, a speed-oriented
 exact-hash verifier, and terminal variants.
 
-- **Question:** for 32-byte messages and 20-byte public endpoints fixed in the
+- **Original HASH160 question:** for 32-byte messages and 20-byte public endpoints fixed in the
   locking fragment, can tapscript verification execute exactly the required
   chain suffix while keeping script and stack costs close to the existing
   list-pick implementation?
@@ -28,7 +28,7 @@ exact-hash verifier, and terminal variants.
   strict-chain lookup is 5,007 bytes and
   exact-hash recovery is 5,267 bytes. The exact-hash terminal fragment is
   5,205 bytes.
-- **Combined on-chain size:** clamped lookup has the smallest measured sums
+- **HASH160 combined on-chain size:** clamped lookup has the smallest measured sums
   for the deterministic zero message and signer-node witness upper bounds.
   Its recovery totals are 5,947 and 6,013 bytes; its terminal totals are
   5,885 and 5,951 bytes. The strict numeric counterparts total 6,081/6,147
@@ -92,3 +92,45 @@ See the [implementation README](../../src/signatures/winternitz/README.md),
 [signature comparison](../comparisons/signatures.md), RFC 8391 source
 `rfc-8391`, BIP 342 source `bip-342`, and catalog record
 `signature/winternitz-fast-base16`.
+
+## Hash selection and measured tradeoffs
+
+`FastWinternitz<N, Hash160>` uses 20-byte nodes and endpoints;
+`FastWinternitz<N, Sha256>` uses 32-byte nodes and endpoints. Neither uses
+16-byte chain preimages. All nine Fast profiles support both; the old aliases
+and the legacy implementation retain HASH160. The selected hash controls both
+host derivation and Script steps, with separate key-derivation domains and
+hash-typed keys. Changing hashes requires new public commitments and witnesses.
+
+For the same 32-byte zero message, seed `[0x42;32]`, final compilation policy,
+and fragment-only boundary:
+
+| Profile | HASH160 script / witness / sum | SHA-256 script / witness / sum | Combined peak |
+| --- | ---: | ---: | ---: |
+| Clamped recovery | 4,471 / 1,476 / 5,947 | 5,011 / 2,280 / 7,291 | 141 |
+| Clamped terminal | 4,409 / 1,476 / 5,885 | 4,949 / 2,280 / 7,229 | 141 |
+| Bitwise recovery | 4,325 / 1,680 / 6,005 | 4,668 / 2,484 / 7,152 | 334 |
+| Bitwise terminal | 4,206 / 1,938 / 6,144 | 4,549 / 2,742 / 7,291 | 333 |
+
+SHA-256 grows 67 endpoint pushes and 67 witness nodes by 12 bytes each, but
+compiler pair fusion removes 461 bytes from exact/bitwise scripts and 264
+from lookup scripts. Net script-plus-witness increases are 1,147 and 1,344
+bytes respectively. Thus HASH160 is cheaper for matching profiles; SHA-256
+changes the internal ranking: bitwise wins zero-message recovery, clamped
+wins zero-message terminal. SHA-256 clamped/bitwise terminal signer-node bounds
+tie at 7,295 bytes. Full tables and metric markers are in the implementation
+README. This is not transaction weight and does not fix arbitrary hostile
+witness lengths.
+
+Both choices need zero auxiliary hints, with 134 numeric or 333 bitwise data
+items present together at entry and included in the peaks. Measurements are
+`locally-reproduced`, `research-unlimited` because the metric helper disables
+the stack limit in tapscript. Separate strict-stack tests cover all profiles
+and SHA-256 message lengths 1, 4, 16, 32, 64, and 80. Hash derivation is also
+compared with independent Python stdlib vectors; this does not establish
+Bitcoin Core consensus or policy validation.
+
+HASH160's idealized preimage/collision bounds are 160/80 bits; SHA-256's are
+256/128 bits. These are hash-level bounds, not a security proof for custom
+unkeyed Winternitz; multi-target and chain losses remain open under OP-009.
+The implementation does not claim RFC 8391 WOTS+ security for either hash.

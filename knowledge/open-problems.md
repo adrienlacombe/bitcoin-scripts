@@ -153,6 +153,15 @@ lookup profile saves 134 script bytes by adopting the legacy upper-saturation
 relation; strict raw-digit rejection remains separate. These improvements do
 not resolve the remaining protocol criteria.
 
+Hash choice is now executable for HASH160 and SHA-256, including separate
+derivation domains, all verifier profiles, independent host vectors, and
+compiled cost measurements that account for SHA256-pair fusion. Still open:
+quantify concrete forgery bounds for each choice at fixed chain count and
+reuse policy. **Acceptance criterion:** a reviewed multi-target analysis of
+this unkeyed construction for both widths, paired with complete-transaction
+costs for the same protocol and security target; hash-width bounds alone do
+not satisfy it. No 16-byte chain variant is implemented.
+
 ## OP-010 — External coverage review
 
 Continuously compare this atlas with primary papers and active upstream Bitcoin

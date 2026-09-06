@@ -33,7 +33,7 @@ use bitcoin_lab::{
     hashes::{blake3, ripemd160, sha1, sha256, shake256},
     signatures::{
         hors, lamport, pointlocks, schnorr,
-        winternitz::{FastWots32, Wots, Wots32},
+        winternitz::{FastWinternitz, FastWots32, Sha256, Wots, Wots32},
     },
     support::{
         execution::{execute_script_with_inputs, execute_script_with_inputs_strict},
@@ -510,6 +510,184 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
     ]
+}
+
+fn winternitz_sha256_metrics() -> Vec<Metric> {
+    type WotsSha256 = FastWinternitz<32, Sha256>;
+    let key = WotsSha256::signing_key_from_seed([0x42; 32]);
+    let public_key = WotsSha256::public_key(&key);
+    let signature = WotsSha256::sign(key, &[0; 32]);
+    // Every row records script, witness, and the same complete stack boundary
+    // as the existing HASH160 metric rows. No auxiliary witness hints.
+    let rows = [
+        (
+            [
+                "sha256_wots32_exact_lock",
+                "sha256_wots32_exact_witness",
+                "sha256_wots32_exact_witness_max",
+                "sha256_wots32_exact_stack",
+                "sha256_wots32_exact_static_opcodes",
+                "sha256_wots32_exact_total_zero",
+                "sha256_wots32_exact_total_max",
+            ],
+            WotsSha256::checksig_verify(&public_key),
+            signature.to_witness(),
+            true,
+        ),
+        (
+            [
+                "sha256_wots32_clear_lock",
+                "sha256_wots32_clear_witness",
+                "sha256_wots32_clear_witness_max",
+                "sha256_wots32_clear_stack",
+                "sha256_wots32_clear_static_opcodes",
+                "sha256_wots32_clear_total_zero",
+                "sha256_wots32_clear_total_max",
+            ],
+            WotsSha256::checksig_verify_and_clear(&public_key),
+            signature.to_witness(),
+            false,
+        ),
+        (
+            [
+                "sha256_wots32_minimal_lock",
+                "sha256_wots32_minimal_witness",
+                "sha256_wots32_minimal_witness_max",
+                "sha256_wots32_minimal_stack",
+                "sha256_wots32_minimal_static_opcodes",
+                "sha256_wots32_minimal_total_zero",
+                "sha256_wots32_minimal_total_max",
+            ],
+            WotsSha256::checksig_verify_minimal(&public_key),
+            signature.to_witness(),
+            true,
+        ),
+        (
+            [
+                "sha256_wots32_size_lock",
+                "sha256_wots32_size_witness",
+                "sha256_wots32_size_witness_max",
+                "sha256_wots32_size_stack",
+                "sha256_wots32_size_static_opcodes",
+                "sha256_wots32_size_total_zero",
+                "sha256_wots32_size_total_max",
+            ],
+            WotsSha256::checksig_verify_size_optimized(&public_key),
+            signature.to_size_optimized_witness(),
+            true,
+        ),
+        (
+            [
+                "sha256_wots32_size_clear_lock",
+                "sha256_wots32_size_clear_witness",
+                "sha256_wots32_size_clear_witness_max",
+                "sha256_wots32_size_clear_stack",
+                "sha256_wots32_size_clear_static_opcodes",
+                "sha256_wots32_size_clear_total_zero",
+                "sha256_wots32_size_clear_total_max",
+            ],
+            WotsSha256::checksig_verify_size_optimized_and_clear(&public_key),
+            signature.to_size_optimized_witness(),
+            false,
+        ),
+        (
+            [
+                "sha256_wots32_clamped_lock",
+                "sha256_wots32_clamped_witness",
+                "sha256_wots32_clamped_witness_max",
+                "sha256_wots32_clamped_stack",
+                "sha256_wots32_clamped_static_opcodes",
+                "sha256_wots32_clamped_total_zero",
+                "sha256_wots32_clamped_total_max",
+            ],
+            WotsSha256::checksig_verify_clamped(&public_key),
+            signature.to_size_optimized_witness(),
+            true,
+        ),
+        (
+            [
+                "sha256_wots32_clamped_clear_lock",
+                "sha256_wots32_clamped_clear_witness",
+                "sha256_wots32_clamped_clear_witness_max",
+                "sha256_wots32_clamped_clear_stack",
+                "sha256_wots32_clamped_clear_static_opcodes",
+                "sha256_wots32_clamped_clear_total_zero",
+                "sha256_wots32_clamped_clear_total_max",
+            ],
+            WotsSha256::checksig_verify_clamped_and_clear(&public_key),
+            signature.to_size_optimized_witness(),
+            false,
+        ),
+        (
+            [
+                "sha256_wots32_bitwise_lock",
+                "sha256_wots32_bitwise_witness",
+                "sha256_wots32_bitwise_witness_max",
+                "sha256_wots32_bitwise_stack",
+                "sha256_wots32_bitwise_static_opcodes",
+                "sha256_wots32_bitwise_total_zero",
+                "sha256_wots32_bitwise_total_max",
+            ],
+            WotsSha256::checksig_verify_bitwise_size_optimized(&public_key),
+            signature.to_bitwise_size_optimized_witness(),
+            true,
+        ),
+        (
+            [
+                "sha256_wots32_bitwise_clear_lock",
+                "sha256_wots32_bitwise_clear_witness",
+                "sha256_wots32_bitwise_clear_witness_max",
+                "sha256_wots32_bitwise_clear_stack",
+                "sha256_wots32_bitwise_clear_static_opcodes",
+                "sha256_wots32_bitwise_clear_total_zero",
+                "sha256_wots32_bitwise_clear_total_max",
+            ],
+            WotsSha256::checksig_verify_bitwise_size_optimized_and_clear(&public_key),
+            signature.to_bitwise_terminal_witness(),
+            false,
+        ),
+    ];
+    let mut metrics = Vec::new();
+    for (keys, fragment, witness, recover) in rows {
+        let script_bytes = script_len(fragment.clone());
+        let witness_bytes = serialize(&witness).len();
+        // Conservative signer-node bound: every numeric/bit item is one byte.
+        // This is not a bound on arbitrary accepted hostile encodings.
+        let maximum_items: Vec<Vec<u8>> = witness
+            .iter()
+            .map(|item| {
+                if item.len() <= 1 {
+                    vec![1]
+                } else {
+                    item.to_vec()
+                }
+            })
+            .collect();
+        let maximum_bytes = witness_size(&maximum_items);
+        let stack = max_stack_items(
+            script! {
+                { fragment.clone() }
+                if recover { for _ in 0..64 { OP_DROP } }
+                OP_TRUE
+            },
+            witness.to_vec(),
+        );
+        let values = [
+            script_bytes,
+            witness_bytes,
+            maximum_bytes,
+            stack,
+            static_non_push_opcodes(fragment),
+            script_bytes + witness_bytes,
+            script_bytes + maximum_bytes,
+        ];
+        metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key,
+            value,
+        }));
+    }
+    metrics
 }
 
 fn metrics() -> Vec<Metric> {
@@ -3170,6 +3348,7 @@ fn metrics() -> Vec<Metric> {
     .into_iter()
     .chain(prince_metrics())
     .chain(winternitz_metrics())
+    .chain(winternitz_sha256_metrics())
     .collect()
 }
 
@@ -3182,7 +3361,12 @@ fn readme_metrics_are_current() {
 /// Exercise every Winternitz profile without the ignored repository-wide suite.
 #[test]
 fn winternitz_metrics_are_current() {
-    check_readme_metrics(winternitz_metrics());
+    check_readme_metrics(
+        winternitz_metrics()
+            .into_iter()
+            .chain(winternitz_sha256_metrics())
+            .collect(),
+    );
 }
 
 /// Check or intentionally refresh only the PRINCEv2 metric markers, without

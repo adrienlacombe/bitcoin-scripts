@@ -96,6 +96,8 @@ exact boundary and security obligations.
 
 ## One-time authentication
 
+The original Winternitz rows below use HASH160 (20-byte nodes).
+
 | Construction | Authenticated object | Script bytes | Witness bytes (zero / upper bound) | Stack peak | Verification work / missing protocol work |
 | --- | --- | ---: | ---: | ---: | --- |
 | Lamport 2-bit | One value in 0..3 | 96 | 11 | not recorded | Reject rather than clamp invalid values |
@@ -167,3 +169,33 @@ constructions are one-time. Comparing them as interchangeable signatures also
 requires fixing key/public commitment cost, forgery target, durable reuse
 policy, raw ScriptNum canonicality, whether the recovered value must remain on
 the stack, and whether tapscript `MINIMALIF` is available.
+
+### HASH160 versus SHA-256 Winternitz
+
+Every Fast profile also supports `FastWinternitz<32, Sha256>`. SHA-256 uses
+32-byte nodes and endpoints, while HASH160 uses 20; neither uses 16. The
+following zero-message comparisons include fragment plus serialized data
+witness, excluding the same terminal consumer and transaction framing:
+
+| Profile | HASH160 sum | SHA-256 sum | SHA-256 signer-node bound |
+| --- | ---: | ---: | ---: |
+| Clamped recovery | 5,947 | 7,291 | 7,357 |
+| Clamped terminal | 5,885 | 7,229 | 7,295 |
+| Bitwise recovery | 6,005 | 7,152 | 7,414 |
+| Bitwise terminal | 6,144 | 7,291 | 7,295 |
+
+HASH160 is cheaper for matching profiles. SHA-256's larger hash width offers
+higher idealized hash-level security bounds, but is not a WOTS+ security
+claim. Adjacent SHA-256 steps compile into HASH256: exact/bitwise profiles
+save 461 script bytes from pair fusion, lookup profiles 264. This makes
+bitwise the lowest zero-message recovery cost within SHA-256; clamped is the
+lowest zero-message terminal cost. Keys are hash-typed and domain-separated;
+changing the hash changes both keys and witnesses.
+
+The SHA-256 numeric and bitwise witnesses still have 134 and 333 coexisting
+entry data items and zero auxiliary hints. Corresponding stack peaks are
+unchanged (137–143 numeric, 334/333 bitwise). All metric rows remain
+`research-unlimited` under the stack-limit-disabled tapscript helper, with
+separate strict-stack tests and no Core/policy validation. See the
+[full hash comparison](../../src/signatures/winternitz/README.md#sha-256-onchain-comparison)
+for script, witness, static opcode counts, security assumptions and boundaries.

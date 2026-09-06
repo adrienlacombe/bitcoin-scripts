@@ -37,3 +37,10 @@ See the [implementation README](../../src/signatures/winternitz/README.md),
 [Fast implementation](winternitz-fast-base16.md),
 [signature comparison](../comparisons/signatures.md), and catalog record
 `signature/winternitz-base16`.
+
+
+The legacy API remains fixed to HASH160 and 20-byte chain values. Hash selection
+is available in the independent [Fast implementation](winternitz-fast-base16.md)
+as `FastWinternitz<N, Hash160>` or `FastWinternitz<N, Sha256>`. SHA-256 uses
+32-byte nodes; neither implementation emits 16-byte chain values. Changing
+hashes requires new keys and witnesses.

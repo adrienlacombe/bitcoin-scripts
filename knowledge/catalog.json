@@ -461,9 +461,32 @@
             "g32_cumulative_auxiliary_hint_items": 0,
             "g32_entry_data_items_consumed_by_these_invocations": 368,
             "output_limbs": 16,
-            "limb_bits_low_to_high": [20, 20, 20, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            "centered_20_bit_limb_range": [-541200, 507375],
-            "centered_15_bit_limb_range": [-16912, 15855],
+            "limb_bits_low_to_high": [
+              20,
+              20,
+              20,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15
+            ],
+            "centered_20_bit_limb_range": [
+              -541200,
+              507375
+            ],
+            "centered_15_bit_limb_range": [
+              -16912,
+              15855
+            ],
             "script_authored_power_items": 16,
             "script_authored_power_bits": "15..30",
             "temporary_powers_removed_before_return": true,
@@ -510,7 +533,10 @@
             "g32_entry_data_items_consumed_by_these_invocations": 376,
             "output_digits": 51,
             "digit_bits": 5,
-            "digit_range": [0, 31],
+            "digit_range": [
+              0,
+              31
+            ],
             "script_authored_power_items": 16,
             "script_authored_power_bits": "15..30",
             "temporary_powers_removed_before_return": true,
@@ -2963,7 +2989,7 @@
       "id": "signature/winternitz-fast-base16",
       "name": "Fast base-16 Winternitz signatures",
       "class": "signature/one-time",
-      "summary": "Tapscript-specialized HASH160 Winternitz with clamped numeric profiles minimizing measured script-plus-witness bounds, canonical-bit locking-size profiles, mixed-radix checksums, strict-chain and exact-hash alternatives, staged checksum reductions, and consuming keys.",
+      "summary": "Tapscript-specialized Winternitz with typed HASH160 (20-byte, default) or SHA-256 (32-byte) chains, measured script-plus-witness costs including SHA-256 pair fusion, clamped/strict numeric and canonical-bit profiles, mixed-radix checksums, and consuming keys.",
       "status": "experimental",
       "evidence": "locally-reproduced",
       "execution": "research-unlimited",
@@ -2974,19 +3000,23 @@
       "tests": [
         "signatures::winternitz::fast::tests",
         "signatures::winternitz::fast::exact_chain_tests",
-        "signatures::winternitz::fast::clamped_chain_tests"
+        "signatures::winternitz::fast::clamped_chain_tests",
+        "signatures::winternitz::fast::hash_choice_tests",
+        "tools/winternitz_hash_vectors.py",
+        "tests/primitive_metrics.rs"
       ],
       "references": [
         "rfc-8391",
         "bip-342",
         "bitcoin-script-locked",
-        "bitcoin-scriptexec-locked"
+        "bitcoin-scriptexec-locked",
+        "bitcoin-core-v29-hashes"
       ],
       "techniques": [
         "hash-chain",
         "lookup-table"
       ],
-      "security": "Strictly one-time classic HASH160-chain Winternitz, not WOTS+; durable seed-reuse prevention remains a caller obligation. Bitwise profiles bind canonical false/true items through tapscript MINIMALIF; numeric profiles do not bind raw in-range ScriptNum serialization. Explicit clamped profiles also accept above-range raw digits as their authenticated chain maximum, matching legacy saturation semantics; strict profiles retain upper rejection. Size profiles accept arbitrary-length HASH160 preimages whenever at least one hash executes, while signer nodes and strict-chain profiles require 20 bytes.",
+      "security": "Strictly one-time classic unkeyed hash-chain Winternitz, not WOTS+; durable seed-reuse prevention remains a caller obligation. Bitwise profiles bind canonical false/true items through tapscript MINIMALIF; numeric profiles do not bind raw in-range ScriptNum serialization. Explicit clamped profiles also accept above-range raw digits as their authenticated chain maximum, matching legacy saturation semantics; strict profiles retain upper rejection. Size profiles accept arbitrary-length selected-hash preimages whenever at least one hash executes, while signer nodes and strict-chain profiles require 20 bytes (HASH160) or 32 bytes (SHA-256). Idealized single-target classical preimage/collision bounds are 160/80 and 256/128 bits respectively, not end-to-end Winternitz security claims; multi-target and chain losses remain unquantified. The hash choice is bound to key types and separate derivation domains, not chosen by the witness.",
       "stack_contract": "Numeric witnesses contain 134 items; bitwise witnesses contain 333 items and peak at 334 for recovery or 333 for terminal verification. All profiles require zero auxiliary hint items and all data items coexist at entry. Recovery profiles return 64 message nibbles, while terminal profiles clear all signature state and require a terminal predicate.",
       "configurations": [
         {
@@ -3002,7 +3032,9 @@
             "witness_data_items": 134,
             "hint_stack_items": 0,
             "script_plus_zero_witness_bytes": 5885,
-            "script_plus_maximum_signer_witness_bytes": 5951
+            "script_plus_maximum_signer_witness_bytes": 5951,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded; witness is complete serialized zero-message data and maximum covers signer-produced 20-byte nodes and canonical in-range digits rather than adversarial accepted encodings",
           "script_bytes": 4409,
@@ -3033,7 +3065,9 @@
             "witness_data_items": 134,
             "hint_stack_items": 0,
             "script_plus_zero_witness_bytes": 5947,
-            "script_plus_maximum_signer_witness_bytes": 6013
+            "script_plus_maximum_signer_witness_bytes": 6013,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; terminal consumer excluded; witness is complete serialized zero-message data and maximum covers signer-produced 20-byte nodes and canonical in-range digits rather than adversarial accepted encodings",
           "script_bytes": 4471,
@@ -3065,7 +3099,9 @@
             "verifier": "canonical MINIMALIF bit branches with exact complementary hashes",
             "checksum_order": "fused mixed-radix Horner decoding",
             "static_non_push_opcodes": 2716,
-            "balanced_vector_hash160_calls": 498
+            "balanced_vector_hash160_calls": 498,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers 20-byte signer nodes with every bit item one byte",
           "script_bytes": 4325,
@@ -3096,7 +3132,9 @@
             ],
             "verifier": "canonical MINIMALIF bit branches with fused remaining-distance accumulator",
             "static_non_push_opcodes": 2586,
-            "balanced_vector_hash160_calls": 498
+            "balanced_vector_hash160_calls": 498,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers 20-byte signer nodes with every bit item one byte",
           "script_bytes": 4206,
@@ -3123,7 +3161,9 @@
             "verifier": "strict numeric symmetric eight-value OP_PICK lookup",
             "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
             "static_non_push_opcodes": 3061,
-            "balanced_vector_hash160_calls": 729
+            "balanced_vector_hash160_calls": 729,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers signer-produced 20-byte nodes rather than adversarial accepted item lengths",
           "script_bytes": 4605,
@@ -3150,7 +3190,9 @@
             "verifier": "strict numeric symmetric eight-value OP_PICK lookup",
             "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
             "static_non_push_opcodes": 2999,
-            "balanced_vector_hash160_calls": 729
+            "balanced_vector_hash160_calls": 729,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers signer-produced 20-byte nodes rather than adversarial accepted item lengths",
           "script_bytes": 4543,
@@ -3177,7 +3219,9 @@
             "verifier": "8/4/2/1 residual-digit exact conditional hash",
             "checksum_order": "little-endian mixed radix [8,8,16], staged together for Horner decoding",
             "static_non_push_opcodes": 3325,
-            "balanced_vector_hash160_calls": 498
+            "balanced_vector_hash160_calls": 498,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data",
           "script_bytes": 5267,
@@ -3204,7 +3248,9 @@
             "verifier": "strict symmetric eight-value OP_PICK lookup",
             "checksum_order": "little-endian mixed radix [8,8,16], staged together for Horner decoding",
             "static_non_push_opcodes": 3262,
-            "balanced_vector_hash160_calls": 729
+            "balanced_vector_hash160_calls": 729,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size and explicit numeric digit checks, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data",
           "script_bytes": 5007,
@@ -3231,7 +3277,9 @@
             "verifier": "8/4/2/1 residual-digit exact conditional hash",
             "checksum": "staged verified digits with Horner checksum reduction",
             "static_non_push_opcodes": 3263,
-            "balanced_vector_hash160_calls": 498
+            "balanced_vector_hash160_calls": 498,
+            "hash": "HASH160",
+            "chain_value_bytes": 20
           },
           "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, staged checksum reduction, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data",
           "script_bytes": 5205,
@@ -3248,17 +3296,334 @@
             "fast_wots32_witness_max",
             "fast_wots32_clear_stack"
           ]
+        },
+        {
+          "id": "fast-wots32-sha256-clamped-clear",
+          "label": "FastWinternitz<32, Sha256> clamped lookup terminal verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "upper-clamped symmetric eight-value OP_PICK lookup",
+            "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
+            "static_non_push_opcodes": 2601,
+            "witness_data_items": 134,
+            "hint_stack_items": 0,
+            "script_plus_zero_witness_bytes": 7229,
+            "script_plus_maximum_signer_witness_bytes": 7295,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 729,
+            "fused_sha256_pairs": 264
+          },
+          "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded; witness is complete serialized zero-message data and maximum covers signer-produced 32-byte nodes and canonical in-range digits rather than adversarial accepted encodings; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 4949,
+          "witness_bytes": 2280,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 141,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4949,
+          "metric_keys": [
+            "sha256_wots32_clamped_clear_lock",
+            "sha256_wots32_clamped_clear_witness",
+            "sha256_wots32_clamped_clear_witness_max",
+            "sha256_wots32_clamped_clear_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-clamped-recovery",
+          "label": "FastWinternitz<32, Sha256> clamped lookup recovery verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "upper-clamped symmetric eight-value OP_PICK lookup",
+            "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
+            "static_non_push_opcodes": 2663,
+            "witness_data_items": 134,
+            "hint_stack_items": 0,
+            "script_plus_zero_witness_bytes": 7291,
+            "script_plus_maximum_signer_witness_bytes": 7357,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 729,
+            "fused_sha256_pairs": 264
+          },
+          "includes": "fragment-only: 67 embedded endpoints, authenticated upper-clamped numeric digits, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; terminal consumer excluded; witness is complete serialized zero-message data and maximum covers signer-produced 32-byte nodes and canonical in-range digits rather than adversarial accepted encodings; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 5011,
+          "witness_bytes": 2280,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 141,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 5011,
+          "metric_keys": [
+            "sha256_wots32_clamped_lock",
+            "sha256_wots32_clamped_witness",
+            "sha256_wots32_clamped_witness_max",
+            "sha256_wots32_clamped_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-bitwise-recovery",
+          "label": "FastWinternitz<32, Sha256> canonical-bit recovery verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "message_base": 16,
+            "checksum_radices": [
+              8,
+              8,
+              16
+            ],
+            "verifier": "canonical MINIMALIF bit branches with exact complementary hashes",
+            "checksum_order": "fused mixed-radix Horner decoding",
+            "static_non_push_opcodes": 2255,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 498,
+            "script_plus_zero_witness_bytes": 7152,
+            "script_plus_maximum_signer_witness_bytes": 7414,
+            "fused_sha256_pairs": 461,
+            "hint_stack_items": 0,
+            "witness_data_items": 333
+          },
+          "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers 32-byte signer nodes with every bit item one byte; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 4668,
+          "witness_bytes": 2484,
+          "witness_bytes_max": 2746,
+          "max_stack_items": 334,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4668,
+          "metric_keys": [
+            "sha256_wots32_bitwise_lock",
+            "sha256_wots32_bitwise_witness",
+            "sha256_wots32_bitwise_witness_max",
+            "sha256_wots32_bitwise_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-bitwise-clear",
+          "label": "FastWinternitz<32, Sha256> canonical-bit terminal verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "message_base": 16,
+            "checksum_radices": [
+              8,
+              8,
+              16
+            ],
+            "verifier": "canonical MINIMALIF bit branches with fused remaining-distance accumulator",
+            "static_non_push_opcodes": 2125,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 498,
+            "script_plus_zero_witness_bytes": 7291,
+            "script_plus_maximum_signer_witness_bytes": 7295,
+            "fused_sha256_pairs": 461,
+            "hint_stack_items": 0,
+            "witness_data_items": 333
+          },
+          "includes": "fragment-only: 67 embedded endpoints, canonical bit checks, relaxed raw chain-item length, mixed-radix checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers 32-byte signer nodes with every bit item one byte; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 4549,
+          "witness_bytes": 2742,
+          "witness_bytes_max": 2746,
+          "max_stack_items": 333,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4549,
+          "metric_keys": [
+            "sha256_wots32_bitwise_clear_lock",
+            "sha256_wots32_bitwise_clear_witness",
+            "sha256_wots32_bitwise_clear_witness_max",
+            "sha256_wots32_bitwise_clear_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-size-recovery",
+          "label": "FastWinternitz<32, Sha256> locking-size lookup recovery verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "strict numeric symmetric eight-value OP_PICK lookup",
+            "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
+            "static_non_push_opcodes": 2797,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 729,
+            "script_plus_zero_witness_bytes": 7425,
+            "script_plus_maximum_signer_witness_bytes": 7491,
+            "fused_sha256_pairs": 264,
+            "hint_stack_items": 0,
+            "witness_data_items": 134
+          },
+          "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data and witness maximum covers signer-produced 32-byte nodes rather than adversarial accepted item lengths; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 5145,
+          "witness_bytes": 2280,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 141,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 5145,
+          "metric_keys": [
+            "sha256_wots32_size_lock",
+            "sha256_wots32_size_witness",
+            "sha256_wots32_size_witness_max",
+            "sha256_wots32_size_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-size-clear",
+          "label": "FastWinternitz<32, Sha256> locking-size lookup terminal verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "strict numeric symmetric eight-value OP_PICK lookup",
+            "checksum_order": "size-specific [8,8,16] witness order with Horner decoding",
+            "static_non_push_opcodes": 2735,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 729,
+            "script_plus_zero_witness_bytes": 7363,
+            "script_plus_maximum_signer_witness_bytes": 7429,
+            "fused_sha256_pairs": 264,
+            "hint_stack_items": 0,
+            "witness_data_items": 134
+          },
+          "includes": "fragment-only: 67 embedded endpoints, explicit numeric digit checks, relaxed raw chain-item length, checksum verification, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data and witness maximum covers signer-produced 32-byte nodes rather than adversarial accepted item lengths; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 5083,
+          "witness_bytes": 2280,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 141,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 5083,
+          "metric_keys": [
+            "sha256_wots32_size_clear_lock",
+            "sha256_wots32_size_clear_witness",
+            "sha256_wots32_size_clear_witness_max",
+            "sha256_wots32_size_clear_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-exact",
+          "label": "FastWinternitz<32, Sha256> exact-hash recovery verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "8/4/2/1 residual-digit exact conditional hash",
+            "checksum_order": "little-endian mixed radix [8,8,16], staged together for Horner decoding",
+            "static_non_push_opcodes": 2864,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 498,
+            "script_plus_zero_witness_bytes": 7890,
+            "script_plus_maximum_signer_witness_bytes": 7956,
+            "fused_sha256_pairs": 461,
+            "hint_stack_items": 0,
+            "witness_data_items": 134
+          },
+          "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 5610,
+          "witness_bytes": 2280,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 137,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 5610,
+          "metric_keys": [
+            "sha256_wots32_exact_lock",
+            "sha256_wots32_exact_witness",
+            "sha256_wots32_exact_witness_max",
+            "sha256_wots32_exact_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-strict-lookup",
+          "label": "FastWinternitz<32, Sha256> strict eight-value lookup verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "strict symmetric eight-value OP_PICK lookup",
+            "checksum_order": "little-endian mixed radix [8,8,16], staged together for Horner decoding",
+            "static_non_push_opcodes": 2998,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 729,
+            "script_plus_zero_witness_bytes": 7827,
+            "script_plus_maximum_signer_witness_bytes": 7893,
+            "fused_sha256_pairs": 264,
+            "hint_stack_items": 0,
+            "witness_data_items": 134
+          },
+          "includes": "fragment-only: 67 embedded endpoints, chain-value size and explicit numeric digit checks, checksum verification, and 64 recovered message nibbles; script excludes a terminal consumer, witness is complete serialized zero-message data; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 5547,
+          "witness_bytes": 2280,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 143,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 5547,
+          "metric_keys": [
+            "sha256_wots32_minimal_lock",
+            "sha256_wots32_minimal_witness",
+            "sha256_wots32_minimal_witness_max",
+            "sha256_wots32_minimal_stack"
+          ]
+        },
+        {
+          "id": "fast-wots32-sha256-exact-clear",
+          "label": "FastWinternitz<32, Sha256> exact-hash staged terminal verifier",
+          "parameters": {
+            "message_bytes": 32,
+            "base": 16,
+            "verifier": "8/4/2/1 residual-digit exact conditional hash",
+            "checksum": "staged verified digits with Horner checksum reduction",
+            "static_non_push_opcodes": 2802,
+            "hash": "SHA-256",
+            "chain_value_bytes": 32,
+            "balanced_vector_sha256_chain_steps": 498,
+            "script_plus_zero_witness_bytes": 7828,
+            "script_plus_maximum_signer_witness_bytes": 7894,
+            "fused_sha256_pairs": 461,
+            "hint_stack_items": 0,
+            "witness_data_items": 134
+          },
+          "includes": "fragment-only: 67 embedded endpoints, chain-value size checks, tapscript MINIMALIF digit bounds, staged checksum reduction, and message cleanup; terminal truthy predicate excluded, witness is complete serialized zero-message data; selected hash is SHA-256, adjacent SHA-256 steps are compiled to HASH256; zero auxiliary hints and all data items coexist at entry",
+          "script_bytes": 5548,
+          "witness_bytes": 2280,
+          "witness_bytes_max": 2346,
+          "max_stack_items": 137,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 5548,
+          "metric_keys": [
+            "sha256_wots32_clear_lock",
+            "sha256_wots32_clear_witness",
+            "sha256_wots32_clear_witness_max",
+            "sha256_wots32_clear_stack"
+          ]
         }
       ],
       "limitations": [
         "One-time key only; consuming type does not provide crash-safe or distributed reuse prevention",
-        "Classic unkeyed HASH160 chains are not RFC 8391 WOTS+",
+        "Classic unkeyed hash chains are not RFC 8391 WOTS+",
         "Mixed-radix checksum endpoints are not wire-compatible with the earlier all-base-16 Fast draft",
-        "Size profiles omit explicit 20-byte chain-item checks and therefore accept arbitrary-length preimages whenever at least one hash executes",
+        "Size profiles omit explicit selected-width chain-item checks and therefore accept arbitrary-length preimages whenever at least one hash executes",
         "Exact verifier depends on tapscript consensus MINIMALIF",
         "Raw nonminimal encodings of valid ScriptNums are not bound",
         "Metric executor disables the stack limit and reports no executed-opcode count",
-        "No Bitcoin Core consensus or policy reproduction"
+        "No Bitcoin Core consensus or policy reproduction",
+        "SHA-256 keys and signatures are not wire-compatible with HASH160; persist the hash choice with the seed",
+        "No 16-byte chain mode; neither native hash opcode returns 16 bytes"
       ],
       "open_problems": [
         "OP-002",

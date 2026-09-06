@@ -21,6 +21,8 @@ Lamport helper authenticates only two bits. Winternitz provides typed message
 APIs but requires strict one-time key management and can make state transport
 witness-heavy.
 
+The following Fast costs use the default HASH160 chain.
+
 The Fast Winternitz path makes the transport boundary more explicit. Numeric
 profiles use 134 digit/chain items; the 4,325-byte bitwise recovery profile uses
 333 items, peaks at 334, and returns the same 64 high/low nibbles. Its canonical
@@ -50,3 +52,15 @@ not determine transport cost: serialized signature data must also be counted.
 Protocol evaluation must count public commitment placement, witness
 serialization, recovered-state cleanup, and the transaction graph that prevents
 key reuse.
+
+Hash selection is also part of the protocol: `FastWinternitz<N, Sha256>` uses
+32-byte chain nodes instead of HASH160's 20-byte nodes, and separate key
+derivation domains. Persist the hash choice and construct matching public
+commitments before signing. The 32-byte zero-message clamped terminal total
+increases from 5,885 to 7,229 bytes; entry item count (134), auxiliary hint
+count (0), and combined peak (141) stay the same. SHA-256 pair fusion changes
+the profile ranking: bitwise recovery totals 7,152 bytes versus clamped's
+7,291, at the cost of 333 entry items and peak 334. These are fragment-plus-data
+measurements under `research-unlimited` tapscript execution, not complete
+state-transport transaction weights. A wider hash does not replace a concrete
+multi-target security argument or durable one-time-key management.

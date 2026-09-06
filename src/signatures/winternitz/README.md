@@ -1,25 +1,25 @@
 # Winternitz one-time signatures
 
-This module contains two base-16 HASH160 Winternitz implementations. The
-compatibility API preserves the original list-pick, brute-force, and binary-
-search verifiers. The new `FastWinternitz<N>` API is an independent fixed-size
-implementation with separate locking-size, verification-latency, strict chain-
-encoding, and terminal-cleanup profiles, plus low-allocation host key generation
-and an explicit one-time-key lifecycle.
+This module contains a compatibility HASH160 API and an independent typed
+`FastWinternitz<N, H = Hash160>` API. The typed implementation supports
+HASH160 and SHA-256 across every verification profile, with a consuming
+one-time signing key. The hash choice is fixed when creating the key and
+locking script; it is never selected by an untrusted witness.
 
-This is a classic unkeyed HASH160-chain construction, not WOTS+. WOTS+ as
-specified by RFC 8391 has addressed, keyed chain functions and different
-security assumptions.
+This is classic unkeyed-chain Winternitz, not the addressed, keyed WOTS+
+construction specified by RFC 8391. Changing the hash does not establish
+WOTS+ security.
 
 ## Parameters
 
 - Base: 16; each message byte becomes high then low nibble.
-- Chain function: `HASH160`, with 20-byte chain values and 15 links.
+- Chain function: `Hash160` (default, 20 bytes) or `Sha256` (32 bytes);
+  message chains have 15 links. SHA-2 means SHA-256 here, not SHA-512.
 - Fast signing seed: 32 bytes.
-- Fast chain namespace: `HASH160(domain || seed || message_bytes_be64)`, where
-  the domain is `bitcoin-lab/winternitz-hash160/v1`; chain `i` starts at
-  `HASH160(namespace || i_be32)`. Computing the namespace once keeps every
-  per-chain derivation within one SHA-256 block.
+- Fast chain namespace: `H(domain || seed || message_bytes_be64)`, where
+  the domains are `bitcoin-lab/winternitz-hash160/v1` and
+  `bitcoin-lab/winternitz-sha256/v1`; chain `i` starts at
+  `H(namespace || i_be32)`. Both hashes retain fixed-size chain arrays.
 - Fast checksum: `sum(15 - message_digit)`, encoded in the minimum number of
   bits and split into mixed power-of-two digits of at most four bits. For
   `FastWots32`, the checksum radices are `[8, 8, 16]` and digits are
@@ -43,9 +43,9 @@ The numeric size witness uses `[chain, digit]` pairs and orders the checksum pai
 so Script can use one short Horner pass. Its symmetric eight-value lookup
 strictly rejects numeric digits outside `0..=15`. It intentionally omits a
 separate chain-item length check. At digit 15 the direct endpoint equality
-already forces 20 bytes; below 15 at least one HASH160 normalizes the selected
-value before equality. The signer always emits 20-byte nodes, but the accepted
-relation also includes arbitrary-length HASH160 preimages for digits below 15.
+already forces the selected hash width; below 15 at least one hash normalizes
+the selected value before equality. Signer nodes are always 20 or 32 bytes; the
+accepted relation also includes arbitrary-length preimages for digits below 15.
 That is a deliberate four-byte-per-chain locking-size tradeoff, not a claim of
 canonical raw witness encoding.
 
@@ -66,7 +66,7 @@ a mixed-radix Horner pass. The terminal profile instead accumulates remaining
 hash distances inside the branches. This trades a larger witness and stack
 peak for the minimum measured locking fragment.
 
-The speed profile minimizes executed HASH160 calls while keeping one copy of
+The speed profile minimizes executed chain hash steps while keeping one copy of
 each public endpoint in the locking fragment. For digit `d`, it executes
 exactly `15 - d` hashes by sharing 8/4/2/1 conditional blocks. The final
 conditional is also the tapscript-consensus `MINIMALIF` range check: inputs
@@ -75,12 +75,44 @@ outside `0..=15` leave a residual other than canonical false or true and fail.
 The minimal profile instead builds an eight-value lookup list. It is smaller,
 but executes 15 hashes when `d < 8` and seven otherwise. It explicitly checks
 the numeric digit range before `OP_PICK`. Both profiles validate that every
-chain input is exactly 20 bytes.
+chain input is exactly the selected hash width (20 or 32 bytes).
 
-Host key generation streams the domain and chain index into HASH160 and keeps
+Host key generation streams the domain and chain index into the selected hash and keeps
 each chain value in a fixed-size array. It performs no secret-vector clone,
 per-chain heap allocation, or collision-list sort. `FastSigningKey` is neither
 `Copy` nor `Clone`, and `sign` consumes it.
+
+## Hash choice and preimage sizes
+
+Neither option uses 16-byte signature nodes. A 16-byte message (`FastWots16`)
+is unrelated to the chain width. A shorter master secret would not shorten
+intermediate hash outputs or public endpoints. Standard tapscript has no
+native 128-bit SHA-256/HASH160 truncation operation; simply truncating host
+values would break chain verification. No 16-byte chain mode is implemented.
+
+```rust
+use bitcoin_lab::signatures::winternitz::{FastWinternitz, Hash160, Sha256};
+
+type Small = FastWinternitz<32, Hash160>; // Also FastWots32 / FastWinternitz<32>.
+type Wide = FastWinternitz<32, Sha256>;
+assert_eq!(Small::HASH_BYTES, 20);
+assert_eq!(Wide::HASH_BYTES, 32);
+let key = Wide::generate_signing_key();
+let public_key = Wide::public_key(&key);
+let signature = Wide::sign(key, &[0x42; 32]);
+let verifier = Wide::checksig_verify_clamped_and_clear(&public_key);
+let witness = signature.to_size_optimized_witness();
+// Append the protocol terminal predicate before executing a complete leaf.
+```
+
+The hash parameter also appears on `FastSigningKey<N, H>`,
+`FastPublicKey<N, H>`, `FastSignature<N, H>`, and `FastChainValue<H>`.
+Existing `FastWots4/16/32/64/80` aliases remain fixed to HASH160. All existing
+HASH160 key derivation, witness layouts, and metric sizes are preserved.
+Persist the hash choice alongside keys and seeds: SHA-256 uses a separate
+domain and its keys, endpoints, and signatures are not wire-compatible with
+HASH160. Both choices still require durable one-time-key management.
+The legacy `Wots`/`CompactWots` API remains HASH160-only.
 
 ## Script metrics
 
@@ -93,6 +125,8 @@ the maximum is the signer-produced maximum with 20-byte chain nodes and every
 digit item one byte. It is not the size profile's maximum accepted adversarial
 item length. The stack fixtures append a message consumer or `OP_TRUE` so
 execution ends cleanly.
+
+The following table uses **HASH160** throughout.
 
 | `Wots32` configuration | Locking script | Unlocking witness (zero / upper bound) | Maximum stack items |
 | --- | ---: | ---: | ---: |
@@ -177,6 +211,57 @@ helper disables the stack limit, so these rows are `research-unlimited` even
 though separate strict-stack unit tests execute the same profiles below the
 1,000-item ceiling. They are not Bitcoin Core consensus or policy validation.
 
+## SHA-256 onchain comparison
+
+Same deterministic seed, zero message, compilation policy, fragment boundary,
+and stack wrappers as the HASH160 rows above. All sizes below are final
+policy-produced sizes with `CompileOptions::ALL` (each script is below 32 KiB).
+Witness upper bounds use 32-byte signer nodes with every digit/bit item one
+byte; they do not bound the size profiles' accepted hostile preimages.
+
+| SHA-256 profile | Script bytes | Witness bytes (zero / bound) | Stack peak | Static non-push opcodes | Script + witness (zero / bound) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Exact recovery | <!-- metric:sha256_wots32_exact_lock -->5610<!-- /metric:sha256_wots32_exact_lock --> | <!-- metric:sha256_wots32_exact_witness -->2280<!-- /metric:sha256_wots32_exact_witness --> / <!-- metric:sha256_wots32_exact_witness_max -->2346<!-- /metric:sha256_wots32_exact_witness_max --> | <!-- metric:sha256_wots32_exact_stack -->137<!-- /metric:sha256_wots32_exact_stack --> | <!-- metric:sha256_wots32_exact_static_opcodes -->2864<!-- /metric:sha256_wots32_exact_static_opcodes --> | <!-- metric:sha256_wots32_exact_total_zero -->7890<!-- /metric:sha256_wots32_exact_total_zero --> / <!-- metric:sha256_wots32_exact_total_max -->7956<!-- /metric:sha256_wots32_exact_total_max --> |
+| Exact terminal | <!-- metric:sha256_wots32_clear_lock -->5548<!-- /metric:sha256_wots32_clear_lock --> | <!-- metric:sha256_wots32_clear_witness -->2280<!-- /metric:sha256_wots32_clear_witness --> / <!-- metric:sha256_wots32_clear_witness_max -->2346<!-- /metric:sha256_wots32_clear_witness_max --> | <!-- metric:sha256_wots32_clear_stack -->137<!-- /metric:sha256_wots32_clear_stack --> | <!-- metric:sha256_wots32_clear_static_opcodes -->2802<!-- /metric:sha256_wots32_clear_static_opcodes --> | <!-- metric:sha256_wots32_clear_total_zero -->7828<!-- /metric:sha256_wots32_clear_total_zero --> / <!-- metric:sha256_wots32_clear_total_max -->7894<!-- /metric:sha256_wots32_clear_total_max --> |
+| Strict-chain lookup | <!-- metric:sha256_wots32_minimal_lock -->5547<!-- /metric:sha256_wots32_minimal_lock --> | <!-- metric:sha256_wots32_minimal_witness -->2280<!-- /metric:sha256_wots32_minimal_witness --> / <!-- metric:sha256_wots32_minimal_witness_max -->2346<!-- /metric:sha256_wots32_minimal_witness_max --> | <!-- metric:sha256_wots32_minimal_stack -->143<!-- /metric:sha256_wots32_minimal_stack --> | <!-- metric:sha256_wots32_minimal_static_opcodes -->2998<!-- /metric:sha256_wots32_minimal_static_opcodes --> | <!-- metric:sha256_wots32_minimal_total_zero -->7827<!-- /metric:sha256_wots32_minimal_total_zero --> / <!-- metric:sha256_wots32_minimal_total_max -->7893<!-- /metric:sha256_wots32_minimal_total_max --> |
+| Strict numeric recovery | <!-- metric:sha256_wots32_size_lock -->5145<!-- /metric:sha256_wots32_size_lock --> | <!-- metric:sha256_wots32_size_witness -->2280<!-- /metric:sha256_wots32_size_witness --> / <!-- metric:sha256_wots32_size_witness_max -->2346<!-- /metric:sha256_wots32_size_witness_max --> | <!-- metric:sha256_wots32_size_stack -->141<!-- /metric:sha256_wots32_size_stack --> | <!-- metric:sha256_wots32_size_static_opcodes -->2797<!-- /metric:sha256_wots32_size_static_opcodes --> | <!-- metric:sha256_wots32_size_total_zero -->7425<!-- /metric:sha256_wots32_size_total_zero --> / <!-- metric:sha256_wots32_size_total_max -->7491<!-- /metric:sha256_wots32_size_total_max --> |
+| Strict numeric terminal | <!-- metric:sha256_wots32_size_clear_lock -->5083<!-- /metric:sha256_wots32_size_clear_lock --> | <!-- metric:sha256_wots32_size_clear_witness -->2280<!-- /metric:sha256_wots32_size_clear_witness --> / <!-- metric:sha256_wots32_size_clear_witness_max -->2346<!-- /metric:sha256_wots32_size_clear_witness_max --> | <!-- metric:sha256_wots32_size_clear_stack -->141<!-- /metric:sha256_wots32_size_clear_stack --> | <!-- metric:sha256_wots32_size_clear_static_opcodes -->2735<!-- /metric:sha256_wots32_size_clear_static_opcodes --> | <!-- metric:sha256_wots32_size_clear_total_zero -->7363<!-- /metric:sha256_wots32_size_clear_total_zero --> / <!-- metric:sha256_wots32_size_clear_total_max -->7429<!-- /metric:sha256_wots32_size_clear_total_max --> |
+| Clamped recovery | <!-- metric:sha256_wots32_clamped_lock -->5011<!-- /metric:sha256_wots32_clamped_lock --> | <!-- metric:sha256_wots32_clamped_witness -->2280<!-- /metric:sha256_wots32_clamped_witness --> / <!-- metric:sha256_wots32_clamped_witness_max -->2346<!-- /metric:sha256_wots32_clamped_witness_max --> | <!-- metric:sha256_wots32_clamped_stack -->141<!-- /metric:sha256_wots32_clamped_stack --> | <!-- metric:sha256_wots32_clamped_static_opcodes -->2663<!-- /metric:sha256_wots32_clamped_static_opcodes --> | <!-- metric:sha256_wots32_clamped_total_zero -->7291<!-- /metric:sha256_wots32_clamped_total_zero --> / <!-- metric:sha256_wots32_clamped_total_max -->7357<!-- /metric:sha256_wots32_clamped_total_max --> |
+| Clamped terminal | <!-- metric:sha256_wots32_clamped_clear_lock -->4949<!-- /metric:sha256_wots32_clamped_clear_lock --> | <!-- metric:sha256_wots32_clamped_clear_witness -->2280<!-- /metric:sha256_wots32_clamped_clear_witness --> / <!-- metric:sha256_wots32_clamped_clear_witness_max -->2346<!-- /metric:sha256_wots32_clamped_clear_witness_max --> | <!-- metric:sha256_wots32_clamped_clear_stack -->141<!-- /metric:sha256_wots32_clamped_clear_stack --> | <!-- metric:sha256_wots32_clamped_clear_static_opcodes -->2601<!-- /metric:sha256_wots32_clamped_clear_static_opcodes --> | <!-- metric:sha256_wots32_clamped_clear_total_zero -->7229<!-- /metric:sha256_wots32_clamped_clear_total_zero --> / <!-- metric:sha256_wots32_clamped_clear_total_max -->7295<!-- /metric:sha256_wots32_clamped_clear_total_max --> |
+| Bitwise recovery | <!-- metric:sha256_wots32_bitwise_lock -->4668<!-- /metric:sha256_wots32_bitwise_lock --> | <!-- metric:sha256_wots32_bitwise_witness -->2484<!-- /metric:sha256_wots32_bitwise_witness --> / <!-- metric:sha256_wots32_bitwise_witness_max -->2746<!-- /metric:sha256_wots32_bitwise_witness_max --> | <!-- metric:sha256_wots32_bitwise_stack -->334<!-- /metric:sha256_wots32_bitwise_stack --> | <!-- metric:sha256_wots32_bitwise_static_opcodes -->2255<!-- /metric:sha256_wots32_bitwise_static_opcodes --> | <!-- metric:sha256_wots32_bitwise_total_zero -->7152<!-- /metric:sha256_wots32_bitwise_total_zero --> / <!-- metric:sha256_wots32_bitwise_total_max -->7414<!-- /metric:sha256_wots32_bitwise_total_max --> |
+| Bitwise terminal | <!-- metric:sha256_wots32_bitwise_clear_lock -->4549<!-- /metric:sha256_wots32_bitwise_clear_lock --> | <!-- metric:sha256_wots32_bitwise_clear_witness -->2742<!-- /metric:sha256_wots32_bitwise_clear_witness --> / <!-- metric:sha256_wots32_bitwise_clear_witness_max -->2746<!-- /metric:sha256_wots32_bitwise_clear_witness_max --> | <!-- metric:sha256_wots32_bitwise_clear_stack -->333<!-- /metric:sha256_wots32_bitwise_clear_stack --> | <!-- metric:sha256_wots32_bitwise_clear_static_opcodes -->2125<!-- /metric:sha256_wots32_bitwise_clear_static_opcodes --> | <!-- metric:sha256_wots32_bitwise_clear_total_zero -->7291<!-- /metric:sha256_wots32_bitwise_clear_total_zero --> / <!-- metric:sha256_wots32_bitwise_clear_total_max -->7295<!-- /metric:sha256_wots32_bitwise_clear_total_max --> |
+
+All nine profiles require **0 auxiliary hint items**. Complete witnesses have
+**134 numeric data items** or **333 bitwise data items**, all coexisting at
+script entry. The reported combined main-plus-alt-stack peaks include them;
+compose with other state against the same 1,000-item limit. Metrics use the
+stack-limit-disabled tapscript helper and remain **research-unlimited**.
+Separate strict-stack tests cover both hashes; no Bitcoin Core consensus or
+policy validation is claimed.
+
+For a 32-byte message, 67 endpoints and 67 witness nodes each grow by 12 bytes:
+804 extra endpoint bytes and 804 extra witness bytes. However, the centralized
+compiler fuses adjacent `OP_SHA256 OP_SHA256` into `OP_HASH256`, preserving the
+chain relation. This saves 461 script bytes in exact/bitwise profiles and 264
+in lookup profiles, compared with the unfused SHA-256 byte estimate. The net
+script-plus-witness increase over the matching HASH160 profile is **1,147**
+or **1,344 bytes**, respectively. Static opcode counts decrease accordingly;
+these are not measured executed-opcode counts, and a HASH256 still performs
+two SHA-256 chain steps. No host speed claim is needed for this comparison.
+
+HASH160 remains cheaper than SHA-256 for each matching profile in this
+32-byte-message comparison. Within SHA-256, bitwise recovery has the lowest
+zero-message recovery sum (7,152 bytes), while clamped recovery has the lower
+signer-node bound (7,357). Clamped terminal has the lowest zero-message
+terminal sum (7,229); its 7,295-byte signer-node bound ties bitwise terminal.
+The optimum therefore depends on hash, message, output contract, and whether
+raw digit aliases are acceptable. All totals exclude the same terminal
+consumer, script/control-block framing, and transaction overhead; these are
+not complete transaction weights.
+
+Native hash semantics are recorded in [Bitcoin Core v29.0 interpreter.cpp](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp).
+Pair fusion is in the pinned [rust-bitcoin-script optimizer](https://github.com/BitVM/rust-bitcoin-script/blob/124b561ed75ac3ec4c6ad99207d8dcdd3bc67180/src/optimizer.rs).
+
 ## Security
 
 Every key is strictly one-time. Signing twice with the same seed and message
@@ -185,8 +270,12 @@ checksum. The consuming Rust API reduces accidental reuse but cannot protect
 against restoring a seed, copying it before construction, crash rollback, or
 concurrent signers; durable state is a protocol obligation.
 
-HASH160 gives 160-bit outputs, at most generic 160-bit preimage resistance and
-80-bit collision resistance before multi-target losses. The custom chain-start
+HASH160 gives 160-bit outputs; SHA-256 gives 256-bit outputs. Their idealized
+single-target classical preimage bounds are at most 160/256 bits, and birthday
+collision bounds are at most 80/128 bits, respectively. These hash-level bounds
+are not end-to-end signature security claims: multi-target attacks, chain
+length, message choice, and the custom unkeyed construction require analysis.
+SHA-256 offers a wider hash security margin at higher onchain byte cost. The custom chain-start
 domain separates message lengths and chain indices, but subsequent chain links
 are unkeyed and unaddressed. This implementation has not received the analysis
 of standardized WOTS+ parameter sets.
@@ -219,7 +308,7 @@ fragments.
 
 Speed/strict witness order is
 `[digit_0, chain_0, digit_1, chain_1, ...]`. Script consumes pairs backwards,
-so the 20-byte chain value is on top and can be size-checked before the numeric
+so the 20-byte HASH160 or 32-byte SHA-256 chain value is on top and can be size-checked before the numeric
 digit is used. A zero digit is an empty item; positive digits use canonical
 one-byte ScriptNum items. Size witness order is message `[chain_i, digit_i]` pairs
 followed by checksum pairs in reverse chain-index order; callers must use
@@ -300,3 +389,10 @@ See the [Winternitz knowledge page](../../../knowledge/primitives/winternitz-bas
 [one-time authentication comparison](../../../knowledge/comparisons/signatures.md),
 [cost model](../../../knowledge/cost-model.md), and catalog record
 `signature/winternitz-base16`.
+
+The hash-choice tests cover every verifier with strict stack enforcement,
+message/checksum boundaries, wrong hash witnesses, altered chain nodes and
+checksum binding, malformed numbers, and compile-time key-type
+separation. Run `python3 tools/winternitz_hash_vectors.py` to reproduce the
+independent Python stdlib endpoint/signature digests for both hashes; Rust
+compares those fixed vectors in `hash_choice_tests.rs`.

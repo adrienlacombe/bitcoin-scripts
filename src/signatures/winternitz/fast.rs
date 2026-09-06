@@ -4,25 +4,22 @@
 //! machinery. Its fixed witness layout lets the generated Script validate the
 //! chain value before touching the digit and saves one stack swap per chain.
 
+use super::chain_hash::{ChainHash, Hash160};
 use crate::support::script::{script, Script};
-use bitcoin::{
-    hashes::{hash160, Hash, HashEngine},
-    Witness,
-};
-use core::fmt;
+use bitcoin::Witness;
+use core::{fmt, marker::PhantomData};
 use rand::RngCore;
 
 /// Bytes in a HASH160 chain value.
-pub const HASH_BYTES: usize = 20;
+#[cfg(test)]
+const HASH_BYTES: usize = 20;
 /// Winternitz base.
 pub const BASE: u8 = 16;
 /// Maximum base-16 digit.
 pub const MAX_DIGIT: u8 = BASE - 1;
 
-/// One HASH160 chain node or endpoint.
-pub type FastChainValue = [u8; HASH_BYTES];
-
-const CHAIN_START_DOMAIN: &[u8] = b"bitcoin-lab/winternitz-hash160/v1";
+/// One chain node or endpoint: 20 bytes for HASH160, 32 for SHA-256.
+pub type FastChainValue<H = Hash160> = <H as ChainHash>::Value;
 
 /// A one-time signing key bound to a fixed message length.
 ///
@@ -30,15 +27,19 @@ const CHAIN_START_DOMAIN: &[u8] = b"bitcoin-lab/winternitz-hash160/v1";
 /// consumes it. This prevents accidental reuse through the ordinary API. It
 /// cannot prevent restoring the same seed twice, so applications must still
 /// maintain durable one-time-key state.
-pub struct FastSigningKey<const MESSAGE_BYTES: usize> {
+pub struct FastSigningKey<const MESSAGE_BYTES: usize, H: ChainHash = Hash160> {
     seed: [u8; 32],
+    hash: PhantomData<H>,
 }
 
-impl<const MESSAGE_BYTES: usize> FastSigningKey<MESSAGE_BYTES> {
+impl<const MESSAGE_BYTES: usize, H: ChainHash> FastSigningKey<MESSAGE_BYTES, H> {
     /// Restores a signing key from a deterministic 32-byte seed.
     pub fn from_seed(seed: [u8; 32]) -> Self {
         FastWinternitz::<MESSAGE_BYTES>::assert_parameters();
-        Self { seed }
+        Self {
+            seed,
+            hash: PhantomData,
+        }
     }
 
     /// Generates a signing key with the operating system RNG.
@@ -57,7 +58,7 @@ impl<const MESSAGE_BYTES: usize> FastSigningKey<MESSAGE_BYTES> {
     }
 }
 
-impl<const MESSAGE_BYTES: usize> fmt::Debug for FastSigningKey<MESSAGE_BYTES> {
+impl<const MESSAGE_BYTES: usize, H: ChainHash> fmt::Debug for FastSigningKey<MESSAGE_BYTES, H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FastSigningKey")
             .field("message_bytes", &MESSAGE_BYTES)
@@ -68,14 +69,14 @@ impl<const MESSAGE_BYTES: usize> fmt::Debug for FastSigningKey<MESSAGE_BYTES> {
 
 /// Chain endpoints committed by a Fast Winternitz verifier.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FastPublicKey<const MESSAGE_BYTES: usize> {
-    chain_ends: Box<[FastChainValue]>,
+pub struct FastPublicKey<const MESSAGE_BYTES: usize, H: ChainHash = Hash160> {
+    chain_ends: Box<[FastChainValue<H>]>,
 }
 
-impl<const MESSAGE_BYTES: usize> FastPublicKey<MESSAGE_BYTES> {
+impl<const MESSAGE_BYTES: usize, H: ChainHash> FastPublicKey<MESSAGE_BYTES, H> {
     /// Reconstructs a public key from persisted chain endpoints.
     pub fn from_chain_ends(
-        chain_ends: Vec<FastChainValue>,
+        chain_ends: Vec<FastChainValue<H>>,
     ) -> Result<Self, InvalidFastPublicKeyLength> {
         FastWinternitz::<MESSAGE_BYTES>::assert_parameters();
         if chain_ends.len() != FastWinternitz::<MESSAGE_BYTES>::TOTAL_DIGITS {
@@ -90,7 +91,7 @@ impl<const MESSAGE_BYTES: usize> FastPublicKey<MESSAGE_BYTES> {
     }
 
     /// Returns the chain endpoints in message/checksum digit order.
-    pub fn chain_ends(&self) -> &[FastChainValue] {
+    pub fn chain_ends(&self) -> &[FastChainValue<H>] {
         &self.chain_ends
     }
 }
@@ -118,12 +119,12 @@ impl std::error::Error for InvalidFastPublicKeyLength {}
 
 /// A Fast Winternitz signature before Bitcoin witness serialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FastSignature<const MESSAGE_BYTES: usize> {
-    chain_values: Box<[FastChainValue]>,
+pub struct FastSignature<const MESSAGE_BYTES: usize, H: ChainHash = Hash160> {
+    chain_values: Box<[FastChainValue<H>]>,
     digits: Box<[u8]>,
 }
 
-impl<const MESSAGE_BYTES: usize> FastSignature<MESSAGE_BYTES> {
+impl<const MESSAGE_BYTES: usize, H: ChainHash> FastSignature<MESSAGE_BYTES, H> {
     /// Returns the authenticated message digits followed by checksum digits.
     ///
     /// Message bytes use high-nibble/low-nibble order. Checksum digits use a
@@ -133,8 +134,8 @@ impl<const MESSAGE_BYTES: usize> FastSignature<MESSAGE_BYTES> {
         &self.digits
     }
 
-    /// Returns the selected HASH160 chain values.
-    pub fn chain_values(&self) -> &[FastChainValue] {
+    /// Returns the selected chain values for the configured hash.
+    pub fn chain_values(&self) -> &[FastChainValue<H>] {
         &self.chain_values
     }
 
@@ -151,7 +152,7 @@ impl<const MESSAGE_BYTES: usize> FastSignature<MESSAGE_BYTES> {
             } else {
                 witness.push([digit]);
             }
-            witness.push(chain_value);
+            witness.push(chain_value.as_ref());
         }
         witness
     }
@@ -167,12 +168,12 @@ impl<const MESSAGE_BYTES: usize> FastSignature<MESSAGE_BYTES> {
         debug_assert_eq!(self.chain_values.len(), self.digits.len());
         let mut witness = Witness::new();
         for index in 0..FastWinternitz::<MESSAGE_BYTES>::MESSAGE_DIGITS {
-            witness.push(self.chain_values[index]);
+            witness.push(self.chain_values[index].as_ref());
             push_digit(&mut witness, self.digits[index]);
         }
         for checksum_index in (0..FastWinternitz::<MESSAGE_BYTES>::CHECKSUM_DIGITS).rev() {
             let index = FastWinternitz::<MESSAGE_BYTES>::MESSAGE_DIGITS + checksum_index;
-            witness.push(self.chain_values[index]);
+            witness.push(self.chain_values[index].as_ref());
             push_digit(&mut witness, self.digits[index]);
         }
         witness
@@ -193,7 +194,7 @@ impl<const MESSAGE_BYTES: usize> FastSignature<MESSAGE_BYTES> {
             for bit_index in 0..FastWinternitz::<MESSAGE_BYTES>::chain_digit_bits(chain_index) {
                 push_digit(&mut witness, (digit >> bit_index) & 1);
             }
-            witness.push(chain_value);
+            witness.push(chain_value.as_ref());
         }
         witness
     }
@@ -215,15 +216,36 @@ impl<const MESSAGE_BYTES: usize> FastSignature<MESSAGE_BYTES> {
             for bit_index in (1..digit_bits).rev() {
                 push_digit(&mut witness, (remaining >> bit_index) & 1);
             }
-            witness.push(chain_value);
+            witness.push(chain_value.as_ref());
             push_digit(&mut witness, remaining & 1);
         }
         witness
     }
 }
 
-/// Fixed-message-length, base-16, HASH160 Winternitz operations.
-pub struct FastWinternitz<const MESSAGE_BYTES: usize>;
+/// Fixed-message-length, base-16 Winternitz with a native hash choice.
+///
+/// Use `FastWinternitz::<32, Sha256>` for SHA-256; omitting the hash keeps
+/// the existing HASH160 keys, signatures, and generated Script unchanged.
+/// Keys carry the hash choice in their type, so algorithms cannot be mixed.
+///
+/// ```
+/// use bitcoin_lab::signatures::winternitz::{FastWinternitz, Sha256};
+/// type WotsSha256 = FastWinternitz<32, Sha256>;
+/// assert_eq!(WotsSha256::HASH_BYTES, 32);
+/// let key = WotsSha256::generate_signing_key();
+/// let public_key = WotsSha256::public_key(&key);
+/// let signature = WotsSha256::sign(key, &[0x42; 32]);
+/// let verifier = WotsSha256::checksig_verify_clamped_and_clear(&public_key);
+/// let witness = signature.to_size_optimized_witness();
+/// ```
+///
+/// ```compile_fail
+/// use bitcoin_lab::signatures::winternitz::{FastWinternitz, Sha256};
+/// let key = FastWinternitz::<32>::signing_key_from_seed([0x42; 32]);
+/// FastWinternitz::<32, Sha256>::public_key(&key);
+/// ```
+pub struct FastWinternitz<const MESSAGE_BYTES: usize, H: ChainHash = Hash160>(PhantomData<H>);
 
 /// Fast Winternitz over a 4-byte message.
 pub type FastWots4 = FastWinternitz<4>;
@@ -236,7 +258,10 @@ pub type FastWots64 = FastWinternitz<64>;
 /// Fast Winternitz over an 80-byte message.
 pub type FastWots80 = FastWinternitz<80>;
 
-impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
+impl<const MESSAGE_BYTES: usize, H: ChainHash> FastWinternitz<MESSAGE_BYTES, H> {
+    /// Bytes per signer-produced chain preimage and public commitment.
+    pub const HASH_BYTES: usize = H::VALUE_BYTES;
+
     /// Number of base-16 message digits.
     pub const MESSAGE_DIGITS: usize = MESSAGE_BYTES * 2;
     /// Number of bits required by the Winternitz checksum.
@@ -244,7 +269,7 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
         binary_digits(Self::MESSAGE_DIGITS.saturating_mul(MAX_DIGIT as usize));
     /// Number of mixed-radix checksum digits, each using at most four bits.
     pub const CHECKSUM_DIGITS: usize = (Self::CHECKSUM_BITS + 3) / 4;
-    /// Total number of HASH160 chains.
+    /// Total number of hash chains.
     pub const TOTAL_DIGITS: usize = Self::MESSAGE_DIGITS + Self::CHECKSUM_DIGITS;
 
     const fn assert_parameters() {
@@ -296,12 +321,12 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     }
 
     /// Generates a fresh one-time signing key.
-    pub fn generate_signing_key() -> FastSigningKey<MESSAGE_BYTES> {
+    pub fn generate_signing_key() -> FastSigningKey<MESSAGE_BYTES, H> {
         FastSigningKey::generate()
     }
 
     /// Restores a deterministic one-time signing key.
-    pub fn signing_key_from_seed(seed: [u8; 32]) -> FastSigningKey<MESSAGE_BYTES> {
+    pub fn signing_key_from_seed(seed: [u8; 32]) -> FastSigningKey<MESSAGE_BYTES, H> {
         FastSigningKey::from_seed(seed)
     }
 
@@ -309,13 +334,13 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     ///
     /// The hot loop uses fixed-size values and performs no per-chain heap
     /// allocation, cloning, or sorting.
-    pub fn public_key(key: &FastSigningKey<MESSAGE_BYTES>) -> FastPublicKey<MESSAGE_BYTES> {
+    pub fn public_key(key: &FastSigningKey<MESSAGE_BYTES, H>) -> FastPublicKey<MESSAGE_BYTES, H> {
         Self::assert_parameters();
-        let namespace = derive_chain_namespace::<MESSAGE_BYTES>(&key.seed);
+        let namespace = derive_chain_namespace::<MESSAGE_BYTES, H>(&key.seed);
         let chain_ends = (0..Self::TOTAL_DIGITS)
             .map(|chain_index| {
-                let start = derive_chain_start(&namespace, chain_index as u32);
-                hash_chain(start, Self::chain_max_digit(chain_index))
+                let start = derive_chain_start::<H>(&namespace, chain_index as u32);
+                hash_chain::<H>(start, Self::chain_max_digit(chain_index))
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();
@@ -324,19 +349,19 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
 
     /// Signs one fixed-size message and consumes the one-time signing key.
     pub fn sign(
-        key: FastSigningKey<MESSAGE_BYTES>,
+        key: FastSigningKey<MESSAGE_BYTES, H>,
         message: &[u8; MESSAGE_BYTES],
-    ) -> FastSignature<MESSAGE_BYTES> {
+    ) -> FastSignature<MESSAGE_BYTES, H> {
         Self::assert_parameters();
         let digits = message_and_checksum_digits(message);
         debug_assert_eq!(digits.len(), Self::TOTAL_DIGITS);
-        let namespace = derive_chain_namespace::<MESSAGE_BYTES>(&key.seed);
+        let namespace = derive_chain_namespace::<MESSAGE_BYTES, H>(&key.seed);
         let chain_values = digits
             .iter()
             .enumerate()
             .map(|(chain_index, &digit)| {
-                let start = derive_chain_start(&namespace, chain_index as u32);
-                hash_chain(start, digit)
+                let start = derive_chain_start::<H>(&namespace, chain_index as u32);
+                hash_chain::<H>(start, digit)
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();
@@ -349,15 +374,15 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// Builds the speed-optimized verifier and leaves authenticated message
     /// nibbles on the main stack in high/low order.
     ///
-    /// Every message chain performs exactly `15 - digit` HASH160 calls;
+    /// Every message chain performs exactly `15 - digit` native hash calls;
     /// checksum chains use their mixed-radix maximum. The checksum and all
     /// chain values are consumed. The caller must consume the message and
     /// leave a terminal truthy predicate for a complete tapscript leaf.
-    pub fn checksig_verify(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+    pub fn checksig_verify(public_key: &FastPublicKey<MESSAGE_BYTES, H>) -> Script {
         Self::assert_public_key(public_key);
         script! {
             for chain_index in (0..Self::TOTAL_DIGITS).rev() {
-                { verify_chain_exact(
+                { verify_chain_exact::<H>(
                     public_key.chain_ends[chain_index],
                     Self::chain_digit_bits(chain_index),
                     false,
@@ -373,11 +398,11 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// Verified digits are collected on altstack before the checksum reduction.
     /// This avoids moving a running accumulator around every chain verifier.
     /// The fragment leaves an empty stack; append a terminal predicate.
-    pub fn checksig_verify_and_clear(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+    pub fn checksig_verify_and_clear(public_key: &FastPublicKey<MESSAGE_BYTES, H>) -> Script {
         Self::assert_public_key(public_key);
         script! {
             for chain_index in (0..Self::TOTAL_DIGITS).rev() {
-                { verify_chain_exact(
+                { verify_chain_exact::<H>(
                     public_key.chain_ends[chain_index],
                     Self::chain_digit_bits(chain_index),
                     false,
@@ -397,11 +422,11 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// The message-chain lookup has eight entries and executes 15 hashes for
     /// digits below 8 and seven otherwise; checksum lists are radix-specific. Use
     /// [`Self::checksig_verify`] when verification latency is the objective.
-    pub fn checksig_verify_minimal(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+    pub fn checksig_verify_minimal(public_key: &FastPublicKey<MESSAGE_BYTES, H>) -> Script {
         Self::assert_public_key(public_key);
         script! {
             for chain_index in (0..Self::TOTAL_DIGITS).rev() {
-                { verify_chain_minimal(
+                { verify_chain_minimal::<H>(
                     public_key.chain_ends[chain_index],
                     Self::chain_digit_bits(chain_index),
                     false,
@@ -417,9 +442,9 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// rejects digits outside each chain's radix, uses a symmetric half-radix lookup,
     /// and leaves the authenticated message nibbles on the main stack. To save
     /// four locking bytes per chain it does not separately require the supplied
-    /// chain item to be 20 bytes; the accepted relation is documented on the
+    /// chain item to have the selected hash width; the accepted relation is documented on the
     /// internal chain verifier below.
-    pub fn checksig_verify_size_optimized(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+    pub fn checksig_verify_size_optimized(public_key: &FastPublicKey<MESSAGE_BYTES, H>) -> Script {
         Self::checksig_verify_numeric_size(public_key, false, false)
     }
 
@@ -428,7 +453,7 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// The fragment leaves an empty stack after successful verification. The
     /// caller must append the surrounding protocol's terminal predicate.
     pub fn checksig_verify_size_optimized_and_clear(
-        public_key: &FastPublicKey<MESSAGE_BYTES>,
+        public_key: &FastPublicKey<MESSAGE_BYTES, H>,
     ) -> Script {
         Self::checksig_verify_numeric_size(public_key, false, true)
     }
@@ -444,7 +469,7 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// Negative digits and oversized ScriptNums fail. Like the strict numeric
     /// size profile, this profile admits arbitrary-length chain preimages
     /// below the maximum digit rather than checking raw chain-item length.
-    pub fn checksig_verify_clamped(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+    pub fn checksig_verify_clamped(public_key: &FastPublicKey<MESSAGE_BYTES, H>) -> Script {
         Self::checksig_verify_numeric_size(public_key, true, false)
     }
 
@@ -453,12 +478,14 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// Uses the same witness and clamped-message contract as
     /// [`Self::checksig_verify_clamped`]. The successful fragment leaves an
     /// empty stack; append the surrounding protocol's terminal predicate.
-    pub fn checksig_verify_clamped_and_clear(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+    pub fn checksig_verify_clamped_and_clear(
+        public_key: &FastPublicKey<MESSAGE_BYTES, H>,
+    ) -> Script {
         Self::checksig_verify_numeric_size(public_key, true, true)
     }
 
     fn checksig_verify_numeric_size(
-        public_key: &FastPublicKey<MESSAGE_BYTES>,
+        public_key: &FastPublicKey<MESSAGE_BYTES, H>,
         clamp: bool,
         clear: bool,
     ) -> Script {
@@ -467,14 +494,14 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
             // Checksum chain 0 is on top, then the remaining checksum
             // chains and message chains in reverse order.
             for checksum_index in 0..Self::CHECKSUM_DIGITS {
-                { verify_chain_size_optimized(
+                { verify_chain_size_optimized::<H>(
                     public_key.chain_ends[Self::MESSAGE_DIGITS + checksum_index],
                     Self::checksum_digit_bits(checksum_index),
                     clamp,
                 ) }
             }
             for message_index in (0..Self::MESSAGE_DIGITS).rev() {
-                { verify_chain_size_optimized(public_key.chain_ends[message_index], 4, clamp) }
+                { verify_chain_size_optimized::<H>(public_key.chain_ends[message_index], 4, clamp) }
             }
             if clear {
                 { verify_checksum_and_clear_horner::<MESSAGE_BYTES>() }
@@ -492,25 +519,25 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// the message chains are checked, avoiding per-checksum-digit stack
     /// storage and reconstruction.
     pub fn checksig_verify_bitwise_size_optimized(
-        public_key: &FastPublicKey<MESSAGE_BYTES>,
+        public_key: &FastPublicKey<MESSAGE_BYTES, H>,
     ) -> Script {
         Self::assert_public_key(public_key);
         script! {
             for checksum_index in (0..Self::CHECKSUM_DIGITS).rev() {
                 if checksum_index == Self::CHECKSUM_DIGITS - 1 {
-                    { verify_chain_bitwise_and_recover(
+                    { verify_chain_bitwise_and_recover::<H>(
                         public_key.chain_ends[Self::MESSAGE_DIGITS + checksum_index],
                         Self::checksum_digit_bits(checksum_index),
                     ) }
                 } else {
-                    { verify_chain_bitwise_and_fuse_horner(
+                    { verify_chain_bitwise_and_fuse_horner::<H>(
                         public_key.chain_ends[Self::MESSAGE_DIGITS + checksum_index],
                         Self::checksum_digit_bits(checksum_index),
                     ) }
                 }
             }
             for message_index in (0..Self::MESSAGE_DIGITS).rev() {
-                { verify_chain_bitwise_and_recover(public_key.chain_ends[message_index], 4) }
+                { verify_chain_bitwise_and_recover::<H>(public_key.chain_ends[message_index], 4) }
             }
             { recover_message_and_verify_fused_checksum::<MESSAGE_BYTES>() }
         }
@@ -524,20 +551,20 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// branches accumulate the Winternitz checksum relation. The fragment
     /// leaves an empty stack; append the surrounding protocol's predicate.
     pub fn checksig_verify_bitwise_size_optimized_and_clear(
-        public_key: &FastPublicKey<MESSAGE_BYTES>,
+        public_key: &FastPublicKey<MESSAGE_BYTES, H>,
     ) -> Script {
         Self::assert_public_key(public_key);
         script! {
             for chain_index in (0..Self::TOTAL_DIGITS).rev() {
                 if chain_index < Self::MESSAGE_DIGITS {
-                    { verify_chain_bitwise_and_accumulate(
+                    { verify_chain_bitwise_and_accumulate::<H>(
                         public_key.chain_ends[chain_index],
                         4,
                         1,
                         false,
                     ) }
                 } else {
-                    { verify_chain_bitwise_and_accumulate(
+                    { verify_chain_bitwise_and_accumulate::<H>(
                         public_key.chain_ends[chain_index],
                         Self::checksum_digit_bits(chain_index - Self::MESSAGE_DIGITS),
                         Self::checksum_digit_place(chain_index - Self::MESSAGE_DIGITS),
@@ -551,7 +578,7 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
         }
     }
 
-    fn assert_public_key(public_key: &FastPublicKey<MESSAGE_BYTES>) {
+    fn assert_public_key(public_key: &FastPublicKey<MESSAGE_BYTES, H>) {
         Self::assert_parameters();
         assert_eq!(
             public_key.chain_ends.len(),
@@ -570,24 +597,22 @@ const fn binary_digits(mut maximum: usize) -> usize {
     digits
 }
 
-fn derive_chain_namespace<const MESSAGE_BYTES: usize>(seed: &[u8; 32]) -> FastChainValue {
-    let mut engine = hash160::Hash::engine();
-    engine.input(CHAIN_START_DOMAIN);
-    engine.input(seed);
-    engine.input(&(MESSAGE_BYTES as u64).to_be_bytes());
-    *hash160::Hash::from_engine(engine).as_byte_array()
+fn derive_chain_namespace<const MESSAGE_BYTES: usize, H: ChainHash>(
+    seed: &[u8; 32],
+) -> FastChainValue<H> {
+    H::hash_parts(&[H::DOMAIN, seed, &(MESSAGE_BYTES as u64).to_be_bytes()])
 }
 
-fn derive_chain_start(namespace: &FastChainValue, chain_index: u32) -> FastChainValue {
-    let mut engine = hash160::Hash::engine();
-    engine.input(namespace);
-    engine.input(&chain_index.to_be_bytes());
-    *hash160::Hash::from_engine(engine).as_byte_array()
+fn derive_chain_start<H: ChainHash>(
+    namespace: &FastChainValue<H>,
+    chain_index: u32,
+) -> FastChainValue<H> {
+    H::hash_parts(&[namespace.as_ref(), &chain_index.to_be_bytes()])
 }
 
-fn hash_chain(mut value: FastChainValue, steps: u8) -> FastChainValue {
+fn hash_chain<H: ChainHash>(mut value: FastChainValue<H>, steps: u8) -> FastChainValue<H> {
     for _ in 0..steps {
-        value = *hash160::Hash::hash(&value).as_byte_array();
+        value = H::hash_parts(&[value.as_ref()]);
     }
     value
 }
@@ -631,9 +656,13 @@ fn mixed_checksum_digits<const MESSAGE_BYTES: usize>(checksum: usize) -> Vec<u8>
 /// Verifies one chain with the minimum possible number of executed hashes for
 /// the supplied digit. Precondition: `[... digit, chain_value]`.
 /// Postcondition: `[... digit]`.
-fn verify_chain_exact(expected: FastChainValue, digit_bits: usize, return_digit: bool) -> Script {
+fn verify_chain_exact<H: ChainHash>(
+    expected: FastChainValue<H>,
+    digit_bits: usize,
+    return_digit: bool,
+) -> Script {
     script! {
-        OP_SIZE { HASH_BYTES } OP_EQUALVERIFY
+        OP_SIZE { H::VALUE_BYTES } OP_EQUALVERIFY
         OP_SWAP
         OP_DUP OP_TOALTSTACK
 
@@ -650,16 +679,16 @@ fn verify_chain_exact(expected: FastChainValue, digit_bits: usize, return_digit:
             OP_ELSE
                 OP_SWAP
                 for _ in 0..step {
-                    OP_HASH160
+                    { H::hash_script() }
                 }
                 OP_SWAP
             OP_ENDIF
         }
         OP_NOTIF
-            OP_HASH160
+            { H::hash_script() }
         OP_ENDIF
 
-        { expected.to_vec() }
+        { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
         if return_digit {
             OP_FROMALTSTACK
@@ -669,7 +698,7 @@ fn verify_chain_exact(expected: FastChainValue, digit_bits: usize, return_digit:
 
 #[cfg(test)]
 mod exact_chain_tests {
-    use super::{hash_chain, verify_chain_exact, HASH_BYTES};
+    use super::{hash_chain, verify_chain_exact, Hash160, HASH_BYTES};
     use crate::support::{
         execution::execute_raw_script_with_inputs_strict,
         script::{script, ScriptCompilation},
@@ -680,15 +709,15 @@ mod exact_chain_tests {
         for digit_bits in 1..=4 {
             let maximum = (1u8 << digit_bits) - 1;
             let start = [0x42; HASH_BYTES];
-            let endpoint = hash_chain(start, maximum);
+            let endpoint = hash_chain::<Hash160>(start, maximum);
             let verifier = script! {
-                { verify_chain_exact(endpoint, digit_bits, true) }
+                { verify_chain_exact::<Hash160>(endpoint, digit_bits, true) }
                 OP_DROP OP_TRUE
             }
             .compile_with_policy();
 
             for actual_digit in 0..=maximum {
-                let node = hash_chain(start, actual_digit);
+                let node = hash_chain::<Hash160>(start, actual_digit);
                 for claimed_digit in 0..=maximum {
                     let digit_item = if claimed_digit == 0 {
                         Vec::new()
@@ -743,11 +772,15 @@ mod exact_chain_tests {
 }
 
 /// Verifies one chain using a symmetric half-radix lookup list.
-fn verify_chain_minimal(expected: FastChainValue, digit_bits: usize, return_digit: bool) -> Script {
+fn verify_chain_minimal<H: ChainHash>(
+    expected: FastChainValue<H>,
+    digit_bits: usize,
+    return_digit: bool,
+) -> Script {
     let radix = 1usize << digit_bits;
     let half = radix / 2;
     script! {
-        OP_SIZE { HASH_BYTES } OP_EQUALVERIFY
+        OP_SIZE { H::VALUE_BYTES } OP_EQUALVERIFY
         OP_SWAP
         OP_DUP OP_0 { radix } OP_WITHIN OP_VERIFY
         OP_DUP OP_TOALTSTACK
@@ -759,18 +792,18 @@ fn verify_chain_minimal(expected: FastChainValue, digit_bits: usize, return_digi
             OP_DROP
             OP_TOALTSTACK
             for _ in 0..half {
-                OP_HASH160
+                { H::hash_script() }
             }
         OP_ELSE
             OP_SUB
             OP_TOALTSTACK
         OP_ENDIF
         for _ in 1..half {
-            OP_DUP OP_HASH160
+            OP_DUP { H::hash_script() }
         }
         OP_FROMALTSTACK
         OP_PICK
-        { expected.to_vec() }
+        { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
         for _ in 0..(half / 2) {
             OP_2DROP
@@ -789,14 +822,18 @@ fn verify_chain_minimal(expected: FastChainValue, digit_bits: usize, return_digi
 /// the explicit upper bound. In both modes, negative digits fail at `OP_PICK`
 /// and oversized ScriptNums fail numeric decoding.
 ///
-/// The fragment intentionally omits `OP_SIZE 20 OP_EQUALVERIFY`. At the
-/// chain's maximum digit the item is compared directly with the 20-byte
-/// endpoint, which enforces its length. Below the maximum, a HASH160 executes
-/// before the comparison and normalizes the selected value to 20 bytes. The
-/// signer always emits 20-byte nodes, but the verifier relation also admits an
-/// arbitrary-length preimage for digits below 15. That tradeoff saves four
+/// The fragment intentionally omits `OP_SIZE { H::VALUE_BYTES } OP_EQUALVERIFY`. At the
+/// chain's maximum digit the item is compared directly with the `H::VALUE_BYTES`-byte
+/// endpoint, which enforces its length. Below the maximum, the selected hash executes
+/// before the comparison and normalizes it to the selected hash width. The
+/// signer always emits `H::VALUE_BYTES`-byte nodes, but the verifier relation also admits an
+/// arbitrary-length preimage for digits below the chain maximum. That tradeoff saves four
 /// serialized locking bytes per chain and is specific to this size profile.
-fn verify_chain_size_optimized(expected: FastChainValue, digit_bits: usize, clamp: bool) -> Script {
+fn verify_chain_size_optimized<H: ChainHash>(
+    expected: FastChainValue<H>,
+    digit_bits: usize,
+    clamp: bool,
+) -> Script {
     let radix = 1usize << digit_bits;
     let half = radix / 2;
     script! {
@@ -812,16 +849,16 @@ fn verify_chain_size_optimized(expected: FastChainValue, digit_bits: usize, clam
         OP_IF
             OP_DROP OP_TOALTSTACK
             for _ in 0..half {
-                OP_HASH160
+                { H::hash_script() }
             }
         OP_ELSE
             OP_SUB OP_TOALTSTACK
         OP_ENDIF
         for _ in 1..half {
-            OP_DUP OP_HASH160
+            OP_DUP { H::hash_script() }
         }
         OP_FROMALTSTACK OP_PICK
-        { expected.to_vec() }
+        { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
         for _ in 0..(half / 2) {
             OP_2DROP
@@ -831,7 +868,9 @@ fn verify_chain_size_optimized(expected: FastChainValue, digit_bits: usize, clam
 
 #[cfg(test)]
 mod clamped_chain_tests {
-    use super::{hash_chain, verify_chain_size_optimized, FastWinternitz, FastWots32, HASH_BYTES};
+    use super::{
+        hash_chain, verify_chain_size_optimized, FastWinternitz, FastWots32, Hash160, HASH_BYTES,
+    };
     use crate::support::{
         execution::execute_raw_script_with_inputs_strict,
         script::{script, Script, ScriptCompilation},
@@ -849,14 +888,14 @@ mod clamped_chain_tests {
         for width in 2..=4 {
             let maximum = (1u8 << width) - 1;
             let start = [0x35; HASH_BYTES];
-            let endpoint = hash_chain(start, maximum);
+            let endpoint = hash_chain::<Hash160>(start, maximum);
             for actual_digit in 0..=maximum {
                 let verifier = script! {
-                    { verify_chain_size_optimized(endpoint, width, true) }
+                    { verify_chain_size_optimized::<Hash160>(endpoint, width, true) }
                     OP_FROMALTSTACK { actual_digit } OP_EQUALVERIFY OP_TRUE
                 }
                 .compile_with_policy();
-                let node = hash_chain(start, actual_digit);
+                let node = hash_chain::<Hash160>(start, actual_digit);
                 for claimed in (0..=i64::from(maximum) + 2).chain([127, 128, i64::from(i32::MAX)]) {
                     let result = execute_raw_script_with_inputs_strict(
                         verifier.to_bytes(),
@@ -979,31 +1018,34 @@ mod clamped_chain_tests {
 }
 
 /// Verifies one chain from canonical digit bits, leaving the bits on main.
-fn verify_chain_bitwise(expected: FastChainValue, digit_bits: usize) -> Script {
+fn verify_chain_bitwise<H: ChainHash>(expected: FastChainValue<H>, digit_bits: usize) -> Script {
     script! {
         OP_OVER
         OP_NOTIF
             for _ in 0..(1usize << (digit_bits - 1)) {
-                OP_HASH160
+                { H::hash_script() }
             }
         OP_ENDIF
         for offset in 1..digit_bits {
             { offset + 1 } OP_PICK
             OP_NOTIF
                 for _ in 0..(1usize << (digit_bits - 1 - offset)) {
-                    OP_HASH160
+                    { H::hash_script() }
                 }
             OP_ENDIF
         }
-        { expected.to_vec() }
+        { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
     }
 }
 
 /// Verifies one chain and stores its reconstructed digit on altstack.
-fn verify_chain_bitwise_and_recover(expected: FastChainValue, digit_bits: usize) -> Script {
+fn verify_chain_bitwise_and_recover<H: ChainHash>(
+    expected: FastChainValue<H>,
+    digit_bits: usize,
+) -> Script {
     script! {
-        { verify_chain_bitwise(expected, digit_bits) }
+        { verify_chain_bitwise::<H>(expected, digit_bits) }
         for _ in 1..digit_bits {
             OP_DUP OP_ADD OP_ADD
         }
@@ -1012,9 +1054,12 @@ fn verify_chain_bitwise_and_recover(expected: FastChainValue, digit_bits: usize)
 }
 
 /// Verifies one checksum chain and fuses its bits into the Horner state.
-fn verify_chain_bitwise_and_fuse_horner(expected: FastChainValue, digit_bits: usize) -> Script {
+fn verify_chain_bitwise_and_fuse_horner<H: ChainHash>(
+    expected: FastChainValue<H>,
+    digit_bits: usize,
+) -> Script {
     script! {
-        { verify_chain_bitwise(expected, digit_bits) }
+        { verify_chain_bitwise::<H>(expected, digit_bits) }
         OP_FROMALTSTACK
         for _ in 0..digit_bits {
             OP_DUP OP_ADD OP_ADD
@@ -1030,8 +1075,8 @@ fn verify_chain_bitwise_and_fuse_horner(expected: FastChainValue, digit_bits: us
 /// accumulator on top of the altstack, unless `initialize` creates it instead.
 /// Postcondition: the five main stack items are consumed and the updated
 /// accumulator remains on altstack.
-fn verify_chain_bitwise_and_accumulate(
-    expected: FastChainValue,
+fn verify_chain_bitwise_and_accumulate<H: ChainHash>(
+    expected: FastChainValue<H>,
     digit_bits: usize,
     place: usize,
     initialize: bool,
@@ -1042,7 +1087,7 @@ fn verify_chain_bitwise_and_accumulate(
             // This avoids materializing a zero accumulator before consuming
             // any witness item, saving both locking bytes and one peak item.
             OP_IF
-                OP_HASH160
+                { H::hash_script() }
                 { place }
             OP_ELSE
                 OP_0
@@ -1050,7 +1095,7 @@ fn verify_chain_bitwise_and_accumulate(
             OP_TOALTSTACK
         } else {
             OP_IF
-                OP_HASH160
+                { H::hash_script() }
                 { add_weight_to_altstack(place) }
             OP_ENDIF
         }
@@ -1058,13 +1103,13 @@ fn verify_chain_bitwise_and_accumulate(
             OP_SWAP
             OP_IF
                 for _ in 0..(1usize << bit_index) {
-                    OP_HASH160
+                    { H::hash_script() }
                 }
                 { add_weight_to_altstack((1usize << bit_index) * place) }
             OP_ENDIF
         }
 
-        { expected.to_vec() }
+        { expected.as_ref().to_vec() }
         OP_EQUALVERIFY
     }
 }
@@ -1214,7 +1259,7 @@ mod tests {
             let size = widths
                 .iter()
                 .map(|&digit_bits| {
-                    let fragment = verify_chain_bitwise_and_accumulate(
+                    let fragment = verify_chain_bitwise_and_accumulate::<Hash160>(
                         [0; HASH_BYTES],
                         digit_bits,
                         place,
@@ -1376,8 +1421,12 @@ mod tests {
         let selected = [3usize, 3, 4]
             .into_iter()
             .map(|digit_bits| {
-                let fragment =
-                    verify_chain_bitwise_and_accumulate([0; HASH_BYTES], digit_bits, place, false);
+                let fragment = verify_chain_bitwise_and_accumulate::<Hash160>(
+                    [0; HASH_BYTES],
+                    digit_bits,
+                    place,
+                    false,
+                );
                 place <<= digit_bits;
                 fragment.clone().compile_with_policy().len()
             })
@@ -1391,11 +1440,11 @@ mod tests {
         use crate::support::execution::execute_raw_script_with_inputs_strict;
 
         let start = [0x35; HASH_BYTES];
-        let endpoint = hash_chain(start, 15);
-        let initialized = verify_chain_bitwise_and_accumulate(endpoint, 4, 64, true);
+        let endpoint = hash_chain::<Hash160>(start, 15);
+        let initialized = verify_chain_bitwise_and_accumulate::<Hash160>(endpoint, 4, 64, true);
         let separate_zero = script! {
             OP_0 OP_TOALTSTACK
-            { verify_chain_bitwise_and_accumulate(endpoint, 4, 64, false) }
+            { verify_chain_bitwise_and_accumulate::<Hash160>(endpoint, 4, 64, false) }
         };
         // ALL does not already fuse initialization across conditional updates.
         assert_eq!(
@@ -1412,7 +1461,7 @@ mod tests {
                     vec![1]
                 });
             }
-            witness.push(hash_chain(start, 15 - remaining).to_vec());
+            witness.push(hash_chain::<Hash160>(start, 15 - remaining).to_vec());
             witness.push(if remaining & 1 == 0 {
                 Vec::new()
             } else {
@@ -1728,9 +1777,9 @@ mod tests {
         let mut signature = FastWots32::sign(key, &MESSAGE);
         let checksum_index = FastWots32::MESSAGE_DIGITS;
         signature.digits[checksum_index] ^= 1;
-        let namespace = derive_chain_namespace::<32>(&SEED);
-        signature.chain_values[checksum_index] = hash_chain(
-            derive_chain_start(&namespace, checksum_index as u32),
+        let namespace = derive_chain_namespace::<32, Hash160>(&SEED);
+        signature.chain_values[checksum_index] = hash_chain::<Hash160>(
+            derive_chain_start::<Hash160>(&namespace, checksum_index as u32),
             signature.digits[checksum_index],
         );
 
@@ -1925,3 +1974,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "hash_choice_tests.rs"]
+mod hash_choice_tests;
