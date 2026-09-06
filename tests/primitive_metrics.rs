@@ -139,6 +139,24 @@ fn prince_metrics() -> Vec<Metric> {
     ]
 }
 
+// Summary columns stay in the overview; detailed snapshots live with their construction.
+fn winternitz_metric_readme(key: &str) -> &'static str {
+    if key.starts_with("w20_") {
+        if ["_script", "_witness_varied", "_witness_max", "_total_max"]
+            .iter()
+            .any(|suffix| key.ends_with(suffix))
+        {
+            "src/signatures/winternitz/README.md"
+        } else {
+            "src/signatures/winternitz/constant_sum/README.md"
+        }
+    } else if key.starts_with("wots32_") {
+        "src/signatures/winternitz/legacy/README.md"
+    } else {
+        "src/signatures/winternitz/base16/README.md"
+    }
+}
+
 fn winternitz_metrics() -> Vec<Metric> {
     let wots_secret = vec![0x42; 20];
     let wots_message = [0u8; 32];
@@ -243,17 +261,17 @@ fn winternitz_metrics() -> Vec<Metric> {
 
     vec![
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/legacy/README.md",
             key: "wots32_lock",
             value: script_len(Wots32::checksig_verify(&wots_public_key)),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/legacy/README.md",
             key: "wots32_witness",
             value: serialize(&wots_witness).len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/legacy/README.md",
             key: "wots32_witness_max",
             value: witness_size(
                 &(0..Wots32::TOTAL_DIGIT_LEN)
@@ -262,12 +280,12 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/legacy/README.md",
             key: "wots32_clear_lock",
             value: script_len(Wots32::checksig_verify_and_clear_stack(&wots_public_key)),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/legacy/README.md",
             key: "wots32_stack",
             value: max_stack_items(
                 script! {
@@ -279,7 +297,7 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/legacy/README.md",
             key: "wots32_clear_stack",
             value: max_stack_items(
                 script! {
@@ -290,24 +308,24 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/legacy/README.md",
             key: "wots32_clear_static_opcodes",
             value: static_non_push_opcodes(Wots32::checksig_verify_and_clear_stack(
                 &wots_public_key,
             )),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_lock",
             value: fast_wots_clamped.clone().compile_with_policy().len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_static_opcodes",
             value: static_non_push_opcodes(fast_wots_clamped.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_stack",
             value: max_stack_items(
                 script! { { fast_wots_clamped.clone() } for _ in 0..64 { OP_DROP } OP_TRUE },
@@ -315,13 +333,13 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_total_zero",
             value: fast_wots_clamped.clone().compile_with_policy().len()
                 + serialize(&fast_wots_size_witness).len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_total_max",
             value: fast_wots_clamped.clone().compile_with_policy().len()
                 + witness_size(
@@ -331,17 +349,17 @@ fn winternitz_metrics() -> Vec<Metric> {
                 ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_clear_lock",
             value: fast_wots_clamped_clear.clone().compile_with_policy().len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_clear_static_opcodes",
             value: static_non_push_opcodes(fast_wots_clamped_clear.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_clear_stack",
             value: max_stack_items(
                 script! { { fast_wots_clamped_clear.clone() } OP_TRUE },
@@ -349,13 +367,13 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_clear_total_zero",
             value: fast_wots_clamped_clear.clone().compile_with_policy().len()
                 + serialize(&fast_wots_size_witness).len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clamped_clear_total_max",
             value: fast_wots_clamped_clear.clone().compile_with_policy().len()
                 + witness_size(
@@ -365,47 +383,47 @@ fn winternitz_metrics() -> Vec<Metric> {
                 ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_exact_lock",
             value: script_len(fast_wots_exact.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_minimal_lock",
             value: script_len(fast_wots_minimal.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clear_lock",
             value: script_len(fast_wots_clear.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_size_lock",
             value: script_len(fast_wots_size.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_size_clear_lock",
             value: script_len(fast_wots_size_clear.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_lock",
             value: script_len(fast_wots_bitwise.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_clear_lock",
             value: script_len(fast_wots_bitwise_clear.clone()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_witness_zero",
             value: serialize(&fast_wots_witness).len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_witness_max",
             value: witness_size(
                 &(0..FullWidthWots32::TOTAL_DIGITS)
@@ -414,87 +432,87 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_witness_zero",
             value: serialize(&fast_wots_bitwise_witness).len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_terminal_witness_zero",
             value: serialize(&fast_wots_bitwise_terminal_witness).len(),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_witness_max",
             value: 3 + 67 * 21 + 266 * 2,
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_exact_static_opcodes",
             value: static_non_push_opcodes(fast_wots_exact),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_minimal_static_opcodes",
             value: static_non_push_opcodes(fast_wots_minimal),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clear_static_opcodes",
             value: static_non_push_opcodes(fast_wots_clear),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_size_static_opcodes",
             value: static_non_push_opcodes(fast_wots_size),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_size_clear_static_opcodes",
             value: static_non_push_opcodes(fast_wots_size_clear),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_static_opcodes",
             value: static_non_push_opcodes(fast_wots_bitwise),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_clear_static_opcodes",
             value: static_non_push_opcodes(fast_wots_bitwise_clear),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_exact_hashes",
             value: fast_wots_exact_hashes,
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_minimal_hashes",
             value: fast_wots_minimal_hashes,
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_exact_stack",
             value: max_stack_items(fast_wots_exact_complete, fast_wots_witness.to_vec()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_minimal_stack",
             value: max_stack_items(fast_wots_minimal_complete, fast_wots_witness.to_vec()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_clear_stack",
             value: max_stack_items(fast_wots_clear_complete, fast_wots_witness.to_vec()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_size_stack",
             value: max_stack_items(fast_wots_size_complete, fast_wots_size_witness.to_vec()),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_size_clear_stack",
             value: max_stack_items(
                 fast_wots_size_clear_complete,
@@ -502,7 +520,7 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_stack",
             value: max_stack_items(
                 fast_wots_bitwise_complete,
@@ -510,7 +528,7 @@ fn winternitz_metrics() -> Vec<Metric> {
             ),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: "src/signatures/winternitz/base16/README.md",
             key: "fast_wots32_bitwise_clear_stack",
             value: max_stack_items(
                 fast_wots_bitwise_clear_complete,
@@ -690,7 +708,7 @@ fn winternitz_sha256_metrics() -> Vec<Metric> {
             script_bytes + maximum_bytes,
         ];
         metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: winternitz_metric_readme(key),
             key,
             value,
         }));
@@ -754,7 +772,7 @@ fn preimage16_hash_metrics<H: ChainHash>(keys: [[&'static str; 7]; 3]) -> Vec<Me
             script_bytes + maximum_bytes,
         ];
         metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: winternitz_metric_readme(key),
             key,
             value,
         }));
@@ -863,7 +881,7 @@ fn hybrid_metrics_for_mode<P: PreimageSize<Sha256Hash160>>(
             0,
         ];
         metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: winternitz_metric_readme(key),
             key,
             value,
         }));
@@ -945,7 +963,7 @@ fn winternitz_hybrid_metrics() -> Vec<Metric> {
     full.into_iter().chain(short).collect()
 }
 
-/// Exact message-specific totals for the README's opening comparison.
+/// Exact message-specific totals for the base-16 README comparison.
 fn overview_hash_metrics<H: ChainHash>(keys: [[&'static str; 5]; 3]) -> Vec<Metric> {
     let key = FastWinternitz::<32, H>::signing_key_from_seed([0x42; 32]);
     let pk = FastWinternitz::<32, H>::public_key(&key);
@@ -991,7 +1009,7 @@ fn overview_hash_metrics<H: ChainHash>(keys: [[&'static str; 5]; 3]) -> Vec<Metr
             script_bytes + witness_bytes[2],
         ];
         metrics.extend(keys.into_iter().zip(values).map(|(key, value)| Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: winternitz_metric_readme(key),
             key,
             value,
         }));
@@ -1099,7 +1117,7 @@ fn winternitz20_row(
     keys.into_iter()
         .zip(values)
         .map(|(key, value)| Metric {
-            readme: "src/signatures/winternitz/README.md",
+            readme: winternitz_metric_readme(key),
             key,
             value,
         })

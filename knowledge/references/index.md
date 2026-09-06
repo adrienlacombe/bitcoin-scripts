@@ -34,7 +34,7 @@ radix selection, Bitcoin Script byte measurements, and whole-vector argument
 for omitting individual upper bounds are local results. The paper is not a
 security proof for this unkeyed native-hash implementation. The reversible
 encoder has an independent Python reproduction in
-[`tools/winternitz20_vectors.py`](../../tools/winternitz20_vectors.py).
+[`src/signatures/winternitz/constant_sum/tests/vectors.py`](../../src/signatures/winternitz/constant_sum/tests/vectors.py).
 
 Bitcoin Core v29.0 rejects `OP_PICK` indices outside the entire stack in
 [`interpreter.cpp`, lines 759–769](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp#L759-L769).

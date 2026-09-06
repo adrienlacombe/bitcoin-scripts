@@ -179,3 +179,12 @@ unresolved validation limitation.
 See the [constant-sum primitive](../primitives/winternitz-constant-sum20.md)
 and [OP-009](../open-problems.md#op-009--one-time-authentication-security-profiles)
 before treating this encoding and whole-vector relation as a protocol component.
+
+BitVM3 can handle the reversible constant-sum representation without having
+the publication Script reconstruct the original proof bytes. This differs
+from a consumer that requires authenticated bytes on the Script stack. The
+[BitVM 3s paper](https://bitvm.org/bitvm3.pdf), July 22, 2025, describes the
+offchain garbled-circuit architecture (`bitvm3s-2025`); it does not validate
+this repository’s custom fixed-sum Script relation. Complete integration
+must still define how unused-rank and out-of-radix publications are handled.
+See the [construction’s integration contract](../../src/signatures/winternitz/constant_sum/README.md#bitvm3-integration-and-byte-recovery).

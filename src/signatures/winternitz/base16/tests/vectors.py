@@ -3,8 +3,8 @@
 
 Seed: 0x42 repeated 32 times. Message: bytes(range(32)). Base 16, checksum
 widths [3, 3, 4]. Prints SHA-256 digests of concatenated endpoints/signature
-nodes for native and 16-byte starts, compared in hash_choice_tests.rs and
-tests/winternitz_preimages.rs. Python stdlib only.
+nodes for native and 16-byte starts, compared in tests/hash_choice.rs and
+src/signatures/winternitz/base16/tests/preimages.rs. Python stdlib only.
 """
 import hashlib
 

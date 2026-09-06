@@ -1168,7 +1168,7 @@ deployment evidence. Script sizes include commitments, chain checks, sum
 verification, and cleanup but exclude the final predicate and transaction
 framing. Witnesses include item-count and item-length prefixes.
 
-Independent [Python vectors and exact moments](../../tools/winternitz20_vectors.py)
+Independent [Python vectors and exact moments](../../src/signatures/winternitz/constant_sum/tests/vectors.py)
 cover the full `2^160` encoder image without importing the Rust implementation.
 The exact mean witness is approximately 931.841783370768 bytes, versus
 976.262466089252 bytes for the baseline. Both now come from exact counts over

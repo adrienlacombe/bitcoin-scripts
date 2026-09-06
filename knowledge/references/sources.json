@@ -239,6 +239,13 @@
       "kind": "paper",
       "url": "https://eprint.iacr.org/2023/850",
       "revision": "Cryptology ePrint 2023/850, received 2023-06-06, approved 2023-06-07; minor revision of CRYPTO 2023 publication"
+    },
+    {
+      "id": "bitvm3s-2025",
+      "title": "BitVM 3s \u2013 Garbled Circuits for Efficient Computation on Bitcoin",
+      "kind": "paper",
+      "url": "https://bitvm.org/bitvm3.pdf",
+      "revision": "Robin Linus, July 22, 2025; architectural context only, not validation of this repository\u2019s constant-sum verifier"
     }
   ]
 }

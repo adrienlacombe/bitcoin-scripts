@@ -205,7 +205,7 @@ entry data items and zero auxiliary hints. Corresponding stack peaks are
 unchanged (137–143 numeric, 334/333 bitwise). All metric rows remain
 `research-unlimited` under the stack-limit-disabled tapscript helper, with
 separate strict-stack tests and no Core/policy validation. See the
-[full hash comparison](../../src/signatures/winternitz/README.md#sha-256-onchain-comparison)
+[full hash comparison](../../src/signatures/winternitz/base16/README.md#sha-256-onchain-comparison)
 for script, witness, static opcode counts, security assumptions and boundaries.
 
 ### SHA-256 chains with smaller endpoint commitments

@@ -33,7 +33,7 @@ typed message sizes, and list-pick, brute-force, or binary-search verifiers.
   into a 40-byte secret. These are compatibility behaviors, not properties of
   the new Fast API.
 
-See the [implementation README](../../src/signatures/winternitz/README.md),
+See the [implementation README](../../src/signatures/winternitz/legacy/README.md),
 [Fast implementation](winternitz-fast-base16.md),
 [signature comparison](../comparisons/signatures.md), and catalog record
 `signature/winternitz-base16`.

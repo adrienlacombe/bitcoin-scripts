@@ -194,7 +194,7 @@ fn terminal_rejects_mutations_forwarding_and_compensated_decreases() {
 
 #[test]
 fn matches_independent_python_encoding_key_signature_and_witness_vectors() {
-    // Reproduce with python3 tools/winternitz20_vectors.py; no Rust code is
+    // Reproduce with python3 src/signatures/winternitz/constant_sum/tests/vectors.py; no Rust code is
     // imported by that independent stdlib implementation.
     fn check<H: ChainHash, P: PreimageSize<H>>(
         pk_digest: &str,

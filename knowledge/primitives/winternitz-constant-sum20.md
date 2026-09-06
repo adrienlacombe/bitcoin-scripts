@@ -17,9 +17,9 @@ truncation of the 160-bit input.
   native hash steps. HASH160 and 16-byte initial secrets are the defaults.
   SHA-256, SHA-256/HASH160 commitments, and full-width starts are explicit
   alternatives with matching typed keys and witnesses.
-- **Implementation:** [constant_sum.rs](../../src/signatures/winternitz/constant_sum.rs),
-  [shared chain generator](../../src/signatures/winternitz/sum_chain.rs),
-  [implementation README](../../src/signatures/winternitz/README.md#lossless-20-byte-messages-with-a-constant-sum-encoding),
+- **Implementation:** [constant_sum.rs](../../src/signatures/winternitz/constant_sum/mod.rs),
+  [shared chain generator](../../src/signatures/winternitz/constant_sum/chain.rs),
+  [implementation README](../../src/signatures/winternitz/constant_sum/README.md),
   and catalog record `signature/winternitz-constant-sum20`.
 - **Evidence:** script correctness and costs are `locally-reproduced`.
   Independent Python encoder/vector and exact-moment checks are separate
@@ -48,6 +48,13 @@ not run that decoder or enforce the rank bound. Even
 the host encoder uses. Protocols requiring canonical onchain byte binding or
 recovered message bytes must provide that additional construction and count
 its cost; the measured terminal fragment does neither.
+
+BitVM3 can handle this reversible representation without requiring its
+publication Script to recover the original bytes. Onchain byte recovery is
+a consumer-specific requirement, not a general incompatibility with BitVM3.
+The [integration contract](../../src/signatures/winternitz/constant_sum/README.md#bitvm3-integration-and-byte-recovery)
+distinguishes the signature fragment from the surrounding protocol, including
+handling of publications outside the host encoder's image.
 
 The namespace binds `bitcoin-lab/winternitz20-constant-sum/v1`, the selected
 hash domain, preimage domain, complete radix vector, sum, and signing seed.
@@ -132,7 +139,7 @@ Independent exact counting gives the baseline mean witness approximately
 constant-sum default saves approximately 183.420682718484 bytes in the exact
 uniform-message expectation, or 4.83%. These decimals are rounded displays
 of exact integer/rational counts over the same `2^160` inputs, not samples.
-The [README](../../src/signatures/winternitz/README.md#measured-20-byte-costs-and-execution-boundary)
+The [README](../../src/signatures/winternitz/constant_sum/README.md#measured-20-byte-costs-and-execution-boundary)
 contains metric markers for all fixtures, the bounded profile, both wider
 hash choices, static non-push opcodes, and corresponding stack peaks.
 Executed-opcode and validation-budget measurements are not available.
@@ -155,7 +162,7 @@ establish Bitcoin Core consensus or policy acceptance.
 
 ## Limits and reproduction
 
-`tools/winternitz20_vectors.py` independently reproduces the code capacity,
+`src/signatures/winternitz/constant_sum/tests/vectors.py` independently reproduces the code capacity,
 encoder, host key/signature vectors, exact witness mean, and attained maximum.
 It uses Python integer arithmetic and standard-library hashes without loading
 the Rust implementation. Rust tests compare fixed vectors and exercise

@@ -1,8 +1,8 @@
 //! Lossless 160-bit encoding into a mixed-radix, constant-sum Winternitz code.
-use super::{
-    sum_chain::{verify_sum_chain, SumChainStyle},
-    ChainHash, Hash160, Preimage16, PreimageSize,
-};
+use super::shared::{ChainHash, Hash160, Preimage16, PreimageSize};
+mod chain;
+use chain::{verify_sum_chain, SumChainStyle};
+
 use crate::support::script::{script, Script};
 use bitcoin::{
     key::rand::{thread_rng, RngCore},
@@ -333,9 +333,9 @@ impl Encoding {
 }
 
 #[cfg(test)]
-#[path = "constant_sum_tests.rs"]
+#[path = "tests/signature.rs"]
 mod tests;
 
 #[cfg(test)]
-#[path = "constant_sum_overflow_tests.rs"]
+#[path = "tests/overflow.rs"]
 mod overflow_tests;

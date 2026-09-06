@@ -130,7 +130,7 @@ fn both_hashes_roundtrip_all_profiles_and_message_boundaries() {
 
 #[test]
 fn hash_profiles_match_independent_python_vectors() {
-    // Reproduce with: python3 tools/winternitz_hash_vectors.py
+    // Reproduce with: python3 src/signatures/winternitz/base16/tests/vectors.py
     fn check<H: ChainHash, P: PreimageSize<H>>(public_digest: &str, signature_digest: &str) {
         let key = FastWinternitz::<32, H, P>::signing_key_from_seed([0x42; 32]);
         let pk = FastWinternitz::<32, H, P>::public_key(&key);

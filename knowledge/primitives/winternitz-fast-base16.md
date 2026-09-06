@@ -104,7 +104,7 @@ exact-hash verifier, and terminal variants.
   coexist at entry, so unrelated protocol state must also fit within the
   combined 1,000-item limit.
 
-See the [implementation README](../../src/signatures/winternitz/README.md),
+See the [implementation README](../../src/signatures/winternitz/base16/README.md),
 [legacy Winternitz page](winternitz-base16.md),
 [signature comparison](../comparisons/signatures.md), RFC 8391 source
 `rfc-8391`, BIP 342 source `bip-342`, and catalog record

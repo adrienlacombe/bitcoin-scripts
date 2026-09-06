@@ -2900,10 +2900,10 @@
       "execution": "unclassified",
       "as_of": "2026-09-05",
       "knowledge_page": "knowledge/primitives/winternitz-base16.md",
-      "implementation": "src/signatures/winternitz/mod.rs",
-      "documentation": "src/signatures/winternitz/README.md",
+      "implementation": "src/signatures/winternitz/legacy/mod.rs",
+      "documentation": "src/signatures/winternitz/legacy/README.md",
       "tests": [
-        "signatures::winternitz::api::tests::verify_test_vectors"
+        "signatures::winternitz::legacy::api::tests::verify_test_vectors"
       ],
       "references": [
         "bitvm-repository",
@@ -2995,18 +2995,18 @@
       "execution": "research-unlimited",
       "as_of": "2026-09-05",
       "knowledge_page": "knowledge/primitives/winternitz-fast-base16.md",
-      "implementation": "src/signatures/winternitz/fast.rs",
-      "documentation": "src/signatures/winternitz/README.md",
+      "implementation": "src/signatures/winternitz/base16/mod.rs",
+      "documentation": "src/signatures/winternitz/base16/README.md",
       "tests": [
-        "signatures::winternitz::fast::tests",
-        "signatures::winternitz::fast::exact_chain_tests",
-        "signatures::winternitz::fast::clamped_chain_tests",
-        "signatures::winternitz::fast::hash_choice_tests",
-        "tools/winternitz_hash_vectors.py",
+        "signatures::winternitz::base16::tests",
+        "signatures::winternitz::base16::exact_chain_tests",
+        "signatures::winternitz::base16::clamped_chain_tests",
+        "signatures::winternitz::base16::hash_choice_tests",
+        "src/signatures/winternitz/base16/tests/vectors.py",
         "tests/primitive_metrics.rs",
-        "tests/winternitz_preimages.rs",
-        "signatures::winternitz::fast::numeric_lookup_tests",
-        "signatures::winternitz::fast::strided::tests"
+        "src/signatures/winternitz/base16/tests/preimages.rs",
+        "signatures::winternitz::base16::numeric_lookup_tests",
+        "signatures::winternitz::base16::strided::tests"
       ],
       "references": [
         "rfc-8391",
@@ -4239,13 +4239,13 @@
       "execution": "research-unlimited",
       "as_of": "2026-09-05",
       "knowledge_page": "knowledge/primitives/winternitz-constant-sum20.md",
-      "implementation": "src/signatures/winternitz/constant_sum.rs",
-      "documentation": "src/signatures/winternitz/README.md",
+      "implementation": "src/signatures/winternitz/constant_sum/mod.rs",
+      "documentation": "src/signatures/winternitz/constant_sum/README.md",
       "tests": [
         "signatures::winternitz::constant_sum::tests",
         "signatures::winternitz::constant_sum::overflow_tests",
-        "signatures::winternitz::sum_chain::tests",
-        "tools/winternitz20_vectors.py",
+        "signatures::winternitz::constant_sum::chain::tests",
+        "src/signatures/winternitz/constant_sum/tests/vectors.py",
         "tests/primitive_metrics.rs"
       ],
       "references": [
@@ -4255,7 +4255,8 @@
         "bitcoin-script-locked",
         "bitcoin-scriptexec-locked",
         "bitcoin-core-v29-hashes",
-        "nist-hash-security-strengths"
+        "nist-hash-security-strengths",
+        "bitvm3s-2025"
       ],
       "techniques": [
         "hash-chain",
