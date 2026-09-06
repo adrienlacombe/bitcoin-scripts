@@ -34,8 +34,8 @@ use bitcoin_lab::{
     signatures::{
         hors, lamport, pointlocks, schnorr,
         winternitz::{
-            ChainHash, FastWinternitz, FullWidth, Hash160, Preimage16, PreimageSize, Sha256,
-            Sha256Hash160, Wots, Wots32,
+            ChainHash, ConstantSumWinternitz20, FastWinternitz, FullWidth, Hash160, Preimage16,
+            PreimageSize, Sha256, Sha256Hash160, Wots, Wots32,
         },
     },
     support::{
@@ -1070,6 +1070,165 @@ fn winternitz_overview_metrics() -> Vec<Metric> {
         ],
     ]);
     hash160.into_iter().chain(hybrid).chain(sha256).collect()
+}
+
+fn winternitz20_row(
+    keys: [&'static str; 10],
+    fragment: bitcoin_script::Script,
+    witnesses: [Witness; 4],
+) -> Vec<Metric> {
+    let locking = script_len(fragment.clone());
+    let sizes = witnesses.each_ref().map(|w| serialize(w).len());
+    let peak = witnesses
+        .iter()
+        .map(|w| max_stack_items(script! {{fragment.clone()} OP_TRUE}, w.to_vec()))
+        .max()
+        .unwrap();
+    let values = [
+        locking,
+        sizes[0],
+        sizes[1],
+        sizes[2],
+        sizes[3],
+        peak,
+        static_non_push_opcodes(fragment),
+        locking + sizes[3],
+        witnesses[0].len(),
+        0,
+    ];
+    keys.into_iter()
+        .zip(values)
+        .map(|(key, value)| Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key,
+            value,
+        })
+        .collect()
+}
+fn sum_wots20_metrics<H: ChainHash>(keys: [&'static str; 10], bounded: bool) -> Vec<Metric> {
+    let key = ConstantSumWinternitz20::<H>::signing_key_from_seed([0x42; 32]);
+    let pk = ConstantSumWinternitz20::<H>::public_key(&key);
+    // All nodes/quotients are nonzero; odd sum forces one empty parity item.
+    // This is an attained signer maximum, independently checked by Python DP.
+    let mut digits = [8; 41];
+    digits[39] = 4;
+    digits[40] = 5;
+    let maximum = ConstantSumWinternitz20::<H>::decode_message(&digits).unwrap();
+    let witnesses = [
+        [0; 20],
+        [0xff; 20],
+        core::array::from_fn(|i| (i * 37) as u8),
+        maximum,
+    ]
+    .map(|message| {
+        ConstantSumWinternitz20::<H>::sign(
+            ConstantSumWinternitz20::<H>::signing_key_from_seed([0x42; 32]),
+            &message,
+        )
+        .to_witness()
+    });
+    let fragment = if bounded {
+        ConstantSumWinternitz20::<H>::checksig_verify_bounded_and_clear(&pk)
+    } else {
+        ConstantSumWinternitz20::<H>::checksig_verify_and_clear(&pk)
+    };
+    winternitz20_row(keys, fragment, witnesses)
+}
+fn winternitz20_metrics() -> Vec<Metric> {
+    let key = FastWinternitz::<20, Hash160, Preimage16>::signing_key_from_seed([0x42; 32]);
+    let pk = FastWinternitz::<20, Hash160, Preimage16>::public_key(&key);
+    let mut maximum = [0x88; 20];
+    maximum[0] = 0x78;
+    let witnesses = [
+        [0; 20],
+        [0xff; 20],
+        core::array::from_fn(|i| (i * 37) as u8),
+        maximum,
+    ]
+    .map(|message| {
+        FastWinternitz::<20, Hash160, Preimage16>::sign(
+            FastWinternitz::<20, Hash160, Preimage16>::signing_key_from_seed([0x42; 32]),
+            &message,
+        )
+        .to_size_optimized_witness()
+    });
+    let mut rows = winternitz20_row(
+        [
+            "w20_base16_hash160_script",
+            "w20_base16_hash160_witness_zero",
+            "w20_base16_hash160_witness_ff",
+            "w20_base16_hash160_witness_varied",
+            "w20_base16_hash160_witness_max",
+            "w20_base16_hash160_stack",
+            "w20_base16_hash160_opcodes",
+            "w20_base16_hash160_total_max",
+            "w20_base16_hash160_items",
+            "w20_base16_hash160_hints",
+        ],
+        FastWinternitz::<20, Hash160, Preimage16>::checksig_verify_clamped_and_clear(&pk),
+        witnesses,
+    );
+    rows.extend(sum_wots20_metrics::<Hash160>(
+        [
+            "w20_sum_hash160_script",
+            "w20_sum_hash160_witness_zero",
+            "w20_sum_hash160_witness_ff",
+            "w20_sum_hash160_witness_varied",
+            "w20_sum_hash160_witness_max",
+            "w20_sum_hash160_stack",
+            "w20_sum_hash160_opcodes",
+            "w20_sum_hash160_total_max",
+            "w20_sum_hash160_items",
+            "w20_sum_hash160_hints",
+        ],
+        false,
+    ));
+    rows.extend(sum_wots20_metrics::<Hash160>(
+        [
+            "w20_sum_bounded_hash160_script",
+            "w20_sum_bounded_hash160_witness_zero",
+            "w20_sum_bounded_hash160_witness_ff",
+            "w20_sum_bounded_hash160_witness_varied",
+            "w20_sum_bounded_hash160_witness_max",
+            "w20_sum_bounded_hash160_stack",
+            "w20_sum_bounded_hash160_opcodes",
+            "w20_sum_bounded_hash160_total_max",
+            "w20_sum_bounded_hash160_items",
+            "w20_sum_bounded_hash160_hints",
+        ],
+        true,
+    ));
+    rows.extend(sum_wots20_metrics::<Sha256>(
+        [
+            "w20_sum_sha256_script",
+            "w20_sum_sha256_witness_zero",
+            "w20_sum_sha256_witness_ff",
+            "w20_sum_sha256_witness_varied",
+            "w20_sum_sha256_witness_max",
+            "w20_sum_sha256_stack",
+            "w20_sum_sha256_opcodes",
+            "w20_sum_sha256_total_max",
+            "w20_sum_sha256_items",
+            "w20_sum_sha256_hints",
+        ],
+        false,
+    ));
+    rows.extend(sum_wots20_metrics::<Sha256Hash160>(
+        [
+            "w20_sum_hybrid_script",
+            "w20_sum_hybrid_witness_zero",
+            "w20_sum_hybrid_witness_ff",
+            "w20_sum_hybrid_witness_varied",
+            "w20_sum_hybrid_witness_max",
+            "w20_sum_hybrid_stack",
+            "w20_sum_hybrid_opcodes",
+            "w20_sum_hybrid_total_max",
+            "w20_sum_hybrid_items",
+            "w20_sum_hybrid_hints",
+        ],
+        false,
+    ));
+    rows
 }
 
 fn metrics() -> Vec<Metric> {
@@ -3734,6 +3893,7 @@ fn metrics() -> Vec<Metric> {
     .chain(winternitz_preimage16_metrics())
     .chain(winternitz_hybrid_metrics())
     .chain(winternitz_overview_metrics())
+    .chain(winternitz20_metrics())
     .collect()
 }
 
@@ -3753,8 +3913,14 @@ fn winternitz_metrics_are_current() {
             .chain(winternitz_preimage16_metrics())
             .chain(winternitz_hybrid_metrics())
             .chain(winternitz_overview_metrics())
+            .chain(winternitz20_metrics())
             .collect(),
     );
+}
+
+#[test]
+fn winternitz20_metrics_are_current() {
+    check_readme_metrics(winternitz20_metrics());
 }
 
 /// Check or intentionally refresh only the PRINCEv2 metric markers, without

@@ -74,3 +74,22 @@ serialization, and tapscript `MINIMALIF` obligations must be included in any
 consumer-specific comparison. These map figures remain `inspected` because no
 permanent local generator or metric fixture is retained. Source:
 [`maps.md`](https://github.com/coins/bitcoin-scripts/blob/8f442e4bf8a744dd9bf69b2937bdebcaed5cae77/maps.md).
+
+## Fixed-sum chain tables
+
+The [20-byte constant-sum Winternitz verifier](../primitives/winternitz-constant-sum20.md)
+uses conditional chain advancement and half tables for HASH160; SHA-256
+profiles use a parity bit and tables advancing two hashes per row. It also
+offers a terminal relation that omits individual upper bounds while retaining
+each raw digit in the exact sum. An overflow lookup can read below its local
+table, so it supplies no independent digit-authentication guarantee. The
+whole-vector security inference requires a canonical one-time signature:
+any different vector with the same sum must decrease another coordinate,
+which remains in its own table and requires an earlier chain node.
+The bounded API is available when local range rejection is required.
+
+Default HASH160 verification has 82 coexisting entry data items, zero auxiliary
+hints, and a 93-item combined main/alt-stack peak including its temporary
+table and sum accumulator. These are `locally-reproduced`, `research-unlimited`
+metrics; the security argument is `inspected`. Neither this argument nor the
+strict local tests establish Bitcoin Core consensus or policy validation.

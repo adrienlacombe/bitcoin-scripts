@@ -1075,3 +1075,105 @@ Its recovered values would be enumerative code digits rather
 than message nibbles; protocols requiring the original bytes would also need
 an onchain decoder or a different binding construction. This unmeasured
 composition cost prevents treating the estimate as a drop-in improvement.
+
+The later, separately keyed 20-byte constant-sum implementation is now
+locally reproduced; see NR-041 below. It does not validate this 256-bit
+prototype or supply its missing onchain byte recovery.
+
+## NR-041: 20-byte Winternitz search and overflow-relation boundaries
+
+The 20-byte search minimizes policy-produced locking-script plus serialized
+signature-witness bytes for terminal verification of the unchanged input.
+The retained construction is
+[`ConstantSumWinternitz20`](../primitives/winternitz-constant-sum20.md), using
+41 coordinates with radices `[16 × 32, 18 × 4, 20 × 5]` and fixed sum 321.
+HASH160/Preimage16 gives 2,680 script bytes and a 944-byte attained maximum
+signer witness, or 3,624 bytes combined. The existing 20-byte base-16 clamped
+profile uses 2,819 plus 990 bytes, or 3,809. These are `locally-reproduced`,
+`research-unlimited` metric results, not complete transaction weights.
+
+The search also considered arbitrary rectangular mixed-radix message
+encodings, with checksum chains retained. A dynamic program maximized exact
+integer capacity at each component byte budget using measured numeric and
+strided chain generators for radices 2 through 64. Within those measured
+generator/layout families and before checksum/global-framing costs, the
+signer-witness upper-bound objective selected 40 radix-16 HASH160 message
+chains or 32 radix-32 hybrid message chains. Mixed rectangular radices did
+not improve that restricted objective. This does not prove optimality over
+other chain algorithms, checksum encodings, or antichains. The exploratory
+component search is `inspected`; the production constant-sum encoder and
+its exact witness moments are reproducible independently.
+
+Tight rectangular candidates included 36 radix-20 plus one radix-22 digit,
+34 radix-24 plus one radix-18, 32 radix-26 plus two radix-28, and 19 radix-28
+plus 14 radix-30. Each product exceeds `2^160` with little unused capacity.
+Their smaller average radix did not outweigh their extra chain commitments
+and signature nodes under the measured component costs. Uniform radix
+rounding alone was therefore an insufficient search, but the tested mixed
+rectangles were still dominated for the retained combined objective.
+
+For an ordinary 20-byte base-16 checksum range of 0–600, non-power-of-two
+checksum partitions `[8,8,10]` or `[32,20]` avoid unused top-chain capacity.
+These are `inspected` alternatives, not retained whole-script measurements.
+Adding a fixed checksum bias is also sound at the encoding level if the
+positive-weight sum and checksum capacity are adjusted consistently. For
+example, bias 40 turns the zero-message checksum into `[0,0,10]` under
+`[8,8,16]`, exposing one more short initial secret. That saves four HASH160
+or sixteen SHA-256-family witness bytes on that fixture, but does not
+establish an average- or maximum-cost improvement. Optimizing the zero
+fixture alone is not an adequate uniform-message objective.
+
+The retained enumerative encoder uses the first `2^160` lexicographic
+fixed-sum vectors and performs no message padding, nonce search, or input
+truncation. Host ranking and decoding are exact. Script deliberately does not
+enforce that final rank bound, so even its bounded verifier accepts a larger
+antichain than the host's 20-byte image. Recovering enumerative digits would
+not recover the original bytes. A protocol needing canonical onchain byte
+binding must add a consumer/decoder and measure it; the present terminal
+costs cannot be used as its complete cost.
+
+The smallest terminal method additionally omits individual upper-digit
+guards. A large `OP_PICK` index can select a matching preceding stack item,
+so a chain fragment by itself no longer authenticates a bounded coordinate.
+That behavior is intentional and covered by trap tests, not silently treated
+as strict range validation. Under honestly generated keys and canonical
+one-time signer vectors, any distinct vector with the same exact sum must
+decrease a coordinate; a decreased digit is in range and its own chain table
+requires an earlier node. This is an `inspected` local security inference for
+the complete composition, not a proof from
+[ePrint 2023/850](https://eprint.iacr.org/2023/850). That source establishes
+the general constant-sum research context; it does not analyze these unkeyed
+Script chains or foreign-table reads. Explicit bounded verification remains
+available and rejects upper-range digits before chain processing.
+
+There is an independent local executor limitation: the pinned
+`bitcoin-scriptexec` revision
+`ba96bc2bd76774c9d1b011461cb79d983c2c43a1` can panic when `OP_PICK` indexes
+outside the entire stack. The adversarial tests exercise a foreign-table
+trap that is still inside the complete stack. They do not prove the executor
+correctly rejects every genuinely out-of-stack index. Bitcoin consensus
+requires rejection in that case, but no pinned Core differential test has
+been performed here. This remains an explicit validation limit under OP-009;
+it must not be described as consensus success or as proof of a Bitcoin
+consensus vulnerability.
+
+The default metric has **82 complete data items**, **zero auxiliary hint
+items**, and a **93-item combined main/alt-stack peak**; the baseline has
+86/0/95. SHA-256 variants have 123 entry data items and zero hints, with their
+own measured peaks. All items coexist at entry, and tables, sum state, and
+unrelated protocol state share the 1,000-item limit. Published metric helpers
+disable that stack check in tapscript and append `OP_TRUE`, hence
+`research-unlimited`; separate strict-stack tests remain `unclassified`
+deployment evidence. Script sizes include commitments, chain checks, sum
+verification, and cleanup but exclude the final predicate and transaction
+framing. Witnesses include item-count and item-length prefixes.
+
+Independent [Python vectors and exact moments](../../tools/winternitz20_vectors.py)
+cover the full `2^160` encoder image without importing the Rust implementation.
+The exact mean witness is approximately 931.841783370768 bytes, versus
+976.262466089252 bytes for the baseline. Both now come from exact counts over
+all `2^160` messages; initial sampled estimates are superseded. Including
+their locking fragments, the mean total decreases by approximately
+183.420682718484 bytes (4.83%). Host-counting
+evidence, strict local execution, complete-transaction cost, and the
+cryptographic whole-vector argument are separate claims.

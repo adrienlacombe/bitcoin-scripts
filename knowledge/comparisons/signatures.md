@@ -289,3 +289,64 @@ The smaller secret restricts generic single-target classical search to at
 most 128 bits, with concrete chain/multi-target losses still unresolved. It
 does not change the native hash-output collision bounds (roughly 80 bits for
 HASH160, 128 for SHA-256) or make the two security profiles interchangeable.
+
+### Terminal verification of unchanged 20-byte messages
+
+The 20-byte comparison has a different message size and is separate from the
+32-byte tables above. `ConstantSumWinternitz20` ranks the unchanged input into
+41 digits with radices `[16 × 32, 18 × 4, 20 × 5]` and sum 321. There are no
+checksum chains. The host encoder is reversible; neither terminal verifier
+returns the original bytes or checks the host's rank-below-`2^160` condition.
+
+The same HASH160/Preimage16 seed `[0x42;32]`, final compilation policy, and
+fragment-plus-serialized-signature boundary give:
+
+| 20-byte terminal profile | Script bytes | Maximum signer witness | Maximum script + witness | Complete entry items / hints | Combined peak |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fast base-16 clamped | 2,819 | 990 | 3,809 | 86 / 0 | 95 |
+| Constant-sum default | 2,680 | 944 | 3,624 | 82 / 0 | 93 |
+
+The constant-sum result saves 139 locking bytes and 185 bytes at the maximum
+signer-witness boundary. The zero, all-`ff`, and varied-byte fixtures use
+839, 934, and 924 witness bytes respectively. Exact integer counting over all
+`2^160` message ranks yields mean witness approximately 931.841783370768
+bytes, hence mean total 3,611.841783370768. The baseline's exact mean witness
+is approximately 976.262466089252 bytes, giving mean total
+3,795.262466089252. The new profile saves approximately 183.420682718484
+bytes, or 4.83%, in that uniform-message expectation. Both means are rounded
+displays of exact integer/rational counts, not sampled estimates.
+Witness maxima refer to signer encodings, not accepted adversarial raw items.
+
+The SHA-256/HASH160 constant-sum variant has a shorter 2,381-byte script but
+larger native openings: its maximum witness is 1,517 bytes, totaling 3,898.
+It uses 123 entry items, zero hints, and peaks at 133. The plain SHA-256
+variant totals 4,349 maximum bytes from a 2,832-byte fragment and the same
+witness. HASH160 therefore wins the measured mean/maximum total objective;
+the hybrid wins locking-script size alone. The explicit bounded HASH160
+method costs 2,853 script bytes and has a 3,797-byte maximum combined total.
+
+The default relation intentionally omits individual upper-digit guards.
+An overflow lookup can select a matching preceding stack value, but its raw
+digit still enters the fixed sum. Under honestly generated keys and a
+canonical one-time signature, any distinct same-sum vector must decrease
+another coordinate; that coordinate is in range and needs an earlier chain
+node. This is an `inspected` local whole-vector inference, not a claim that
+each overflow coordinate is locally authenticated. The explicit bounded
+method adds radix rejection and retains the same host-rank limitation and
+relaxed raw node-width relation.
+With all signing secrets, an accepted out-of-radix same-sum vector can be
+constructed; the unbounded method is not a boxed-code membership check.
+
+All items coexist at entry and every invocation has zero auxiliary hints.
+The combined peaks include temporary tables and sum state. The caller's
+terminal predicate, script framing, control block, and transaction overhead
+are excluded equally. Metrics are `locally-reproduced` and
+`research-unlimited` under the stack-limit-disabled tapscript helper with
+`OP_TRUE`; separate strict-stack tests remain `unclassified` deployment
+evidence. No Core consensus or policy acceptance is established. The pinned
+executor's out-of-entire-stack `OP_PICK` panic limits malformed-index coverage.
+
+See the [constant-sum primitive](../primitives/winternitz-constant-sum20.md)
+for exact code capacity, public API, proof scope, hash alternatives,
+independent Python reproduction, and [NR-041](../negative-results/index.md#nr-041-20-byte-winternitz-search-and-overflow-relation-boundaries)
+for the restricted radix search and rejected zero-fixture-only improvements.

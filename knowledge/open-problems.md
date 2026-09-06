@@ -185,6 +185,39 @@ compare all retained profiles over a specified message/checksum distribution
 and the same complete protocol transaction, with strict consensus execution;
 report both expected and worst-case total weight at the stated forgery target.
 
+The separate `ConstantSumWinternitz20` implementation now losslessly encodes
+all unchanged 20-byte inputs into 41 mixed-radix coordinates with sum 321,
+eliminating checksum chains. HASH160/Preimage16 measures 2,680 script bytes
+and an attained 944-byte maximum signer witness, totaling 3,624 bytes; exact
+host counting gives mean total approximately 3,611.841783370768 over all
+`2^160` messages, versus the baseline's exactly counted mean of approximately
+3,795.262466089252. Its 82 entry data items, zero hints, and 93-item combined
+peak are `locally-reproduced`, `research-unlimited` measurements. Independent
+Python vectors and exact integer moments do not establish consensus validity
+or a cryptographic reduction.
+
+Constant-sum WOTS+ is covered by source `constant-sum-wots-2023`; the additional
+Script-specific omission of individual upper-digit guards is a local
+inference. Overflow selectors may read foreign stack values. Security relies
+on the exact whole-vector sum forcing a decrease in some in-range coordinate
+relative to the canonical signer vector, under honestly generated keys and
+the chain inversion/collision assumptions. The bounded method adds radix
+checks but still accepts valid fixed-sum codewords outside the host's
+rank-below-`2^160` image. Neither method recovers or binds original bytes
+onchain, and both retain the size-profile raw-width relation.
+
+**Additional acceptance criteria:** independently review a reduction for the
+overflow-tolerant whole-vector relation, including foreign-table reads,
+mixed radices, raw ScriptNum encodings, and both numeric and strided witnesses;
+validate boundary indices and complete leaves against pinned Bitcoin Core;
+then compare complete transactions under the same forgery target. The pinned
+local executor currently panics for `OP_PICK` outside the entire stack, so
+strict local trap tests do not close the malformed-index/consensus criterion.
+Any protocol claiming canonical 20-byte binding must additionally implement
+and cost-check a rank/byte consumer, or explicitly require only the larger
+terminal relation. See the [constant-sum primitive](primitives/winternitz-constant-sum20.md)
+and [NR-041](negative-results/index.md#nr-041-20-byte-winternitz-search-and-overflow-relation-boundaries).
+
 ## OP-010 — External coverage review
 
 Continuously compare this atlas with primary papers and active upstream Bitcoin

@@ -27,3 +27,16 @@ distinction between collision, preimage, and second-preimage resistance. The
 128-bit initial-secret exhaustive-search ceiling is a local inference from
 the 16-byte secret space, before multi-target effects; the NIST table is not
 a security proof for the custom Winternitz construction.
+
+The 20-byte constant-sum Winternitz construction cites
+`constant-sum-wots-2023` for the established encoding approach. Its mixed
+radix selection, Bitcoin Script byte measurements, and whole-vector argument
+for omitting individual upper bounds are local results. The paper is not a
+security proof for this unkeyed native-hash implementation. The reversible
+encoder has an independent Python reproduction in
+[`tools/winternitz20_vectors.py`](../../tools/winternitz20_vectors.py).
+
+Bitcoin Core v29.0 rejects `OP_PICK` indices outside the entire stack in
+[`interpreter.cpp`, lines 759–769](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp#L759-L769).
+That source inspection is distinct from the local executor's known panic on
+some out-of-stack positive indices; no Core execution is claimed here.

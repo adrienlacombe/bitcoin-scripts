@@ -128,3 +128,54 @@ widths at the maximum digit, because a final commitment hash always executes;
 strict exact and lookup keep the raw-width checks. Concrete multi-target/chain analysis and
 durable one-time-key state remain protocol obligations under
 [OP-009](../open-problems.md#op-009--one-time-authentication-security-profiles).
+
+For a protocol that only verifies and consumes an unchanged 20-byte value,
+`ConstantSumWinternitz20` replaces byte/nibble digitization and separate
+checksum chains with a reversible host encoding into 41 mixed-radix digits
+of sum 321. The default HASH160/Preimage16 fragment is 2,680 bytes, with an
+attained 944-byte maximum signer witness and 3,624-byte maximum combined
+cost. The corresponding 20-byte Fast base-16 clamped profile totals 3,809
+bytes from a 2,819-byte fragment and 990-byte signer witness bound. The
+constant-sum zero-message total is 3,519 bytes; its exact mean over all
+`2^160` inputs is approximately 3,611.841783370768 bytes.
+The baseline exact mean is approximately 3,795.262466089252 bytes over the
+same input distribution, so the mean saving is approximately 183.420682718484
+bytes (4.83%); these are exact-count expectations displayed as rounded decimals.
+
+This is a new key and witness format. The host maps each 20-byte value to one
+of the first `2^160` lexicographic codewords and can decode it exactly; Script
+accepts the larger fixed-sum terminal relation. It does not recover bytes or
+check the host rank limit. Even the bounded method checks radix ranges and
+the sum without proving that the vector belongs to the host's 160-bit image.
+Protocols requiring onchain byte binding or transport need a separate
+consumer/decoder and must include its cost.
+
+The smallest method omits individual upper-digit guards and can read matching
+foreign stack entries for overflow coordinates. The complete sum still uses
+each raw digit unchanged. The local security inference requires honest keys,
+canonical signer vectors, one-time use, and chain inversion/collision
+assumptions: any distinct same-sum vector must decrease an in-range
+coordinate, whose own chain table then requires an earlier node. This is a
+whole-vector guarantee; unguarded chain fragments cannot serve as local digit
+authenticators. The bounded method is available when the protocol requires
+explicit rejection of above-range digits. Both methods retain relaxed raw
+node-width acceptance and preserve unrelated main/alt-stack state.
+
+The default signature has 82 coexisting entry data items, zero auxiliary
+hints, and a 93-item combined peak including its table and sum accumulator.
+The baseline has 86/0/95. SHA-256 variants use 123 entry items and zero hints;
+their measured combined peak is 133. The hybrid's 2,381-byte fragment is
+smaller but its 1,517-byte maximum witness produces a 3,898-byte combined
+maximum, above the HASH160 default's 3,624. Use the combined onchain boundary
+when selecting the hash. All variants
+require a final caller predicate, and surrounding state counts against the
+same 1,000-item limit. Metrics are `locally-reproduced`, `research-unlimited`
+under the stack-limit-disabled tapscript helper with `OP_TRUE`; strict-stack
+tests remain `unclassified` deployment evidence. Transaction framing and
+the caller predicate are excluded. There is no Core consensus or policy
+validation, and the local executor's out-of-stack `OP_PICK` panic remains an
+unresolved validation limitation.
+
+See the [constant-sum primitive](../primitives/winternitz-constant-sum20.md)
+and [OP-009](../open-problems.md#op-009--one-time-authentication-security-profiles)
+before treating this encoding and whole-vector relation as a protocol component.
