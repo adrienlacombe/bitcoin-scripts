@@ -34,8 +34,8 @@ use bitcoin_lab::{
     signatures::{
         hors, lamport, pointlocks, schnorr,
         winternitz::{
-            ChainHash, ConstantSumWinternitz20, FastWinternitz, FullWidth, Hash160, Preimage16,
-            PreimageSize, Sha256, Sha256Hash160, Wots, Wots32,
+            ChainHash, ConstantCompositionWinternitz20, ConstantSumWinternitz20, FastWinternitz,
+            FullWidth, Hash160, Preimage16, PreimageSize, Sha256, Sha256Hash160, Wots, Wots32,
         },
     },
     support::{
@@ -147,6 +147,8 @@ fn winternitz_metric_readme(key: &str) -> &'static str {
             .any(|suffix| key.ends_with(suffix))
         {
             "src/signatures/winternitz/README.md"
+        } else if key.starts_with("w20_composition_") {
+            "src/signatures/winternitz/constant_composition/README.md"
         } else {
             "src/signatures/winternitz/constant_sum/README.md"
         }
@@ -1152,6 +1154,86 @@ fn sum_wots20_metrics<H: ChainHash>(keys: [&'static str; 10], bounded: bool) -> 
     };
     winternitz20_row(keys, fragment, witnesses)
 }
+#[derive(Clone, Copy)]
+enum CompositionVerifierMode {
+    Isolated,
+    Clamped,
+    Bounded,
+}
+
+fn composition_wots20_metrics<H: ChainHash>(
+    keys: [&'static str; 10],
+    mode: CompositionVerifierMode,
+) -> Vec<Metric> {
+    let key = ConstantCompositionWinternitz20::<H>::signing_key_from_seed([0x42; 32]);
+    let pk = ConstantCompositionWinternitz20::<H>::public_key(&key);
+    // First rank whose key 0 has the implicit maximum digit. It remains at the
+    // top of every pool, so all 35 explicit selectors are nonzero. The independent
+    // Python encoder verifies this witness attains the maximum inside rank<2^160.
+    let maximum = [
+        0xbd, 0x73, 0x6e, 0x13, 0x85, 0x1a, 0x95, 0x81, 0x86, 0x0e, 0x65, 0x5a, 0x5f, 0x31, 0xf6,
+        0xd5, 0xe4, 0x00, 0x00, 0x00,
+    ];
+    let witnesses = [
+        [0; 20],
+        [0xff; 20],
+        core::array::from_fn(|i| (i * 37) as u8),
+        maximum,
+    ]
+    .map(|message| {
+        ConstantCompositionWinternitz20::<H>::sign(
+            ConstantCompositionWinternitz20::<H>::signing_key_from_seed([0x42; 32]),
+            &message,
+        )
+        .to_witness()
+    });
+    let fragment = match mode {
+        CompositionVerifierMode::Isolated => {
+            ConstantCompositionWinternitz20::<H>::checksig_verify_isolated_and_clear(&pk)
+        }
+        CompositionVerifierMode::Clamped => {
+            ConstantCompositionWinternitz20::<H>::checksig_verify_and_clear(&pk)
+        }
+        CompositionVerifierMode::Bounded => {
+            ConstantCompositionWinternitz20::<H>::checksig_verify_bounded_and_clear(&pk)
+        }
+    };
+    winternitz20_row(keys, fragment, witnesses)
+}
+
+fn winternitz20_composition_metrics() -> Vec<Metric> {
+    macro_rules! row {
+        ($prefix:literal, $hash:ty, $mode:ident) => {
+            composition_wots20_metrics::<$hash>(
+                [
+                    concat!($prefix, "_script"),
+                    concat!($prefix, "_witness_zero"),
+                    concat!($prefix, "_witness_ff"),
+                    concat!($prefix, "_witness_varied"),
+                    concat!($prefix, "_witness_max"),
+                    concat!($prefix, "_stack"),
+                    concat!($prefix, "_opcodes"),
+                    concat!($prefix, "_total_max"),
+                    concat!($prefix, "_items"),
+                    concat!($prefix, "_hints"),
+                ],
+                CompositionVerifierMode::$mode,
+            )
+        };
+    }
+    row!("w20_composition_isolated_hash160", Hash160, Isolated)
+        .into_iter()
+        .chain(row!("w20_composition_clamped_hash160", Hash160, Clamped))
+        .chain(row!("w20_composition_bounded_hash160", Hash160, Bounded))
+        .chain(row!(
+            "w20_composition_isolated_hybrid",
+            Sha256Hash160,
+            Isolated
+        ))
+        .chain(row!("w20_composition_isolated_sha256", Sha256, Isolated))
+        .collect()
+}
+
 fn winternitz20_metrics() -> Vec<Metric> {
     let key = FastWinternitz::<20, Hash160, Preimage16>::signing_key_from_seed([0x42; 32]);
     let pk = FastWinternitz::<20, Hash160, Preimage16>::public_key(&key);
@@ -3912,6 +3994,7 @@ fn metrics() -> Vec<Metric> {
     .chain(winternitz_hybrid_metrics())
     .chain(winternitz_overview_metrics())
     .chain(winternitz20_metrics())
+    .chain(winternitz20_composition_metrics())
     .collect()
 }
 
@@ -3932,8 +4015,14 @@ fn winternitz_metrics_are_current() {
             .chain(winternitz_hybrid_metrics())
             .chain(winternitz_overview_metrics())
             .chain(winternitz20_metrics())
+            .chain(winternitz20_composition_metrics())
             .collect(),
     );
+}
+
+#[test]
+fn winternitz20_composition_metrics_are_current() {
+    check_readme_metrics(winternitz20_composition_metrics());
 }
 
 #[test]

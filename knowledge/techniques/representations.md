@@ -24,3 +24,21 @@ present at entry, with a measured 93-item combined main/alt-stack peak.
 The measured class is `research-unlimited`. No onchain byte decoder is
 included; protocols consuming the original bytes must count that additional
 conversion and binding cost.
+
+A [fixed-composition assignment](../primitives/winternitz-constant-composition20.md)
+goes further: encode the 20-byte message as a permutation of a fixed digit
+multiset across 49 independent keys. Radix-25 counts
+`[1 × 15, 2 × 7, 3 × 2, 14]` leave fourteen maximum-digit keys implicit.
+The other 35 keys are authenticated in fixed digit slots, so the witness
+contains only selectors and openings, without numeric digit values. The
+host mapping remains reversible and performs no input search or truncation.
+
+HASH160/Preimage16 reaches 1,598 script bytes plus an attained maximum
+802-byte serialized signer witness in the isolated API. Its 70 complete data
+items, zero auxiliary hints, and 119-item combined peak are
+`locally-reproduced`, `research-unlimited` measurements. A depth guard requires
+all main-stack items to be signature data; the 2,498-byte composable alternative
+preserves unrelated main state and peaks at 120. Neither method reconstructs
+bytes or checks the host's rank bound. BitVM3 can use the assignment subject
+to integration that binds its meaning and handles unused ranks; an onchain
+byte consumer remains a separate measured cost.

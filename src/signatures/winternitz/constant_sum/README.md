@@ -1,5 +1,10 @@
 # Constant-sum Winternitz for 20-byte messages
 
+For the smallest tested terminal cost, see [constant-composition](../constant_composition/README.md):
+2,400 bytes isolated or 2,498 bytes composable, compared with this construction's
+3,624-byte maximum. The mixed-radix construction below remains a separate encoding
+with its own keys and witness format.
+
 `ConstantSumWinternitz20<H = Hash160, P = Preimage16>` is a separate terminal
 construction for exactly 20 unchanged message bytes. It reduces the measured
 locking fragment plus serialized signature data. The host treats the message as a

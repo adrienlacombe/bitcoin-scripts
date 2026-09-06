@@ -1,5 +1,6 @@
-//! Winternitz constructions: direct base-16, constant-sum, and the original API.
+//! Winternitz constructions: direct base-16, fixed-sum/composition encodings, and the original API.
 pub mod base16;
+pub mod constant_composition;
 pub mod constant_sum;
 pub mod legacy;
 pub mod shared;
@@ -7,6 +8,11 @@ pub mod shared;
 pub use base16::{
     FastChainValue, FastCommitment, FastPublicKey, FastSignature, FastSigningKey, FastWinternitz,
     FastWots16, FastWots32, FastWots4, FastWots64, FastWots80, InvalidFastPublicKeyLength,
+};
+pub use constant_composition::{
+    ConstantCompositionPublicKey20, ConstantCompositionSignature20,
+    ConstantCompositionSigningKey20, ConstantCompositionWinternitz20,
+    InvalidConstantCompositionEncoding,
 };
 pub use constant_sum::{
     ConstantSumPublicKey20, ConstantSumSignature20, ConstantSumSigningKey20,

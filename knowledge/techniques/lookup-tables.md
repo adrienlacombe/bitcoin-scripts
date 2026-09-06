@@ -93,3 +93,25 @@ hints, and a 93-item combined main/alt-stack peak including its temporary
 table and sum accumulator. These are `locally-reproduced`, `research-unlimited`
 metrics; the security argument is `inspected`. Neither this argument nor the
 strict local tests establish Bitcoin Core consensus or policy validation.
+
+## Destructive public-key pools
+
+[Constant-composition Winternitz](../primitives/winternitz-constant-composition20.md)
+replaces chain lookup tables with a shrinking table of 49 trusted endpoint
+commitments. Each of 35 fixed digit slots removes its selected key using
+`OP_ROLL`, enforcing distinctness without an index set or sortedness check.
+Fixed hash distances authenticate the selected key; the fourteen unselected
+keys receive the maximum digit. This trades codebook capacity for removal
+of dynamic digit lookup and checksum logic.
+
+The composable method clamps each selector into the remaining key pool. The
+isolated method first checks that all 70 main-stack items are its signature
+and stages them to altstack; each `OP_ROLL` then sees only trusted keys and
+supplies its own range bound. Omitting both the initial depth check and
+per-selector bounds is not a safe composable fragment. All 70 data items
+coexist at entry, there are zero auxiliary hints, and measured combined peaks
+are 119 isolated and 120 composable. HASH160/Preimage16 costs 2,400 and 2,498
+maximum script-plus-signer-witness bytes respectively. These measurements
+are `locally-reproduced`, `research-unlimited`. The pinned executor's exact
+`OP_ROLL` upper boundary panics and is recorded separately from successful
+strict tests; no Core validation is claimed.

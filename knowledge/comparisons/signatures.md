@@ -292,6 +292,36 @@ HASH160, 128 for SHA-256) or make the two security profiles interchangeable.
 
 ### Terminal verification of unchanged 20-byte messages
 
+The current smaller construction is
+[constant-composition Winternitz](../primitives/winternitz-constant-composition20.md).
+It assigns 49 independent keys to a radix-25 digit multiset with counts
+`[1 × 15, 2 × 7, 3 × 2, 14]`. Fixed digit slots replace per-chain digit
+lookups and a sum accumulator. Fourteen maximum-digit keys remain implicit;
+35 openings and 35 pool selectors authenticate the assignment. Host ranking
+preserves every unchanged 20-byte input without search or truncation.
+
+| Constant-composition terminal profile | Script bytes | Attained maximum signer witness | Maximum combined bytes | Entry items / hints | Combined peak |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| HASH160/Preimage16, isolated | 1,598 | 802 | 2,400 | 70 / 0 | 119 |
+| HASH160/Preimage16, composable | 1,696 | 802 | 2,498 | 70 / 0 | 120 |
+| HASH160/Preimage16, bounded | 1,767 | 802 | 2,569 | 70 / 0 | 121 |
+| SHA-256/HASH160/Preimage16, isolated | 1,468 | 1,210 | 2,678 | 70 / 0 | 119 |
+| SHA-256/Preimage16, isolated | 2,021 | 1,210 | 3,231 | 70 / 0 | 119 |
+
+The isolated fragment requires exactly 70 items on the entire main stack;
+its entry-depth guard makes the public-key pool the whole main stack before
+each `OP_ROLL`. The composable variants preserve unrelated main and alt state;
+isolated verification preserves alt state only. HASH160 wins the combined
+objective, while the hybrid has the smallest locking fragment. These are
+`locally-reproduced`, `research-unlimited` measurements with the same witness
+serialization and excluded terminal/framing costs as below. Strict local
+tests remain `unclassified`; one exact out-of-pool `OP_ROLL` boundary is
+recorded as a pinned-interpreter panic, not a successful rejection. Script
+checks the composition without enforcing the host's rank-below-`2^160` image
+or returning bytes. The search is bounded, not a proof of global optimality;
+see [NR-042](../negative-results/index.md#nr-042-constant-composition-search-and-endpoint-sharing-limits).
+
+The following fixed-sum comparison records the earlier 20-byte frontier.
 The 20-byte comparison has a different message size and is separate from the
 32-byte tables above. `ConstantSumWinternitz20` ranks the unchanged input into
 41 digits with radices `[16 × 32, 18 × 4, 20 × 5]` and sum 321. There are no
@@ -321,8 +351,9 @@ The SHA-256/HASH160 constant-sum variant has a shorter 2,381-byte script but
 larger native openings: its maximum witness is 1,517 bytes, totaling 3,898.
 It uses 123 entry items, zero hints, and peaks at 133. The plain SHA-256
 variant totals 4,349 maximum bytes from a 2,832-byte fragment and the same
-witness. HASH160 therefore wins the measured mean/maximum total objective;
-the hybrid wins locking-script size alone. The explicit bounded HASH160
+witness. HASH160 therefore wins the measured mean/maximum total objective
+within this earlier fixed-sum family; the hybrid wins its locking-script
+size alone. The explicit bounded HASH160
 method costs 2,853 script bytes and has a 3,797-byte maximum combined total.
 
 The default relation intentionally omits individual upper-digit guards.

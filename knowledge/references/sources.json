@@ -246,6 +246,13 @@
       "kind": "paper",
       "url": "https://bitvm.org/bitvm3.pdf",
       "revision": "Robin Linus, July 22, 2025; architectural context only, not validation of this repository\u2019s constant-sum verifier"
+    },
+    {
+      "id": "nist-dlmf-multiset-permutations",
+      "kind": "standard",
+      "title": "NIST Digital Library of Mathematical Functions, 26.16 Multiset Permutations",
+      "url": "https://dlmf.nist.gov/26.16",
+      "revision": "DLMF version 1.2.7, released 2026-06-15; multinomial capacity formula only, not cryptographic security"
     }
   ]
 }

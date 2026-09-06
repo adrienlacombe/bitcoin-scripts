@@ -1,5 +1,9 @@
 # Constant-sum Winternitz for 20-byte messages
 
+The newer [constant-composition construction](winternitz-constant-composition20.md)
+reduces the same terminal boundary to 2,400 bytes isolated or 2,498 bytes composable.
+This page retains the separate mixed-radix construction and its measurements.
+
 `ConstantSumWinternitz20<H = Hash160, P = Preimage16>` losslessly encodes an
 unchanged 20-byte message into 41 mixed-radix digits with a fixed sum. It
 removes separate checksum chains and verifies the complete vector before

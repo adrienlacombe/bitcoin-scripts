@@ -185,7 +185,7 @@ compare all retained profiles over a specified message/checksum distribution
 and the same complete protocol transaction, with strict consensus execution;
 report both expected and worst-case total weight at the stated forgery target.
 
-The separate `ConstantSumWinternitz20` implementation now losslessly encodes
+The earlier `ConstantSumWinternitz20` implementation losslessly encodes
 all unchanged 20-byte inputs into 41 mixed-radix coordinates with sum 321,
 eliminating checksum chains. HASH160/Preimage16 measures 2,680 script bytes
 and an attained 944-byte maximum signer witness, totaling 3,624 bytes; exact
@@ -217,6 +217,25 @@ Any protocol claiming canonical 20-byte binding must additionally implement
 and cost-check a rank/byte consumer, or explicitly require only the larger
 terminal relation. See the [constant-sum primitive](primitives/winternitz-constant-sum20.md)
 and [NR-041](negative-results/index.md#nr-041-20-byte-winternitz-search-and-overflow-relation-boundaries).
+
+The newer [constant-composition implementation](primitives/winternitz-constant-composition20.md)
+preserves arbitrary 20-byte inputs using 49 keys and radix-25 multiplicities
+`[1 × 15, 2 × 7, 3 × 2, 14]`. Fourteen maximum-digit keys are implicit,
+leaving 35 openings and 35 selectors. HASH160/Preimage16 reaches
+1,598 + 802 = 2,400 maximum script-plus-signer-witness bytes when the entire
+main stack is isolated by an explicit 70-item depth guard. Its combined peak
+is 119; the composable 2,498-byte alternative peaks at 120. Both have zero
+auxiliary hints. These `locally-reproduced`, `research-unlimited` results
+supersede the earlier 3,624-byte combined frontier for terminal verification.
+
+**Further acceptance criteria:** validate the shrinking-pool invariant and
+all selector boundaries against pinned Core, including the exact upper
+boundary where the local executor currently unwrap-panics; review the
+fixed-multiset one-time argument with cross-target chains, short starts, and
+same-message witness aliases; and reproduce a BitVM3 consumer that binds the
+reversible assignment and handles unused ranks without assuming an onchain
+byte decoder. A claimed optimum must cover constructions beyond the bounded
+composition/routing search. See [NR-042](negative-results/index.md#nr-042-constant-composition-search-and-endpoint-sharing-limits).
 
 ## OP-010 — External coverage review
 

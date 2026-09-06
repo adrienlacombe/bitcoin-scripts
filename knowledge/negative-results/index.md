@@ -1084,7 +1084,7 @@ prototype or supply its missing onchain byte recovery.
 
 The 20-byte search minimizes policy-produced locking-script plus serialized
 signature-witness bytes for terminal verification of the unchanged input.
-The retained construction is
+The construction retained by that earlier search is
 [`ConstantSumWinternitz20`](../primitives/winternitz-constant-sum20.md), using
 41 coordinates with radices `[16 × 32, 18 × 4, 20 × 5]` and fixed sum 321.
 HASH160/Preimage16 gives 2,680 script bytes and a 944-byte attained maximum
@@ -1177,3 +1177,52 @@ their locking fragments, the mean total decreases by approximately
 183.420682718484 bytes (4.83%). Host-counting
 evidence, strict local execution, complete-transaction cost, and the
 cryptographic whole-vector argument are separate claims.
+
+## NR-042: Constant-composition search and endpoint-sharing limits
+
+The subsequent search retains
+[constant-composition Winternitz](../primitives/winternitz-constant-composition20.md):
+49 independently keyed chains, radix 25, and digit counts
+`[1 × 15, 2 × 7, 3 × 2, 14]`. Assignments encode arbitrary unchanged 20-byte
+messages reversibly. Fourteen maximum-digit keys require no serialized
+opening; the other 35 slots have fixed hash distances and destructively
+select distinct endpoints from a trusted pool. HASH160/Preimage16 costs
+1,598 + 802 = 2,400 maximum script-plus-signer-witness bytes when isolated,
+or 1,696 + 802 = 2,498 when preserving unrelated main-stack state. These
+supersede NR-041's earlier 3,624-byte frontier without changing that earlier
+experiment's measurements.
+
+A rejected commitment-sharing shortcut put several independently indexed
+coordinates on the same underlying hash chain. Revealing its earliest node
+then reveals every later node, allowing the digit assignments to be
+redistributed without inversion. Fixed sums or multiplicities do not repair
+this loss of independent authentication. This is an `inspected` local attack
+argument; the retained pool contains separate commitments and removes each
+selected key exactly once. It does not aggregate or share chain secrets.
+Parameter and witness-layout searches are bounded: the retained result is
+not a proof of the smallest possible one-time signature, antichain, or
+Bitcoin Script construction.
+
+Isolation permits removal of per-selector clamps only after checking exactly
+70 main-stack items and staging all of them to altstack. Otherwise foreign
+main-stack items can be selected as if they were trusted endpoints. The
+composable method retains a pool bound. Equal-digit slot reorderings and
+clamped selectors can alias an assignment; the construction claims one-time
+message unforgeability under its stated hash assumptions, not strong
+unforgeability of witness bytes. Host decoding checks the first `2^160`
+ranks; Script accepts the full fixed-composition codebook and does not return
+bytes. BitVM3 integration must bind that representation and specify unused-rank
+handling.
+
+All profiles have 70 complete entry data items and zero auxiliary hints.
+Measured combined peaks are 119 isolated, 120 clamped, and 121 explicitly
+bounded. Script-plus-witness measurements are `locally-reproduced`,
+`research-unlimited` with stack checks disabled and `OP_TRUE` supplied by the
+metric harness; the terminal predicate and transaction framing are excluded.
+Separate strict tests remain `unclassified`. At a selector exactly equal to
+the remaining pool length, pinned `bitcoin-scriptexec`
+`ba96bc2bd76774c9d1b011461cb79d983c2c43a1` checks bounds before removing the
+selector and then unwrap-panics. A dedicated test reproduces that panic;
+it must not be counted as a clean local rejection or Core validation.
+Negative and larger positive indices are tested separately. This executor
+limitation and missing complete-protocol validation remain under OP-009.

@@ -40,3 +40,10 @@ Bitcoin Core v29.0 rejects `OP_PICK` indices outside the entire stack in
 [`interpreter.cpp`, lines 759–769](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp#L759-L769).
 That source inspection is distinct from the local executor's known panic on
 some out-of-stack positive indices; no Core execution is claimed here.
+
+The fixed-composition construction uses `nist-dlmf-multiset-permutations`,
+NIST DLMF §26.16 version 1.2.7 (2026-06-15), for exact multiset capacity.
+Its key-pool verifier, parameter search and Script measurements are local results;
+neither that counting reference nor the constant-sum WOTS+ paper proves this
+custom unkeyed signature. Independent host vectors are in
+[`constant_composition/tests/vectors.py`](../../src/signatures/winternitz/constant_composition/tests/vectors.py).

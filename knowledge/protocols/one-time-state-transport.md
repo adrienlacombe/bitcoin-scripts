@@ -129,7 +129,7 @@ strict exact and lookup keep the raw-width checks. Concrete multi-target/chain a
 durable one-time-key state remain protocol obligations under
 [OP-009](../open-problems.md#op-009--one-time-authentication-security-profiles).
 
-For a protocol that only verifies and consumes an unchanged 20-byte value,
+For the earlier fixed-sum approach to verifying and consuming an unchanged 20-byte value,
 `ConstantSumWinternitz20` replaces byte/nibble digitization and separate
 checksum chains with a reversible host encoding into 41 mixed-radix digits
 of sum 321. The default HASH160/Preimage16 fragment is 2,680 bytes, with an
@@ -188,3 +188,33 @@ offchain garbled-circuit architecture (`bitvm3s-2025`); it does not validate
 this repository’s custom fixed-sum Script relation. Complete integration
 must still define how unused-rank and out-of-radix publications are handled.
 See the [construction’s integration contract](../../src/signatures/winternitz/constant_sum/README.md#bitvm3-integration-and-byte-recovery).
+
+The newer [constant-composition construction](../primitives/winternitz-constant-composition20.md)
+reduces this publication cost further. A reversible host encoder assigns the
+unchanged 20-byte rank to 49 independently keyed chains with radix-25 counts
+`[1 × 15, 2 × 7, 3 × 2, 14]`. Verification processes fixed digit slots,
+removing one authenticated key from the public pool each time; the fourteen
+remaining keys implicitly receive the maximum digit. There are 35 openings,
+35 selectors, and zero auxiliary hints. All 70 data items coexist at entry
+and are staged above any existing altstack state.
+
+HASH160/Preimage16 uses a 1,598-byte isolated fragment and an attained maximum
+802-byte serialized signer witness, totaling 2,400 bytes, with combined peak
+119. The composable clamped fragment uses 1,696 + 802 = 2,498 bytes and peaks
+at 120 while retaining unrelated main state. The isolated API requires the
+entire main stack to contain exactly the 70 signature items, checks that
+depth explicitly, and preserves only unrelated alt state. That guard is
+essential before dropping selector clamps. These costs remain
+`locally-reproduced`, `research-unlimited`, with the caller predicate and
+transaction framing excluded; strict tests remain `unclassified`.
+
+BitVM3 can consume this reversible assignment subject to a defined protocol
+integration; publication Script does not reconstruct bytes or restrict
+assignments to the first `2^160` ranks. The consumer must bind the assignment
+to its intended message and define unused-rank and witness-alias handling.
+The local one-time argument uses a fixed multiset as an antichain, honestly
+generated independent keys, and chain inversion/collision assumptions.
+HASH160 retains its existing security tradeoffs. The exact out-of-pool
+`OP_ROLL` boundary exposes a pinned-executor panic, so those tests establish
+neither clean local rejection nor Core validity. See
+[NR-042](../negative-results/index.md#nr-042-constant-composition-search-and-endpoint-sharing-limits).
