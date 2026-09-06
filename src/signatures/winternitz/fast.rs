@@ -370,46 +370,24 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// Builds a speed-optimized terminal verifier that consumes the entire
     /// signature and recovered message.
     ///
-    /// Checksum verification is fused into the reverse chain walk. The script
-    /// leaves an empty stack; append the surrounding protocol's terminal
-    /// predicate (or `OP_TRUE` for an isolated complete-leaf test).
+    /// Verified digits are collected on altstack before the checksum reduction.
+    /// This avoids moving a running accumulator around every chain verifier.
+    /// The fragment leaves an empty stack; append a terminal predicate.
     pub fn checksig_verify_and_clear(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
         Self::assert_public_key(public_key);
         script! {
-            // Checksum digits are stored least-significant first, so consuming
-            // the witness backwards sees the most-significant digit first.
-            for checksum_index in (0..Self::CHECKSUM_DIGITS).rev() {
+            for chain_index in (0..Self::TOTAL_DIGITS).rev() {
                 { verify_chain_exact(
-                    public_key.chain_ends[Self::MESSAGE_DIGITS + checksum_index],
-                    Self::checksum_digit_bits(checksum_index),
-                    true,
+                    public_key.chain_ends[chain_index],
+                    Self::chain_digit_bits(chain_index),
+                    false,
                 ) }
-                if checksum_index == Self::CHECKSUM_DIGITS - 1 {
-                    OP_TOALTSTACK
-                } else {
-                    OP_FROMALTSTACK
-                    for _ in 0..Self::checksum_digit_bits(checksum_index) {
-                        OP_DUP OP_ADD
-                    }
-                    OP_ADD
-                    OP_TOALTSTACK
-                }
             }
-
             OP_FROMALTSTACK
-            { Self::MESSAGE_DIGITS * MAX_DIGIT as usize }
-            OP_SUB
-            OP_TOALTSTACK
-
-            for message_index in (0..Self::MESSAGE_DIGITS).rev() {
-                { verify_chain_exact(public_key.chain_ends[message_index], 4, true) }
-                OP_FROMALTSTACK
-                OP_ADD
-                if message_index != 0 {
-                    OP_TOALTSTACK
-                }
+            for _ in 1..Self::MESSAGE_DIGITS {
+                OP_FROMALTSTACK OP_ADD
             }
-            OP_0 OP_NUMEQUALVERIFY
+            { verify_checksum_from_altstack::<MESSAGE_BYTES>() }
         }
     }
 
@@ -442,46 +420,71 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     /// chain item to be 20 bytes; the accepted relation is documented on the
     /// internal chain verifier below.
     pub fn checksig_verify_size_optimized(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
-        Self::assert_public_key(public_key);
-        script! {
-            // The size witness puts checksum chain 0 on top, followed by the
-            // remaining checksum chains and then message chains in reverse.
-            for checksum_index in 0..Self::CHECKSUM_DIGITS {
-                { verify_chain_size_optimized(
-                    public_key.chain_ends[Self::MESSAGE_DIGITS + checksum_index],
-                    Self::checksum_digit_bits(checksum_index),
-                ) }
-            }
-            for message_index in (0..Self::MESSAGE_DIGITS).rev() {
-                { verify_chain_size_optimized(public_key.chain_ends[message_index], 4) }
-            }
-            { recover_message_and_verify_checksum_horner::<MESSAGE_BYTES>() }
-        }
+        Self::checksig_verify_numeric_size(public_key, false, false)
     }
 
-    /// Builds the smallest terminal verifier and consumes the message.
+    /// Builds the terminal version of the strict numeric size verifier.
     ///
     /// The fragment leaves an empty stack after successful verification. The
     /// caller must append the surrounding protocol's terminal predicate.
     pub fn checksig_verify_size_optimized_and_clear(
         public_key: &FastPublicKey<MESSAGE_BYTES>,
     ) -> Script {
+        Self::checksig_verify_numeric_size(public_key, false, true)
+    }
+
+    /// Recovers the authenticated message using upper-clamped numeric digits.
+    ///
+    /// Accepts [`FastSignature::to_size_optimized_witness`]. Each supplied
+    /// digit is replaced by `min(digit, chain_max)` before chain verification,
+    /// message recovery, and checksum verification. The authenticated message
+    /// is therefore the clamped value, exactly as with the legacy list-pick
+    /// verifier. Raw digit encodings above the maximum are intentionally
+    /// malleable; callers needing rejection use [`Self::checksig_verify_size_optimized`].
+    /// Negative digits and oversized ScriptNums fail. Like the strict numeric
+    /// size profile, this profile admits arbitrary-length chain preimages
+    /// below the maximum digit rather than checking raw chain-item length.
+    pub fn checksig_verify_clamped(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+        Self::checksig_verify_numeric_size(public_key, true, false)
+    }
+
+    /// Verifies upper-clamped numeric digits and consumes the message.
+    ///
+    /// Uses the same witness and clamped-message contract as
+    /// [`Self::checksig_verify_clamped`]. The successful fragment leaves an
+    /// empty stack; append the surrounding protocol's terminal predicate.
+    pub fn checksig_verify_clamped_and_clear(public_key: &FastPublicKey<MESSAGE_BYTES>) -> Script {
+        Self::checksig_verify_numeric_size(public_key, true, true)
+    }
+
+    fn checksig_verify_numeric_size(
+        public_key: &FastPublicKey<MESSAGE_BYTES>,
+        clamp: bool,
+        clear: bool,
+    ) -> Script {
         Self::assert_public_key(public_key);
         script! {
+            // Checksum chain 0 is on top, then the remaining checksum
+            // chains and message chains in reverse order.
             for checksum_index in 0..Self::CHECKSUM_DIGITS {
                 { verify_chain_size_optimized(
                     public_key.chain_ends[Self::MESSAGE_DIGITS + checksum_index],
                     Self::checksum_digit_bits(checksum_index),
+                    clamp,
                 ) }
             }
             for message_index in (0..Self::MESSAGE_DIGITS).rev() {
-                { verify_chain_size_optimized(public_key.chain_ends[message_index], 4) }
+                { verify_chain_size_optimized(public_key.chain_ends[message_index], 4, clamp) }
             }
-            { verify_checksum_and_clear_horner::<MESSAGE_BYTES>() }
+            if clear {
+                { verify_checksum_and_clear_horner::<MESSAGE_BYTES>() }
+            } else {
+                { recover_message_and_verify_checksum_horner::<MESSAGE_BYTES>() }
+            }
         }
     }
 
-    /// Builds the smallest recovery verifier and returns 64 authenticated
+    /// Builds the smallest locking fragment for recovery and returns 64 authenticated
     /// message nibbles for `FastWots32`.
     ///
     /// Canonical witness bits drive exact conditional hash blocks. Checksum
@@ -525,19 +528,20 @@ impl<const MESSAGE_BYTES: usize> FastWinternitz<MESSAGE_BYTES> {
     ) -> Script {
         Self::assert_public_key(public_key);
         script! {
-            OP_0 OP_TOALTSTACK
             for chain_index in (0..Self::TOTAL_DIGITS).rev() {
                 if chain_index < Self::MESSAGE_DIGITS {
                     { verify_chain_bitwise_and_accumulate(
                         public_key.chain_ends[chain_index],
                         4,
                         1,
+                        false,
                     ) }
                 } else {
                     { verify_chain_bitwise_and_accumulate(
                         public_key.chain_ends[chain_index],
                         Self::checksum_digit_bits(chain_index - Self::MESSAGE_DIGITS),
                         Self::checksum_digit_place(chain_index - Self::MESSAGE_DIGITS),
+                        chain_index == Self::TOTAL_DIGITS - 1,
                     ) }
                 }
             }
@@ -628,30 +632,30 @@ fn mixed_checksum_digits<const MESSAGE_BYTES: usize>(checksum: usize) -> Vec<u8>
 /// the supplied digit. Precondition: `[... digit, chain_value]`.
 /// Postcondition: `[... digit]`.
 fn verify_chain_exact(expected: FastChainValue, digit_bits: usize, return_digit: bool) -> Script {
-    let maximum = (1usize << digit_bits) - 1;
     script! {
         OP_SIZE { HASH_BYTES } OP_EQUALVERIFY
         OP_SWAP
         OP_DUP OP_TOALTSTACK
 
-        // Keep [remaining_steps, chain_value]. Each conditional block hashes
-        // exactly one set bit of maximum - digit, sharing all suffix hash
-        // opcodes across the valid paths. For an input outside the radix, the
-        // residual at the final OP_IF is neither canonical false nor true.
-        // Tapscript's consensus MINIMALIF rule therefore performs the range
-        // check without a separate comparison.
-        { maximum } OP_SWAP OP_SUB OP_SWAP
+        // Keep [chain_value, residual_digit]. A set digit bit skips that
+        // block of hashes; an unset bit executes it. Working directly with
+        // the digit avoids constructing its complement and moving the chain
+        // through the final condition. Out-of-range inputs leave a residual
+        // other than canonical false or true at the final OP_NOTIF, so
+        // tapscript MINIMALIF still enforces the complete digit range.
         for step in (1..digit_bits).rev().map(|bit_index| 1usize << bit_index) {
-            OP_OVER { step } OP_GREATERTHANOREQUAL
+            OP_DUP { step } OP_GREATERTHANOREQUAL
             OP_IF
-                OP_SWAP { step } OP_SUB OP_SWAP
+                { step } OP_SUB
+            OP_ELSE
+                OP_SWAP
                 for _ in 0..step {
                     OP_HASH160
                 }
+                OP_SWAP
             OP_ENDIF
         }
-        OP_SWAP
-        OP_IF
+        OP_NOTIF
             OP_HASH160
         OP_ENDIF
 
@@ -659,6 +663,81 @@ fn verify_chain_exact(expected: FastChainValue, digit_bits: usize, return_digit:
         OP_EQUALVERIFY
         if return_digit {
             OP_FROMALTSTACK
+        }
+    }
+}
+
+#[cfg(test)]
+mod exact_chain_tests {
+    use super::{hash_chain, verify_chain_exact, HASH_BYTES};
+    use crate::support::{
+        execution::execute_raw_script_with_inputs_strict,
+        script::{script, ScriptCompilation},
+    };
+
+    #[test]
+    fn exact_chain_binds_every_digit_and_rejects_malformed_residuals() {
+        for digit_bits in 1..=4 {
+            let maximum = (1u8 << digit_bits) - 1;
+            let start = [0x42; HASH_BYTES];
+            let endpoint = hash_chain(start, maximum);
+            let verifier = script! {
+                { verify_chain_exact(endpoint, digit_bits, true) }
+                OP_DROP OP_TRUE
+            }
+            .compile_with_policy();
+
+            for actual_digit in 0..=maximum {
+                let node = hash_chain(start, actual_digit);
+                for claimed_digit in 0..=maximum {
+                    let digit_item = if claimed_digit == 0 {
+                        Vec::new()
+                    } else {
+                        vec![claimed_digit]
+                    };
+                    let result = execute_raw_script_with_inputs_strict(
+                        verifier.to_bytes(),
+                        vec![digit_item, node.to_vec()],
+                    );
+                    assert_eq!(
+                        result.success,
+                        actual_digit == claimed_digit,
+                        "width {digit_bits}, actual {actual_digit}, claimed {claimed_digit}: {result}"
+                    );
+                }
+            }
+
+            for invalid in [
+                vec![0x81],
+                vec![maximum + 1],
+                vec![0x7f],
+                vec![0xff, 0xff, 0xff, 0x7f],
+                vec![0xff, 0xff, 0xff, 0xff, 0],
+            ] {
+                let result = execute_raw_script_with_inputs_strict(
+                    verifier.to_bytes(),
+                    vec![invalid.clone(), endpoint.to_vec()],
+                );
+                assert!(
+                    !result.success,
+                    "width {digit_bits} accepted malformed digit {invalid:?}: {result}"
+                );
+            }
+
+            // Direct equality and every hashed path retain the strict raw
+            // chain-length contract, independent of the digit relation.
+            for length in [0, HASH_BYTES - 1, HASH_BYTES + 1] {
+                for digit_item in [Vec::new(), vec![maximum]] {
+                    let result = execute_raw_script_with_inputs_strict(
+                        verifier.to_bytes(),
+                        vec![digit_item, vec![0x42; length]],
+                    );
+                    assert!(
+                        !result.success,
+                        "width {digit_bits}, length {length}: {result}"
+                    );
+                }
+            }
         }
     }
 }
@@ -702,11 +781,13 @@ fn verify_chain_minimal(expected: FastChainValue, digit_bits: usize, return_digi
     }
 }
 
-/// Verifies one chain with the smallest measured strict-numeric lookup.
+/// Verifies one chain with a strict or upper-clamped numeric lookup.
 ///
 /// Precondition: `[... chain_value, digit]`. Postcondition: the digit is on
-/// the altstack. Negative digits fail at `OP_PICK`; `16` and above fail the
-/// explicit upper bound; oversized ScriptNums fail numeric decoding.
+/// the altstack. In the clamped mode, both chain verification and the saved
+/// digit use `min(digit, radix-1)`. Otherwise digits at or above the radix fail
+/// the explicit upper bound. In both modes, negative digits fail at `OP_PICK`
+/// and oversized ScriptNums fail numeric decoding.
 ///
 /// The fragment intentionally omits `OP_SIZE 20 OP_EQUALVERIFY`. At the
 /// chain's maximum digit the item is compared directly with the 20-byte
@@ -715,11 +796,15 @@ fn verify_chain_minimal(expected: FastChainValue, digit_bits: usize, return_digi
 /// signer always emits 20-byte nodes, but the verifier relation also admits an
 /// arbitrary-length preimage for digits below 15. That tradeoff saves four
 /// serialized locking bytes per chain and is specific to this size profile.
-fn verify_chain_size_optimized(expected: FastChainValue, digit_bits: usize) -> Script {
+fn verify_chain_size_optimized(expected: FastChainValue, digit_bits: usize, clamp: bool) -> Script {
     let radix = 1usize << digit_bits;
     let half = radix / 2;
     script! {
-        OP_DUP { radix } OP_LESSTHAN OP_VERIFY
+        if clamp {
+            { radix - 1 } OP_MIN
+        } else {
+            OP_DUP { radix } OP_LESSTHAN OP_VERIFY
+        }
         OP_DUP OP_TOALTSTACK
 
         { half }
@@ -741,6 +826,155 @@ fn verify_chain_size_optimized(expected: FastChainValue, digit_bits: usize) -> S
         for _ in 0..(half / 2) {
             OP_2DROP
         }
+    }
+}
+
+#[cfg(test)]
+mod clamped_chain_tests {
+    use super::{hash_chain, verify_chain_size_optimized, FastWinternitz, FastWots32, HASH_BYTES};
+    use crate::support::{
+        execution::execute_raw_script_with_inputs_strict,
+        script::{script, Script, ScriptCompilation},
+    };
+
+    fn integer(value: i64) -> Vec<u8> {
+        let mut bytes = [0; 8];
+        let len = bitcoin::script::write_scriptint(&mut bytes, value);
+        bytes[..len].to_vec()
+    }
+
+    #[test]
+    fn clamped_chains_bind_the_recovered_digit_and_reject_malformed_numbers() {
+        // The supported message/checksum partitions use widths 2 through 4.
+        for width in 2..=4 {
+            let maximum = (1u8 << width) - 1;
+            let start = [0x35; HASH_BYTES];
+            let endpoint = hash_chain(start, maximum);
+            for actual_digit in 0..=maximum {
+                let verifier = script! {
+                    { verify_chain_size_optimized(endpoint, width, true) }
+                    OP_FROMALTSTACK { actual_digit } OP_EQUALVERIFY OP_TRUE
+                }
+                .compile_with_policy();
+                let node = hash_chain(start, actual_digit);
+                for claimed in (0..=i64::from(maximum) + 2).chain([127, 128, i64::from(i32::MAX)]) {
+                    let result = execute_raw_script_with_inputs_strict(
+                        verifier.to_bytes(),
+                        vec![node.to_vec(), integer(claimed)],
+                    );
+                    assert_eq!(
+                        result.success,
+                        claimed.min(i64::from(maximum)) == i64::from(actual_digit),
+                        "width={width}, actual={actual_digit}, claimed={claimed}: {result}",
+                    );
+                }
+                for invalid in [
+                    integer(-1),
+                    integer(i64::from(i32::MIN)),
+                    integer(1i64 << 31),
+                    vec![0; 5],
+                ] {
+                    let result = execute_raw_script_with_inputs_strict(
+                        verifier.to_bytes(),
+                        vec![node.to_vec(), invalid.clone()],
+                    );
+                    assert!(
+                        !result.success,
+                        "width={width}, invalid={invalid:?}: {result}"
+                    );
+                }
+            }
+        }
+    }
+
+    fn recover_and_check<const N: usize>(verifier: Script, message: &[u8; N]) -> Script {
+        let digits: Vec<_> = message
+            .iter()
+            .flat_map(|byte| [byte >> 4, byte & 15])
+            .collect();
+        script! {
+            { verifier }
+            for digit in digits.into_iter().rev() {
+                { digit } OP_EQUALVERIFY
+            }
+            OP_TRUE
+        }
+    }
+
+    fn check_message_sizes<const N: usize>() {
+        let key = FastWinternitz::<N>::signing_key_from_seed([0x62; 32]);
+        let public_key = FastWinternitz::<N>::public_key(&key);
+        for message in [[0; N], [0xff; N], std::array::from_fn(|i| (i * 37) as u8)] {
+            let signature = FastWinternitz::<N>::sign(
+                FastWinternitz::<N>::signing_key_from_seed([0x62; 32]),
+                &message,
+            );
+            for verifier in [
+                recover_and_check(
+                    FastWinternitz::<N>::checksig_verify_clamped(&public_key),
+                    &message,
+                ),
+                script! { { FastWinternitz::<N>::checksig_verify_clamped_and_clear(&public_key) } OP_TRUE },
+            ] {
+                let result = execute_raw_script_with_inputs_strict(
+                    verifier.compile_with_policy().to_bytes(),
+                    signature.to_size_optimized_witness().to_vec(),
+                );
+                assert!(result.success, "N={N}, message={message:?}: {result}");
+                assert_eq!(result.final_stack.len(), 1);
+            }
+        }
+    }
+
+    #[test]
+    fn clamped_profiles_roundtrip_supported_message_boundaries() {
+        check_message_sizes::<1>();
+        check_message_sizes::<4>();
+        check_message_sizes::<16>();
+        check_message_sizes::<32>();
+        check_message_sizes::<64>();
+        check_message_sizes::<80>();
+    }
+
+    #[test]
+    fn clamped_checksum_binds_forwardable_chain_nodes_and_normalizes_raw_maxima() {
+        let message = std::array::from_fn(|i| (i * 37) as u8);
+        let key = FastWots32::signing_key_from_seed([0x42; 32]);
+        let public_key = FastWots32::public_key(&key);
+        let signature = FastWots32::sign(key, &message);
+        let witness = signature.to_size_optimized_witness().to_vec();
+        let recovery =
+            recover_and_check(FastWots32::checksig_verify_clamped(&public_key), &message)
+                .compile_with_policy();
+        let terminal =
+            script! { { FastWots32::checksig_verify_clamped_and_clear(&public_key) } OP_TRUE }
+                .compile_with_policy();
+        for index in 0..FastWots32::TOTAL_DIGITS {
+            let pair = 2 * if index < FastWots32::MESSAGE_DIGITS {
+                index
+            } else {
+                FastWots32::MESSAGE_DIGITS + FastWots32::TOTAL_DIGITS - 1 - index
+            };
+            let mut changed = witness.clone();
+            changed[pair] = public_key.chain_ends[index].to_vec();
+            changed[pair + 1] = integer(127);
+            let already_maximum = signature.digits[index] == FastWots32::chain_max_digit(index);
+            for leaf in [&recovery, &terminal] {
+                let result =
+                    execute_raw_script_with_inputs_strict(leaf.to_bytes(), changed.clone());
+                assert_eq!(result.success, already_maximum, "chain={index}: {result}");
+            }
+        }
+        for missing_items in 1..=2 {
+            let mut malformed = witness.clone();
+            malformed.truncate(malformed.len() - missing_items);
+            let result = execute_raw_script_with_inputs_strict(terminal.to_bytes(), malformed);
+            assert!(!result.success);
+        }
+        let mut extra = witness;
+        extra.insert(0, Vec::new());
+        let result = execute_raw_script_with_inputs_strict(terminal.to_bytes(), extra);
+        assert!(!result.success);
     }
 }
 
@@ -793,18 +1027,33 @@ fn verify_chain_bitwise_and_fuse_horner(expected: FastChainValue, digit_bits: us
 /// their weighted value to the accumulator on the altstack.
 ///
 /// Precondition: `[... bit_8, bit_4, bit_2, chain_value, bit_1]` with the
-/// accumulator at the bottom of the altstack. Postcondition: the five main
-/// stack items are consumed and the updated accumulator remains on altstack.
+/// accumulator on top of the altstack, unless `initialize` creates it instead.
+/// Postcondition: the five main stack items are consumed and the updated
+/// accumulator remains on altstack.
 fn verify_chain_bitwise_and_accumulate(
     expected: FastChainValue,
     digit_bits: usize,
     place: usize,
+    initialize: bool,
 ) -> Script {
     script! {
-        OP_IF
-            OP_HASH160
-            { add_weight_to_altstack(place) }
-        OP_ENDIF
+        if initialize {
+            // The first authenticated bit supplies the initial weighted sum.
+            // This avoids materializing a zero accumulator before consuming
+            // any witness item, saving both locking bytes and one peak item.
+            OP_IF
+                OP_HASH160
+                { place }
+            OP_ELSE
+                OP_0
+            OP_ENDIF
+            OP_TOALTSTACK
+        } else {
+            OP_IF
+                OP_HASH160
+                { add_weight_to_altstack(place) }
+            OP_ENDIF
+        }
         for bit_index in 1..digit_bits {
             OP_SWAP
             OP_IF
@@ -831,12 +1080,20 @@ fn add_weight_to_altstack(weight: usize) -> Script {
 fn recover_message_and_verify_checksum<const MESSAGE_BYTES: usize>() -> Script {
     script! {
         { preserve_message_and_sum::<MESSAGE_BYTES>() }
+        { verify_checksum_from_altstack::<MESSAGE_BYTES>() }
+    }
+}
 
-        // The ordinary witness exposes checksum digits least-significant first.
-        OP_FROMALTSTACK
-        for checksum_index in 1..FastWinternitz::<MESSAGE_BYTES>::CHECKSUM_DIGITS {
+/// Consumes the message sum on main and little-endian checksum digits on alt.
+fn verify_checksum_from_altstack<const MESSAGE_BYTES: usize>() -> Script {
+    script! {
+        // Stage little-endian digits together: each Horner addition then
+        // consumes the next lower digit directly from beneath the accumulator.
+        for _ in 0..FastWinternitz::<MESSAGE_BYTES>::CHECKSUM_DIGITS {
             OP_FROMALTSTACK
-            for _ in 0..FastWinternitz::<MESSAGE_BYTES>::checksum_digit_shift(checksum_index) {
+        }
+        for checksum_index in (0..FastWinternitz::<MESSAGE_BYTES>::CHECKSUM_DIGITS - 1).rev() {
+            for _ in 0..FastWinternitz::<MESSAGE_BYTES>::checksum_digit_bits(checksum_index) {
                 OP_DUP OP_ADD
             }
             OP_ADD
@@ -922,7 +1179,10 @@ mod tests {
             BinarysearchVerifier, BruteforceVerifier, CompactWots, ListpickVerifier, Parameters,
             VoidConverter, Winternitz, Wots, Wots32,
         },
-        support::execution::{execute_script, execute_script_with_inputs},
+        support::{
+            execution::{execute_script, execute_script_with_inputs},
+            script::ScriptCompilation,
+        },
     };
     use bitcoin::consensus::encode::serialize;
     use bitcoin::hex::DisplayHex;
@@ -954,10 +1214,14 @@ mod tests {
             let size = widths
                 .iter()
                 .map(|&digit_bits| {
-                    let fragment =
-                        verify_chain_bitwise_and_accumulate([0; HASH_BYTES], digit_bits, place);
+                    let fragment = verify_chain_bitwise_and_accumulate(
+                        [0; HASH_BYTES],
+                        digit_bits,
+                        place,
+                        false,
+                    );
                     place <<= digit_bits;
-                    fragment.len()
+                    fragment.clone().compile_with_policy().len()
                 })
                 .sum::<usize>();
             *best = (*best).min(size);
@@ -1113,13 +1377,57 @@ mod tests {
             .into_iter()
             .map(|digit_bits| {
                 let fragment =
-                    verify_chain_bitwise_and_accumulate([0; HASH_BYTES], digit_bits, place);
+                    verify_chain_bitwise_and_accumulate([0; HASH_BYTES], digit_bits, place, false);
                 place <<= digit_bits;
-                fragment.len()
+                fragment.clone().compile_with_policy().len()
             })
             .sum::<usize>();
         assert_eq!(selected, 169);
         assert_eq!(selected, best);
+    }
+
+    #[test]
+    fn bitwise_first_chain_initializes_exact_weighted_distance() {
+        use crate::support::execution::execute_raw_script_with_inputs_strict;
+
+        let start = [0x35; HASH_BYTES];
+        let endpoint = hash_chain(start, 15);
+        let initialized = verify_chain_bitwise_and_accumulate(endpoint, 4, 64, true);
+        let separate_zero = script! {
+            OP_0 OP_TOALTSTACK
+            { verify_chain_bitwise_and_accumulate(endpoint, 4, 64, false) }
+        };
+        // ALL does not already fuse initialization across conditional updates.
+        assert_eq!(
+            initialized.clone().compile_with_policy().len() + 2,
+            separate_zero.compile_with_policy().len(),
+        );
+
+        for remaining in 0u8..=15 {
+            let mut witness = Vec::new();
+            for bit in (1..4).rev() {
+                witness.push(if (remaining >> bit) & 1 == 0 {
+                    Vec::new()
+                } else {
+                    vec![1]
+                });
+            }
+            witness.push(hash_chain(start, 15 - remaining).to_vec());
+            witness.push(if remaining & 1 == 0 {
+                Vec::new()
+            } else {
+                vec![1]
+            });
+            let leaf = script! {
+                { initialized.clone() }
+                OP_FROMALTSTACK { usize::from(remaining) * 64 } OP_EQUALVERIFY
+                OP_TRUE
+            }
+            .compile_with_policy();
+            let result = execute_raw_script_with_inputs_strict(leaf.to_bytes(), witness);
+            assert!(result.success, "remaining {remaining}: {result}");
+            assert_eq!(result.final_stack.len(), 1);
+        }
     }
 
     #[test]
@@ -1131,6 +1439,7 @@ mod tests {
                 let public_key = super::super::generate_public_key(&parameters, &secret);
                 Winternitz::<ListpickVerifier, VoidConverter>::new()
                     .checksig_verify(&parameters, &public_key)
+                    .compile_with_policy()
                     .len()
             })
             .collect::<Vec<_>>();
@@ -1549,11 +1858,23 @@ mod tests {
             })
             .sum::<usize>();
         assert!(exact_hashes < minimal_hashes);
-        assert!(minimal.len() < exact.len());
-        assert!(size.len() < minimal.len());
-        assert!(size_clear.len() < size.len());
-        assert!(bitwise.len() < size.len());
-        assert!(bitwise_clear.len() < size_clear.len());
+        assert!(
+            minimal.clone().compile_with_policy().len() < exact.clone().compile_with_policy().len()
+        );
+        assert!(
+            size.clone().compile_with_policy().len() < minimal.clone().compile_with_policy().len()
+        );
+        assert!(
+            size_clear.clone().compile_with_policy().len()
+                < size.clone().compile_with_policy().len()
+        );
+        assert!(
+            bitwise.clone().compile_with_policy().len() < size.clone().compile_with_policy().len()
+        );
+        assert!(
+            bitwise_clear.clone().compile_with_policy().len()
+                < size_clear.clone().compile_with_policy().len()
+        );
 
         let legacy_parameters = Parameters::new_by_bit_length(256, 4);
         let legacy_secret = vec![0x42; 20];
@@ -1570,13 +1891,13 @@ mod tests {
 
         eprintln!(
             "fast-wots32 exact={} minimal={} clear={} size={} size_clear={} bitwise={} bitwise_clear={} witness={} bitwise_witness={} bitwise_terminal_witness={} exact_hashes={} minimal_hashes={} exact_ops={} minimal_ops={} clear_ops={} size_ops={} size_clear_ops={} bitwise_ops={} bitwise_clear_ops={} exact_stack={} minimal_stack={} clear_stack={} size_stack={} size_clear_stack={} bitwise_stack={} bitwise_clear_stack={} legacy_list={} legacy_binary={} legacy_bruteforce={} legacy_witness={} legacy_compact_witness={}",
-            exact.len(),
-            minimal.len(),
-            clear.len(),
-            size.len(),
-            size_clear.len(),
-            bitwise.len(),
-            bitwise_clear.len(),
+            exact.clone().compile_with_policy().len(),
+            minimal.clone().compile_with_policy().len(),
+            clear.clone().compile_with_policy().len(),
+            size.clone().compile_with_policy().len(),
+            size_clear.clone().compile_with_policy().len(),
+            bitwise.clone().compile_with_policy().len(),
+            bitwise_clear.clone().compile_with_policy().len(),
             serialize(&witness).len(),
             serialize(&bitwise_witness).len(),
             serialize(&bitwise_terminal_witness).len(),
@@ -1596,9 +1917,9 @@ mod tests {
             size_clear_result.stats.max_nb_stack_items,
             bitwise_result.stats.max_nb_stack_items,
             bitwise_clear_result.stats.max_nb_stack_items,
-            legacy_list.len(),
-            legacy_binary.len(),
-            legacy_bruteforce.len(),
+            legacy_list.clone().compile_with_policy().len(),
+            legacy_binary.clone().compile_with_policy().len(),
+            legacy_bruteforce.clone().compile_with_policy().len(),
             serialize(&legacy_standard_witness).len(),
             serialize(&legacy_compact_witness).len(),
         );

@@ -85,8 +85,12 @@ the stack limit. Record that distinction in every result that uses it.
 
    ```sh
    python3 tools/kb.py validate
-   cargo test --locked
+   cargo test --locked -- --skip fields::
    ```
+
+Skip field-arithmetic tests by default, including in future work, unless the
+user explicitly requests them. Keep the `--skip fields::` filter on broad test
+runs and prefer targeted tests for the primitive being changed.
 
 Use `UPDATE_PRIMITIVE_METRICS=1 cargo test --locked --test primitive_metrics`
 only for an intentional metric change. Do not silently refresh measurements.

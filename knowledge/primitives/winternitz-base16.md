@@ -10,9 +10,17 @@ typed message sizes, and list-pick, brute-force, or binary-search verifiers.
   independent differential implementation.
 - **Representative result:** Wots32 list-pick uses 4,908 script bytes and a
   1,477-byte serialized witness. The Fast bitwise profile reduces the like-for-
-  like recovery fragment to 4,325 bytes, or 4,208 bytes when the message is
+  like recovery fragment to 4,325 bytes, or 4,206 bytes when the message is
   cleared, with a documented witness-size/stack tradeoff and relaxed raw
   chain-item length relation.
+- **Terminal result:** direct reduction of authenticated digits replaces
+  recovery followed by dropping, reducing the legacy terminal fragment from
+  4,940 to 4,844 bytes while preserving the existing signature format. With
+  an appended `OP_TRUE`, the zero-message fixture measures 3,166 static
+  non-push fragment opcodes and a 143-item combined stack peak. Its 134 data
+  items and zero auxiliary hints coexist at entry. This is
+  `locally-reproduced` in tapscript through the metric helper with stack checks
+  disabled, hence `research-unlimited`, without Bitcoin Core validation.
 - **Tradeoff:** compact witnesses increase verification work; verifier choice
   changes script, witness, and stack costs.
 - **Security:** keys are strictly one-time and chain security is bounded by

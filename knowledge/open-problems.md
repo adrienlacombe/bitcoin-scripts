@@ -144,6 +144,15 @@ script-size/witness-size and raw-chain-length tradeoffs. Durable crash-safe and
 distributed one-time state, concrete multi-target bounds, raw ScriptNum
 canonicality, and complete state-transport transaction costs remain open.
 
+Compatible follow-up improvements add an exact verifier that carries the
+residual digit and a staged Horner checksum. Exhaustive chain-digit tests
+retain strict range and node-length checks. The relevant cost objective is
+script plus serialized witness bytes for the same output contract, since a
+smaller locking fragment can require a larger witness. An explicit clamped
+lookup profile saves 134 script bytes by adopting the legacy upper-saturation
+relation; strict raw-digit rejection remains separate. These improvements do
+not resolve the remaining protocol criteria.
+
 ## OP-010 — External coverage review
 
 Continuously compare this atlas with primary papers and active upstream Bitcoin

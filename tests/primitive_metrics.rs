@@ -133,6 +133,385 @@ fn prince_metrics() -> Vec<Metric> {
     ]
 }
 
+fn winternitz_metrics() -> Vec<Metric> {
+    let wots_secret = vec![0x42; 20];
+    let wots_message = [0u8; 32];
+    let wots_public_key = Wots32::generate_public_key(&wots_secret);
+    let wots_witness = Wots32::sign_to_raw_witness(&wots_secret, &wots_message);
+
+    let fast_wots_key = FastWots32::signing_key_from_seed([0x42; 32]);
+    let fast_wots_public_key = FastWots32::public_key(&fast_wots_key);
+    let fast_wots_signature = FastWots32::sign(fast_wots_key, &wots_message);
+    let fast_wots_witness = fast_wots_signature.to_witness();
+    let fast_wots_size_witness = fast_wots_signature.to_size_optimized_witness();
+    let fast_wots_bitwise_witness = fast_wots_signature.to_bitwise_size_optimized_witness();
+    let fast_wots_bitwise_terminal_witness = fast_wots_signature.to_bitwise_terminal_witness();
+    let fast_wots_exact = FastWots32::checksig_verify(&fast_wots_public_key);
+    let fast_wots_minimal = FastWots32::checksig_verify_minimal(&fast_wots_public_key);
+    let fast_wots_clear = FastWots32::checksig_verify_and_clear(&fast_wots_public_key);
+    let fast_wots_size = FastWots32::checksig_verify_size_optimized(&fast_wots_public_key);
+    let fast_wots_size_clear =
+        FastWots32::checksig_verify_size_optimized_and_clear(&fast_wots_public_key);
+    let fast_wots_clamped = FastWots32::checksig_verify_clamped(&fast_wots_public_key);
+    let fast_wots_clamped_clear =
+        FastWots32::checksig_verify_clamped_and_clear(&fast_wots_public_key);
+    let fast_wots_bitwise =
+        FastWots32::checksig_verify_bitwise_size_optimized(&fast_wots_public_key);
+    let fast_wots_bitwise_clear =
+        FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&fast_wots_public_key);
+    let fast_wots_exact_complete = script! {
+        { fast_wots_exact.clone() }
+        for _ in 0..FastWots32::MESSAGE_DIGITS {
+            OP_DROP
+        }
+        OP_TRUE
+    };
+    let fast_wots_minimal_complete = script! {
+        { fast_wots_minimal.clone() }
+        for _ in 0..FastWots32::MESSAGE_DIGITS {
+            OP_DROP
+        }
+        OP_TRUE
+    };
+    let fast_wots_clear_complete = script! {{ fast_wots_clear.clone() } OP_TRUE};
+    let fast_wots_size_complete = script! {
+        { fast_wots_size.clone() }
+        for _ in 0..FastWots32::MESSAGE_DIGITS {
+            OP_DROP
+        }
+        OP_TRUE
+    };
+    let fast_wots_size_clear_complete = script! {{ fast_wots_size_clear.clone() } OP_TRUE};
+    let fast_wots_bitwise_complete = script! {
+        { fast_wots_bitwise.clone() }
+        for _ in 0..FastWots32::MESSAGE_DIGITS {
+            OP_DROP
+        }
+        OP_TRUE
+    };
+    let fast_wots_bitwise_clear_complete = script! {{ fast_wots_bitwise_clear.clone() } OP_TRUE};
+    let fast_wots_performance_message: [u8; 32] = [
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+        0xff, 0x0f, 0x1e, 0x2d, 0x3c, 0x4b, 0x5a, 0x69, 0x78, 0x87, 0x96, 0xa5, 0xb4, 0xc3, 0xd2,
+        0xe1, 0xf0,
+    ];
+    let fast_wots_performance_signature = FastWots32::sign(
+        FastWots32::signing_key_from_seed([0x42; 32]),
+        &fast_wots_performance_message,
+    );
+    let fast_wots_exact_hashes = fast_wots_performance_signature
+        .digits()
+        .iter()
+        .enumerate()
+        .map(|(index, &digit)| {
+            let maximum =
+                if index == FastWots32::MESSAGE_DIGITS || index == FastWots32::MESSAGE_DIGITS + 1 {
+                    7
+                } else {
+                    15
+                };
+            usize::from(maximum - digit)
+        })
+        .sum::<usize>();
+    let fast_wots_minimal_hashes = fast_wots_performance_signature
+        .digits()
+        .iter()
+        .enumerate()
+        .map(|(index, &digit)| {
+            let digit_bits =
+                if index == FastWots32::MESSAGE_DIGITS || index == FastWots32::MESSAGE_DIGITS + 1 {
+                    3
+                } else {
+                    4
+                };
+            let half = 1u8 << (digit_bits - 1);
+            if digit < half {
+                usize::from(2 * half - 1)
+            } else {
+                usize::from(half - 1)
+            }
+        })
+        .sum::<usize>();
+
+    vec![
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "wots32_lock",
+            value: script_len(Wots32::checksig_verify(&wots_public_key)),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "wots32_witness",
+            value: serialize(&wots_witness).len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "wots32_witness_max",
+            value: witness_size(
+                &(0..Wots32::TOTAL_DIGIT_LEN)
+                    .flat_map(|_| [vec![0; 20], vec![15]])
+                    .collect::<Vec<_>>(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "wots32_clear_lock",
+            value: script_len(Wots32::checksig_verify_and_clear_stack(&wots_public_key)),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "wots32_stack",
+            value: max_stack_items(
+                script! {
+                    { Wots32::checksig_verify(&wots_public_key) }
+                    for _ in 0..64 { OP_DROP }
+                    OP_TRUE
+                },
+                wots_witness.to_vec(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "wots32_clear_stack",
+            value: max_stack_items(
+                script! {
+                    { Wots32::checksig_verify_and_clear_stack(&wots_public_key) }
+                    OP_TRUE
+                },
+                wots_witness.to_vec(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "wots32_clear_static_opcodes",
+            value: static_non_push_opcodes(Wots32::checksig_verify_and_clear_stack(
+                &wots_public_key,
+            )),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_lock",
+            value: fast_wots_clamped.clone().compile_with_policy().len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_clamped.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_stack",
+            value: max_stack_items(
+                script! { { fast_wots_clamped.clone() } for _ in 0..64 { OP_DROP } OP_TRUE },
+                fast_wots_size_witness.to_vec(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_total_zero",
+            value: fast_wots_clamped.clone().compile_with_policy().len()
+                + serialize(&fast_wots_size_witness).len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_total_max",
+            value: fast_wots_clamped.clone().compile_with_policy().len()
+                + witness_size(
+                    &(0..FastWots32::TOTAL_DIGITS)
+                        .flat_map(|_| [vec![15], vec![0; 20]])
+                        .collect::<Vec<_>>(),
+                ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_clear_lock",
+            value: fast_wots_clamped_clear.clone().compile_with_policy().len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_clear_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_clamped_clear.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_clear_stack",
+            value: max_stack_items(
+                script! { { fast_wots_clamped_clear.clone() } OP_TRUE },
+                fast_wots_size_witness.to_vec(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_clear_total_zero",
+            value: fast_wots_clamped_clear.clone().compile_with_policy().len()
+                + serialize(&fast_wots_size_witness).len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clamped_clear_total_max",
+            value: fast_wots_clamped_clear.clone().compile_with_policy().len()
+                + witness_size(
+                    &(0..FastWots32::TOTAL_DIGITS)
+                        .flat_map(|_| [vec![15], vec![0; 20]])
+                        .collect::<Vec<_>>(),
+                ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_exact_lock",
+            value: script_len(fast_wots_exact.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_minimal_lock",
+            value: script_len(fast_wots_minimal.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clear_lock",
+            value: script_len(fast_wots_clear.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_size_lock",
+            value: script_len(fast_wots_size.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_size_clear_lock",
+            value: script_len(fast_wots_size_clear.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_lock",
+            value: script_len(fast_wots_bitwise.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_clear_lock",
+            value: script_len(fast_wots_bitwise_clear.clone()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_witness_zero",
+            value: serialize(&fast_wots_witness).len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_witness_max",
+            value: witness_size(
+                &(0..FastWots32::TOTAL_DIGITS)
+                    .flat_map(|_| [vec![15], vec![0; 20]])
+                    .collect::<Vec<_>>(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_witness_zero",
+            value: serialize(&fast_wots_bitwise_witness).len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_terminal_witness_zero",
+            value: serialize(&fast_wots_bitwise_terminal_witness).len(),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_witness_max",
+            value: 3 + 67 * 21 + 266 * 2,
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_exact_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_exact),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_minimal_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_minimal),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clear_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_clear),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_size_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_size),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_size_clear_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_size_clear),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_bitwise),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_clear_static_opcodes",
+            value: static_non_push_opcodes(fast_wots_bitwise_clear),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_exact_hashes",
+            value: fast_wots_exact_hashes,
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_minimal_hashes",
+            value: fast_wots_minimal_hashes,
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_exact_stack",
+            value: max_stack_items(fast_wots_exact_complete, fast_wots_witness.to_vec()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_minimal_stack",
+            value: max_stack_items(fast_wots_minimal_complete, fast_wots_witness.to_vec()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_clear_stack",
+            value: max_stack_items(fast_wots_clear_complete, fast_wots_witness.to_vec()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_size_stack",
+            value: max_stack_items(fast_wots_size_complete, fast_wots_size_witness.to_vec()),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_size_clear_stack",
+            value: max_stack_items(
+                fast_wots_size_clear_complete,
+                fast_wots_size_witness.to_vec(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_stack",
+            value: max_stack_items(
+                fast_wots_bitwise_complete,
+                fast_wots_bitwise_witness.to_vec(),
+            ),
+        },
+        Metric {
+            readme: "src/signatures/winternitz/README.md",
+            key: "fast_wots32_bitwise_clear_stack",
+            value: max_stack_items(
+                fast_wots_bitwise_clear_complete,
+                fast_wots_bitwise_terminal_witness.to_vec(),
+            ),
+        },
+    ]
+}
+
 fn metrics() -> Vec<Metric> {
     let blake3_message: [u8; 64] = std::array::from_fn(|index| index as u8);
     let blake3_expected = *::blake3::hash(&blake3_message).as_bytes();
@@ -640,102 +1019,6 @@ fn metrics() -> Vec<Metric> {
     let three_check_signature = pointlocks::three_check::sign(pointlock_secret).unwrap();
     let three_check_point_lock = pointlocks::three_check::point_lock(pointlock_public).unwrap();
     assert_eq!(three_check_signature.to_vec().len(), 60);
-
-    let wots_secret = vec![0x42; 20];
-    let wots_message = [0u8; 32];
-    let wots_public_key = Wots32::generate_public_key(&wots_secret);
-    let wots_witness = Wots32::sign_to_raw_witness(&wots_secret, &wots_message);
-
-    let fast_wots_key = FastWots32::signing_key_from_seed([0x42; 32]);
-    let fast_wots_public_key = FastWots32::public_key(&fast_wots_key);
-    let fast_wots_signature = FastWots32::sign(fast_wots_key, &wots_message);
-    let fast_wots_witness = fast_wots_signature.to_witness();
-    let fast_wots_size_witness = fast_wots_signature.to_size_optimized_witness();
-    let fast_wots_bitwise_witness = fast_wots_signature.to_bitwise_size_optimized_witness();
-    let fast_wots_bitwise_terminal_witness = fast_wots_signature.to_bitwise_terminal_witness();
-    let fast_wots_exact = FastWots32::checksig_verify(&fast_wots_public_key);
-    let fast_wots_minimal = FastWots32::checksig_verify_minimal(&fast_wots_public_key);
-    let fast_wots_clear = FastWots32::checksig_verify_and_clear(&fast_wots_public_key);
-    let fast_wots_size = FastWots32::checksig_verify_size_optimized(&fast_wots_public_key);
-    let fast_wots_size_clear =
-        FastWots32::checksig_verify_size_optimized_and_clear(&fast_wots_public_key);
-    let fast_wots_bitwise =
-        FastWots32::checksig_verify_bitwise_size_optimized(&fast_wots_public_key);
-    let fast_wots_bitwise_clear =
-        FastWots32::checksig_verify_bitwise_size_optimized_and_clear(&fast_wots_public_key);
-    let fast_wots_exact_complete = script! {
-        { fast_wots_exact.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
-            OP_DROP
-        }
-        OP_TRUE
-    };
-    let fast_wots_minimal_complete = script! {
-        { fast_wots_minimal.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
-            OP_DROP
-        }
-        OP_TRUE
-    };
-    let fast_wots_clear_complete = script! {{ fast_wots_clear.clone() } OP_TRUE};
-    let fast_wots_size_complete = script! {
-        { fast_wots_size.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
-            OP_DROP
-        }
-        OP_TRUE
-    };
-    let fast_wots_size_clear_complete = script! {{ fast_wots_size_clear.clone() } OP_TRUE};
-    let fast_wots_bitwise_complete = script! {
-        { fast_wots_bitwise.clone() }
-        for _ in 0..FastWots32::MESSAGE_DIGITS {
-            OP_DROP
-        }
-        OP_TRUE
-    };
-    let fast_wots_bitwise_clear_complete = script! {{ fast_wots_bitwise_clear.clone() } OP_TRUE};
-    let fast_wots_performance_message: [u8; 32] = [
-        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
-        0xff, 0x0f, 0x1e, 0x2d, 0x3c, 0x4b, 0x5a, 0x69, 0x78, 0x87, 0x96, 0xa5, 0xb4, 0xc3, 0xd2,
-        0xe1, 0xf0,
-    ];
-    let fast_wots_performance_signature = FastWots32::sign(
-        FastWots32::signing_key_from_seed([0x42; 32]),
-        &fast_wots_performance_message,
-    );
-    let fast_wots_exact_hashes = fast_wots_performance_signature
-        .digits()
-        .iter()
-        .enumerate()
-        .map(|(index, &digit)| {
-            let maximum =
-                if index == FastWots32::MESSAGE_DIGITS || index == FastWots32::MESSAGE_DIGITS + 1 {
-                    7
-                } else {
-                    15
-                };
-            usize::from(maximum - digit)
-        })
-        .sum::<usize>();
-    let fast_wots_minimal_hashes = fast_wots_performance_signature
-        .digits()
-        .iter()
-        .enumerate()
-        .map(|(index, &digit)| {
-            let digit_bits =
-                if index == FastWots32::MESSAGE_DIGITS || index == FastWots32::MESSAGE_DIGITS + 1 {
-                    3
-                } else {
-                    4
-                };
-            let half = 1u8 << (digit_bits - 1);
-            if digit < half {
-                usize::from(2 * half - 1)
-            } else {
-                usize::from(half - 1)
-            }
-        })
-        .sum::<usize>();
 
     let hash_path_preimage = vec![0x42; 32];
     let hash_path_value = 0x1234_5678;
@@ -2714,169 +2997,6 @@ fn metrics() -> Vec<Metric> {
             value: max_stack_items(schnorr_script, schnorr_witness),
         },
         Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "wots32_lock",
-            value: script_len(Wots32::checksig_verify(&wots_public_key)),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "wots32_witness",
-            value: serialize(&wots_witness).len(),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_exact_lock",
-            value: script_len(fast_wots_exact.clone()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_minimal_lock",
-            value: script_len(fast_wots_minimal.clone()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_clear_lock",
-            value: script_len(fast_wots_clear.clone()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_size_lock",
-            value: script_len(fast_wots_size.clone()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_size_clear_lock",
-            value: script_len(fast_wots_size_clear.clone()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_lock",
-            value: script_len(fast_wots_bitwise.clone()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_clear_lock",
-            value: script_len(fast_wots_bitwise_clear.clone()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_witness_zero",
-            value: serialize(&fast_wots_witness).len(),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_witness_max",
-            value: witness_size(
-                &(0..FastWots32::TOTAL_DIGITS)
-                    .flat_map(|_| [vec![15], vec![0; 20]])
-                    .collect::<Vec<_>>(),
-            ),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_witness_zero",
-            value: serialize(&fast_wots_bitwise_witness).len(),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_terminal_witness_zero",
-            value: serialize(&fast_wots_bitwise_terminal_witness).len(),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_witness_max",
-            value: 3 + 67 * 21 + 266 * 2,
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_exact_static_opcodes",
-            value: static_non_push_opcodes(fast_wots_exact),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_minimal_static_opcodes",
-            value: static_non_push_opcodes(fast_wots_minimal),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_clear_static_opcodes",
-            value: static_non_push_opcodes(fast_wots_clear),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_size_static_opcodes",
-            value: static_non_push_opcodes(fast_wots_size),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_size_clear_static_opcodes",
-            value: static_non_push_opcodes(fast_wots_size_clear),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_static_opcodes",
-            value: static_non_push_opcodes(fast_wots_bitwise),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_clear_static_opcodes",
-            value: static_non_push_opcodes(fast_wots_bitwise_clear),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_exact_hashes",
-            value: fast_wots_exact_hashes,
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_minimal_hashes",
-            value: fast_wots_minimal_hashes,
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_exact_stack",
-            value: max_stack_items(fast_wots_exact_complete, fast_wots_witness.to_vec()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_minimal_stack",
-            value: max_stack_items(fast_wots_minimal_complete, fast_wots_witness.to_vec()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_clear_stack",
-            value: max_stack_items(fast_wots_clear_complete, fast_wots_witness.to_vec()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_size_stack",
-            value: max_stack_items(fast_wots_size_complete, fast_wots_size_witness.to_vec()),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_size_clear_stack",
-            value: max_stack_items(
-                fast_wots_size_clear_complete,
-                fast_wots_size_witness.to_vec(),
-            ),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_stack",
-            value: max_stack_items(
-                fast_wots_bitwise_complete,
-                fast_wots_bitwise_witness.to_vec(),
-            ),
-        },
-        Metric {
-            readme: "src/signatures/winternitz/README.md",
-            key: "fast_wots32_bitwise_clear_stack",
-            value: max_stack_items(
-                fast_wots_bitwise_clear_complete,
-                fast_wots_bitwise_terminal_witness.to_vec(),
-            ),
-        },
-        Metric {
             readme: "src/ciphers/aes/README.md",
             key: "aes128_encrypt",
             value: script_len(aes::aes128_encrypt(aes_zero_key)),
@@ -3049,6 +3169,7 @@ fn metrics() -> Vec<Metric> {
     ]
     .into_iter()
     .chain(prince_metrics())
+    .chain(winternitz_metrics())
     .collect()
 }
 
@@ -3056,6 +3177,12 @@ fn metrics() -> Vec<Metric> {
 #[ignore = "expensive full-repository metric regeneration; run explicitly with --ignored"]
 fn readme_metrics_are_current() {
     check_readme_metrics(metrics());
+}
+
+/// Exercise every Winternitz profile without the ignored repository-wide suite.
+#[test]
+fn winternitz_metrics_are_current() {
+    check_readme_metrics(winternitz_metrics());
 }
 
 /// Check or intentionally refresh only the PRINCEv2 metric markers, without

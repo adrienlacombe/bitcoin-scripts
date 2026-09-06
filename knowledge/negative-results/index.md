@@ -878,3 +878,50 @@ relation execution evidence is `locally-reproduced`. Deployment remains
 `unclassified`; these probes do not execute a complete scalar/signature leaf.
 The whole serialization is `locally-reproduced` at the generation boundary;
 the overall verifier remains `inspected` and `unclassified`.
+
+## NR-038: Alternative Winternitz digit witnesses do not improve the compatible frontier
+
+The chain-verifier search considered encoding a low two-bit digit as the
+length of a padding item, with two separate canonical high bits. Retrieving
+and converting that item requires `OP_PICK OP_SIZE OP_NIP`; numeric residual
+validation and reconstructing the recovered nibble cost more than the
+existing canonical-bit branch layout. Mixed numeric/bitwise lookup variants
+also lost their branch savings to range checks, stack routing, and digit
+reconstruction. These are `inspected` local design comparisons, not an
+exhaustive optimum over witness encodings.
+
+A terminal checksum prototype combined ordinary bitwise message chunks with
+checksum chunks laid out for direct digit recovery. It measured 4,201
+policy-produced bytes and a 334-item combined peak in local strict-stack
+runs for zero, all-maximum, and varied messages. It needed a different
+checksum witness layout: preserving the established layout requires ten
+additional routing opcodes, yielding an estimated 4,211 bytes. The retained
+compatible terminal verifier uses 4,206 bytes after fusing its accumulator
+initialization with the first authenticated bit. Thus the prototype's
+five-byte absolute saving does not justify introducing another witness
+format for the compatibility objective.
+
+Both layouts have 333 complete data items at entry and zero auxiliary hint
+items; stack peaks include the checksum accumulator. The prototype generator
+was exploratory and is not retained, so its recorded result is `inspected`
+and `unclassified`. The production initialization-fusion test is
+`locally-reproduced`. None of these comparisons establishes Bitcoin Core
+consensus or policy acceptance.
+
+A second terminal prototype reused the existing bitwise recovery witness and
+destructively summed its recovered digits. It measured 4,263 policy-produced
+script bytes and a 334-item strict stack peak for `[0;32]`, `[0xff;32]`, and
+`[0x5a;32]`; serialized witnesses were 1,680, 1,932, and 1,808 bytes. The
+zero-message total is 5,943 bytes, above the retained clamped numeric terminal
+profile's 5,885 bytes. More generally, the recovery bit encoding adds 199
+data-item length prefixes plus two witness-count bytes, and its bit payload
+is never shorter than the numeric digit payload. Its witness disadvantage is
+therefore at least 201 bytes, exceeding its 146-byte locking advantage over
+the clamped terminal fragment. The same argument applies to recovery. This
+dominance assumes that the protocol permits the clamped numeric relation.
+
+The remaining-distance bitwise terminal profile has a different payload
+distribution and is not covered by that argument; it can still win for
+messages with many maximum digits. The recovery-witness terminal scratch
+generator was removed, leaving this experiment `inspected` and `unclassified`.
+It consumed 333 entry data items and zero auxiliary hints.

@@ -290,13 +290,25 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     ) -> Script {
         script! {
             { VERIFIER::verify_digits(ps, public_key) }
-            { self.verify_checksum(ps) }
-            for _ in 0..(ps.message_digit_len) / 2 {
-                OP_2DROP
+            // A terminal consumer needs only the message sum. Reducing the
+            // authenticated digits directly avoids reconstructing and then
+            // discarding a full copy of the message on the main stack.
+            // Compare the decoded checksum itself, retaining byte equality
+            // even when a one-digit checksum has not passed through arithmetic.
+            OP_FROMALTSTACK OP_NEGATE
+            for _ in 1..ps.message_digit_len {
+                OP_FROMALTSTACK OP_SUB
             }
-            if ps.message_digit_len % 2 == 1 {
-                OP_DROP
+            { ps.max_digit() * ps.message_digit_len }
+            OP_ADD
+            OP_FROMALTSTACK
+            for _ in 0..ps.checksum_digit_len - 1 {
+                for _ in 0..ps.log2_base {
+                    OP_DUP OP_ADD
+                }
+                OP_FROMALTSTACK OP_ADD
             }
+            OP_EQUALVERIFY
         }
     }
 
@@ -709,6 +721,56 @@ mod test {
 
     const SAMPLE_SECRET_KEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
     const TEST_COUNT: u32 = 20;
+
+    #[test]
+    fn terminal_preserves_single_checksum_encoding_and_surrounding_stacks() {
+        use bitcoin::{TapLeafHash, Transaction};
+        use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate};
+
+        let parameters = Parameters::new(1, 4);
+        let secret = vec![0x42; 20];
+        let public_key = generate_public_key(&parameters, &secret);
+        let wots = Winternitz::<BinarysearchVerifier, VoidConverter>::new();
+        let signature = wots.sign_digits(&parameters, &secret, vec![5]);
+        let leaf = script! {
+            99 OP_TOALTSTACK
+            { wots.checksig_verify_and_clear_stack(&parameters, &public_key) }
+            33 OP_EQUALVERIFY
+            OP_FROMALTSTACK 99 OP_EQUALVERIFY
+            OP_TRUE
+        }
+        .compile_with_policy();
+
+        for checksum_item in [vec![10], vec![10, 0], vec![10, 0, 0]] {
+            let canonical = checksum_item.len() == 1;
+            let mut witness = signature.to_vec();
+            witness[3] = checksum_item;
+            witness.insert(0, vec![33]);
+            let mut exec = Exec::new(
+                ExecCtx::Tapscript,
+                Options {
+                    require_minimal: false,
+                    ..Default::default()
+                },
+                TxTemplate {
+                    tx: Transaction {
+                        version: bitcoin::transaction::Version::TWO,
+                        lock_time: bitcoin::absolute::LockTime::ZERO,
+                        input: vec![],
+                        output: vec![],
+                    },
+                    prevouts: vec![],
+                    input_idx: 0,
+                    taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+                },
+                leaf.clone(),
+                witness,
+            )
+            .unwrap();
+            while exec.exec_next().is_ok() {}
+            assert_eq!(exec.result().unwrap().success, canonical);
+        }
+    }
 
     fn get_type_name<T>() -> String {
         let full_type_name = std::any::type_name::<T>();

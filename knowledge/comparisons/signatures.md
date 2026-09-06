@@ -96,35 +96,70 @@ exact boundary and security obligations.
 
 ## One-time authentication
 
-| Construction | Authenticated object | Script bytes | Witness bytes | Stack peak | Verification work / missing protocol work |
+| Construction | Authenticated object | Script bytes | Witness bytes (zero / upper bound) | Stack peak | Verification work / missing protocol work |
 | --- | --- | ---: | ---: | ---: | --- |
 | Lamport 2-bit | One value in 0..3 | 96 | 11 | not recorded | Reject rather than clamp invalid values |
 | HORS-like n32/t8 | Explicit subset | 809 | 280 | not recorded | Message-to-index derivation |
-| Legacy Wots32 list-pick | 32-byte message | 4,908 | 1,477 | not recorded | 15 hashes for digits below 8, seven otherwise; clamps above-range digits |
-| FastWots32 bitwise | 32-byte message | 4,325 | 1,680–1,942 | 334 | Canonical bits; exact suffix hashes; relaxed chain-item length; recovers message |
-| FastWots32 bitwise + clear | 32-byte message | 4,208 | 1,938–1,942 | 334 | Branch-fused checksum; consumes message; terminal predicate excluded |
-| FastWots32 size lookup | 32-byte message | 4,605 | 1,476–1,542 | 141 | Strict numeric digits; relaxed raw chain-item length; recovers message |
-| FastWots32 size lookup + clear | 32-byte message | 4,543 | 1,476–1,542 | 141 | Same chain relation; consumes message; terminal predicate excluded |
-| FastWots32 exact | 32-byte message | 5,342 | 1,476–1,542 | 137 | Exact suffix hashes; 498 on the balanced vector |
-| FastWots32 strict lookup | 32-byte message | 5,013 | 1,476–1,542 | 143 | 729 hashes on the balanced vector; explicit range check |
-| FastWots32 exact + clear | 32-byte message | 5,408 | 1,476–1,542 | 137 | Fused checksum accumulator; terminal predicate excluded |
+| Legacy Wots32 list-pick | 32-byte message | 4,908 | 1,477 / 1,542 | 143 | 15 hashes for digits below 8, seven otherwise; clamps above-range digits |
+| Legacy Wots32 list-pick + clear | 32-byte message | 4,844 | 1,477 / 1,542 | 143 | Direct checksum reduction; consumes message; terminal predicate excluded |
+| FastWots32 clamped lookup | 32-byte message | 4,471 | 1,476 / 1,542 | 141 | Legacy-style upper saturation; recovers authenticated clamped digits |
+| FastWots32 clamped lookup + clear | 32-byte message | 4,409 | 1,476 / 1,542 | 141 | Same clamped relation; consumes message; terminal predicate excluded |
+| FastWots32 bitwise | 32-byte message | 4,325 | 1,680 / 1,942 | 334 | Canonical bits; exact suffix hashes; relaxed chain-item length; recovers message |
+| FastWots32 bitwise + clear | 32-byte message | 4,206 | 1,938 / 1,942 | 333 | Branch-fused checksum; consumes message; terminal predicate excluded |
+| FastWots32 size lookup | 32-byte message | 4,605 | 1,476 / 1,542 | 141 | Strict numeric digits; relaxed raw chain-item length; recovers message |
+| FastWots32 size lookup + clear | 32-byte message | 4,543 | 1,476 / 1,542 | 141 | Same chain relation; consumes message; terminal predicate excluded |
+| FastWots32 exact | 32-byte message | 5,267 | 1,476 / 1,542 | 137 | Residual-digit exact suffix hashes; 498 on the balanced vector |
+| FastWots32 strict lookup | 32-byte message | 5,007 | 1,476 / 1,542 | 143 | 729 hashes on the balanced vector; explicit range check |
+| FastWots32 exact + clear | 32-byte message | 5,205 | 1,476 / 1,542 | 137 | Staged digits and Horner checksum; terminal predicate excluded |
 
 Locking figures are `fragment-only`; witness figures are full serialized item
-vectors. Fast stack peaks are from complete local compositions, but the metric
+vectors. Recorded Winternitz stack peaks are from complete local compositions, but the metric
 executor disables the consensus stack check and therefore remains
 `research-unlimited`. Separate strict local tests stay below 1,000 items. The
 balanced-vector message and all other boundaries are recorded in the
 [implementation README](../../src/signatures/winternitz/README.md).
 
 There is no universal winner. The Fast bitwise recovery fragment is 583 bytes
-(11.9%) smaller than the legacy list-pick fragment; its terminal form is 700
-bytes (14.3%) smaller. Canonical `MINIMALIF` bits drive complementary hash
+(11.9%) smaller than the legacy list-pick recovery fragment; its terminal form
+is 638 bytes (13.2%) smaller than the legacy terminal fragment. Canonical
+`MINIMALIF` bits drive complementary hash
 blocks, a `[8,8,16]` checksum covers the 0–960 range, and recovery rebuilds the
 same 64 nibbles. The gain costs 333 witness items and a larger serialized
 witness. Like the numeric size profile, it omits an explicit 20-byte check on
 each chain item: a maximum digit equality forces 20 bytes, while smaller digits
 admit an arbitrary-length HASH160 preimage before the first hash. The
-strict-encoding lookup profile retains explicit 20-byte checks at 5,013 bytes.
+strict-encoding lookup profile retains explicit 20-byte checks at 5,007 bytes.
+
+The exact ladder and staged checksum preserve existing Fast witnesses while
+reducing recovery by 75 bytes and terminal verification by 203 bytes.
+All listed Fast profiles require zero auxiliary hint items; the 134 numeric or
+333 bitwise data items are present together at script entry.
+
+Legacy terminal verification also avoids recovering digits that it will
+immediately discard, reducing its locking fragment by 96 bytes. This preserves
+the legacy clamped-digit relation and its 134-item witness layout with zero
+auxiliary hints.
+
+For on-chain byte cost, the locking fragment and serialized data witness must
+be added. The zero-message and signer-node upper-bound sums are:
+
+| FastWots32 profile | Script + zero-message witness | Script + maximum signer-node witness |
+| --- | ---: | ---: |
+| Clamped lookup recovery | 5,947 | 6,013 |
+| Clamped lookup terminal | 5,885 | 5,951 |
+| Numeric size recovery | 6,081 | 6,147 |
+| Bitwise recovery | 6,005 | 6,267 |
+| Numeric size terminal | 6,019 | 6,085 |
+| Bitwise terminal | 6,144 | 6,148 |
+
+Clamped lookup minimizes both stated total-cost boundaries. It accepts an
+above-range raw digit as the chain maximum and authenticates that clamped
+value in the checksum, matching the legacy behavior; strict upper rejection
+remains a separate profile. The witness format and honest recovered message
+are unchanged. Ordering can depend on the message: for `[0xff; 32]`, bitwise
+terminal totals 5,892 bytes versus 5,948 clamped. These sums exclude the same
+script/control-block framing, consumer, and transaction overhead; they are not
+complete transaction weights.
 
 The legacy and Fast rows are not wire-compatible: chain-start derivation,
 message digit order, checksum digit order, and witness pair order differ. All

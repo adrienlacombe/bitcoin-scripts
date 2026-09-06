@@ -31,8 +31,10 @@ security assumptions.
 
 ## Optimization objectives
 
-The primary size profile minimizes serialized locking-script bytes for a fixed
-32-byte message and 20-byte HASH160 public endpoints. A parameter sweep over
+The primary objective is serialized locking-script plus signature-witness bytes
+for a fixed 32-byte message and 20-byte HASH160 public endpoints. Both contribute
+equally to tapscript witness weight. Script-only size, stack peak, and executed
+hashes are reported separately. A parameter sweep over
 bases 16, 32, 64, 128, and 256 confirmed that base 16 is smallest among the
 implemented radices: reducing the endpoint count at a higher base costs more
 hash/list opcodes than it saves.
@@ -47,7 +49,16 @@ relation also includes arbitrary-length HASH160 preimages for digits below 15.
 That is a deliberate four-byte-per-chain locking-size tradeoff, not a claim of
 canonical raw witness encoding.
 
-The smallest profiles replace each numeric message digit with four canonical
+The clamped profiles use the same numeric size witness but normalize each
+supplied digit with `min(digit, chain_max)` before authenticating it. That
+normalized value drives the chain lookup, checksum, and recovered message.
+This saves 134 locking bytes for 67 chains, with identical signer-produced
+witnesses and stack use. Negative indices and oversized numbers still fail.
+Upper-range raw values are accepted as aliases of the maximum digit, matching
+the legacy list-pick behavior. Use the existing strict profiles when the raw
+digit bound itself is part of the protocol contract.
+
+The smallest locking-script profiles replace each numeric message digit with four canonical
 witness bits. `OP_NOTIF` applies the complementary 8/4/2/1 hash blocks, so
 tapscript `MINIMALIF` simultaneously authenticates the digit range. The
 recovery profile reconstructs each nibble and fuses the checksum bits through
@@ -76,29 +87,55 @@ per-chain heap allocation, or collision-list sort. `FastSigningKey` is neither
 Locking sizes are `fragment-only`: chain checks, embedded public endpoints,
 checksum verification, and the documented message/cleanup postcondition are
 included. A terminal protocol predicate is excluded. Witness sizes are full
-Bitcoin witness-vector serialization for a deterministic 32-byte zero message;
+Bitcoin witness-vector serialization for a deterministic 32-byte zero message,
+using Fast seed `[0x42; 32]` and legacy secret `[0x42; 20]`;
 the maximum is the signer-produced maximum with 20-byte chain nodes and every
 digit item one byte. It is not the size profile's maximum accepted adversarial
 item length. The stack fixtures append a message consumer or `OP_TRUE` so
 execution ends cleanly.
 
-| `Wots32` configuration | Locking script | Unlocking witness | Maximum stack items |
+| `Wots32` configuration | Locking script | Unlocking witness (zero / upper bound) | Maximum stack items |
 | --- | ---: | ---: | ---: |
-| Legacy list-pick, recover message | <!-- metric:wots32_lock -->4908<!-- /metric:wots32_lock --> bytes | <!-- metric:wots32_witness -->1477<!-- /metric:wots32_witness --> bytes | not previously measured |
+| Legacy list-pick, recover message | <!-- metric:wots32_lock -->4908<!-- /metric:wots32_lock --> bytes | <!-- metric:wots32_witness -->1477<!-- /metric:wots32_witness --> / <!-- metric:wots32_witness_max -->1542<!-- /metric:wots32_witness_max --> bytes | <!-- metric:wots32_stack -->143<!-- /metric:wots32_stack --> |
+| Legacy list-pick, clear message | <!-- metric:wots32_clear_lock -->4844<!-- /metric:wots32_clear_lock --> bytes | same as legacy recovery | <!-- metric:wots32_clear_stack -->143<!-- /metric:wots32_clear_stack --> |
 | Fast bitwise, recover message | <!-- metric:fast_wots32_bitwise_lock -->4325<!-- /metric:fast_wots32_bitwise_lock --> bytes | <!-- metric:fast_wots32_bitwise_witness_zero -->1680<!-- /metric:fast_wots32_bitwise_witness_zero --> bytes | <!-- metric:fast_wots32_bitwise_stack -->334<!-- /metric:fast_wots32_bitwise_stack --> |
-| Fast bitwise, clear message | <!-- metric:fast_wots32_bitwise_clear_lock -->4208<!-- /metric:fast_wots32_bitwise_clear_lock --> bytes | <!-- metric:fast_wots32_bitwise_terminal_witness_zero -->1938<!-- /metric:fast_wots32_bitwise_terminal_witness_zero --> bytes | <!-- metric:fast_wots32_bitwise_clear_stack -->334<!-- /metric:fast_wots32_bitwise_clear_stack --> |
+| Fast bitwise, clear message | <!-- metric:fast_wots32_bitwise_clear_lock -->4206<!-- /metric:fast_wots32_bitwise_clear_lock --> bytes | <!-- metric:fast_wots32_bitwise_terminal_witness_zero -->1938<!-- /metric:fast_wots32_bitwise_terminal_witness_zero --> bytes | <!-- metric:fast_wots32_bitwise_clear_stack -->333<!-- /metric:fast_wots32_bitwise_clear_stack --> |
+| Fast clamped lookup, recover message | <!-- metric:fast_wots32_clamped_lock -->4471<!-- /metric:fast_wots32_clamped_lock --> bytes | 1,476 / 1,542 bytes | <!-- metric:fast_wots32_clamped_stack -->141<!-- /metric:fast_wots32_clamped_stack --> |
+| Fast clamped lookup, clear message | <!-- metric:fast_wots32_clamped_clear_lock -->4409<!-- /metric:fast_wots32_clamped_clear_lock --> bytes | 1,476 / 1,542 bytes | <!-- metric:fast_wots32_clamped_clear_stack -->141<!-- /metric:fast_wots32_clamped_clear_stack --> |
 | Fast size lookup, recover message | <!-- metric:fast_wots32_size_lock -->4605<!-- /metric:fast_wots32_size_lock --> bytes | same | <!-- metric:fast_wots32_size_stack -->141<!-- /metric:fast_wots32_size_stack --> |
 | Fast size lookup, clear message | <!-- metric:fast_wots32_size_clear_lock -->4543<!-- /metric:fast_wots32_size_clear_lock --> bytes | same | <!-- metric:fast_wots32_size_clear_stack -->141<!-- /metric:fast_wots32_size_clear_stack --> |
-| Fast exact-hash, recover message | <!-- metric:fast_wots32_exact_lock -->5342<!-- /metric:fast_wots32_exact_lock --> bytes | <!-- metric:fast_wots32_witness_zero -->1476<!-- /metric:fast_wots32_witness_zero --> bytes | <!-- metric:fast_wots32_exact_stack -->137<!-- /metric:fast_wots32_exact_stack --> |
-| Fast eight-value lookup, recover message | <!-- metric:fast_wots32_minimal_lock -->5013<!-- /metric:fast_wots32_minimal_lock --> bytes | same | <!-- metric:fast_wots32_minimal_stack -->143<!-- /metric:fast_wots32_minimal_stack --> |
-| Fast exact-hash, clear message | <!-- metric:fast_wots32_clear_lock -->5408<!-- /metric:fast_wots32_clear_lock --> bytes | same | <!-- metric:fast_wots32_clear_stack -->137<!-- /metric:fast_wots32_clear_stack --> |
+| Fast exact-hash, recover message | <!-- metric:fast_wots32_exact_lock -->5267<!-- /metric:fast_wots32_exact_lock --> bytes | <!-- metric:fast_wots32_witness_zero -->1476<!-- /metric:fast_wots32_witness_zero --> bytes | <!-- metric:fast_wots32_exact_stack -->137<!-- /metric:fast_wots32_exact_stack --> |
+| Fast eight-value lookup, recover message | <!-- metric:fast_wots32_minimal_lock -->5007<!-- /metric:fast_wots32_minimal_lock --> bytes | same | <!-- metric:fast_wots32_minimal_stack -->143<!-- /metric:fast_wots32_minimal_stack --> |
+| Fast exact-hash, clear message | <!-- metric:fast_wots32_clear_lock -->5205<!-- /metric:fast_wots32_clear_lock --> bytes | same | <!-- metric:fast_wots32_clear_stack -->137<!-- /metric:fast_wots32_clear_stack --> |
+
+For onchain cost, add the script and serialized signature witness: both are
+witness-weight bytes in a tapscript spend. Script-item framing, the control
+block, and the enclosing transaction are excluded equally here. The clamped
+recovery profile totals <!-- metric:fast_wots32_clamped_total_zero -->5947<!-- /metric:fast_wots32_clamped_total_zero -->
+bytes for the zero vector, with a signer-node upper bound of
+<!-- metric:fast_wots32_clamped_total_max -->6013<!-- /metric:fast_wots32_clamped_total_max -->.
+The clamped terminal profile totals
+<!-- metric:fast_wots32_clamped_clear_total_zero -->5885<!-- /metric:fast_wots32_clamped_clear_total_zero -->
+and <!-- metric:fast_wots32_clamped_clear_total_max -->5951<!-- /metric:fast_wots32_clamped_clear_total_max -->
+bytes respectively. These minimize the measured zero-message totals and
+signer-node upper bounds for their output contracts. The winner can depend on
+the actual message: for an all-`ff` message the bitwise terminal profile totals
+5,892 bytes, compared with 5,948 for clamped numeric. The bitwise profiles also
+minimize the script alone.
+Their static non-push counts are
+<!-- metric:fast_wots32_clamped_static_opcodes -->2927<!-- /metric:fast_wots32_clamped_static_opcodes -->
+and <!-- metric:fast_wots32_clamped_clear_static_opcodes -->2865<!-- /metric:fast_wots32_clamped_clear_static_opcodes -->.
+
+The legacy terminal fragment contains
+<!-- metric:wots32_clear_static_opcodes -->3166<!-- /metric:wots32_clear_static_opcodes -->
+static non-push opcodes.
 
 The Fast maximum serialized witness is
 <!-- metric:fast_wots32_witness_max -->1542<!-- /metric:fast_wots32_witness_max -->
 bytes. The exact, lookup, and clear fragments contain respectively
-<!-- metric:fast_wots32_exact_static_opcodes -->3333<!-- /metric:fast_wots32_exact_static_opcodes -->,
-<!-- metric:fast_wots32_minimal_static_opcodes -->3268<!-- /metric:fast_wots32_minimal_static_opcodes -->,
-and <!-- metric:fast_wots32_clear_static_opcodes -->3398<!-- /metric:fast_wots32_clear_static_opcodes -->
+<!-- metric:fast_wots32_exact_static_opcodes -->3325<!-- /metric:fast_wots32_exact_static_opcodes -->,
+<!-- metric:fast_wots32_minimal_static_opcodes -->3262<!-- /metric:fast_wots32_minimal_static_opcodes -->,
+and <!-- metric:fast_wots32_clear_static_opcodes -->3263<!-- /metric:fast_wots32_clear_static_opcodes -->
 static non-push opcodes. The size recovery and terminal fragments contain
 <!-- metric:fast_wots32_size_static_opcodes -->3061<!-- /metric:fast_wots32_size_static_opcodes -->
 and <!-- metric:fast_wots32_size_clear_static_opcodes -->2999<!-- /metric:fast_wots32_size_clear_static_opcodes -->
@@ -106,16 +143,22 @@ respectively.
 
 The bitwise recovery and terminal fragments contain
 <!-- metric:fast_wots32_bitwise_static_opcodes -->2716<!-- /metric:fast_wots32_bitwise_static_opcodes -->
-and <!-- metric:fast_wots32_bitwise_clear_static_opcodes -->2588<!-- /metric:fast_wots32_bitwise_clear_static_opcodes -->
+and <!-- metric:fast_wots32_bitwise_clear_static_opcodes -->2586<!-- /metric:fast_wots32_bitwise_clear_static_opcodes -->
 static non-push opcodes. Their signer-node witness upper bound is
 <!-- metric:fast_wots32_bitwise_witness_max -->1942<!-- /metric:fast_wots32_bitwise_witness_max -->
 bytes.
 
-The 4,325-byte bitwise recovery fragment is 583 bytes (11.9%) smaller than the
-4,908-byte legacy list-pick fragment while preserving the same 64-nibble output
-contract. The 4,208-byte terminal profile saves another 117 bytes when the
-surrounding protocol does not need the recovered message on the stack. Against
-the previous Fast size records, these save 315 and 367 bytes respectively.
+Relative to the previous numeric size profiles, clamped verification reduces
+the same witness's combined cost by 134 bytes: recovery 6,081 → 5,947 and
+terminal 6,019 → 5,885 for the zero vector. Relative to the previous best
+zero-message recovery total (bitwise, 6,005), it saves 58 bytes. The signer-node
+upper bounds improve from the previous numeric 6,147/6,085 to 6,013/5,951.
+
+The compatible exact-hash ladder and staged Horner checksum reduce recovery
+from 5,342 to 5,267 script bytes and terminal verification from 5,408 to 5,205.
+Direct checksum reduction also reduces the legacy terminal from 4,940 to 4,844.
+First-bit initialization saves two bytes and one stack item in the bitwise
+terminal, 4,208 → 4,206. Existing public keys and witness layouts are unchanged.
 
 For the deterministic balanced message
 `00112233445566778899aabbccddeeff0f1e2d3c4b5a69788796a5b4c3d2e1f0`,
@@ -148,11 +191,15 @@ domain separates message lengths and chain indices, but subsequent chain links
 are unkeyed and unaddressed. This implementation has not received the analysis
 of standardized WOTS+ parameter sets.
 
-Numeric witness digits are constrained by their mixed radix. Bitwise witnesses
+Numeric verifiers authenticate mixed-radix digits; the clamped profiles normalize
+upper-range raw numbers first, while the strict profiles reject them. Bitwise witnesses
 are canonical false/true under tapscript `MINIMALIF`. The signer emits canonical
 ScriptNum encodings, but the exact verifier does not bind raw byte
 serialization: a nonminimal encoding of an in-range number can represent the
-same authenticated digit when minimal-number policy is not enforced. Protocols
+same authenticated digit when minimal-number policy is not enforced. The new
+exact ladder rejects nonminimal raw zero/one at its final `MINIMALIF`; larger
+in-range digits can be normalized by subtraction. Raw encoding acceptance is
+therefore not uniform. Protocols
 that commit to raw witness encodings must add their own canonicality rule.
 
 ## Script compatibility and standardness
@@ -179,7 +226,12 @@ followed by checksum pairs in reverse chain-index order; callers must use
 `to_size_optimized_witness` with a numeric size verifier. Bitwise recovery
 chunks are `[bit_1, bit_2, ..., chain]`; terminal chunks interleave the chain
 before `bit_1` so each selected conditional exposes the chain node. Callers
-must use the matching bitwise witness serializer. There are no auxiliary hints.
+must use the matching bitwise witness serializer. The clamped profiles use
+`to_size_optimized_witness` without any serialization changes. All profiles
+require **0 auxiliary hint items**: the 134 numeric or 333 bitwise items are
+signature data, all present at entry. The measured configurations contain one
+signature. Any composition must include other live state in the same
+1,000-item main-plus-alt-stack budget.
 
 The mixed-radix checksum changes the last checksum endpoints from the earlier
 all-base-16 Fast draft. Persisted Fast public keys or signatures from that draft
@@ -197,18 +249,20 @@ malleability and should not be treated as strict raw-digit validation.
 - `FastWots32::checksig_verify_minimal`: same external contract with the lookup
   time/size tradeoff.
 - `FastWots32::checksig_verify_size_optimized`: consumes the custom size witness
-  and leaves the same 64 authenticated nibbles using the smallest measured
-  locking fragment.
+  and leaves the same 64 authenticated nibbles with strict numeric bounds.
 - `FastWots32::checksig_verify_size_optimized_and_clear`: consumes the custom
   size witness and leaves an empty stack.
+- `FastWots32::checksig_verify_clamped` and `checksig_verify_clamped_and_clear`:
+  consume the same 134-item size witness, leave 64 nibbles or an empty stack,
+  and peak at 141 combined items for the metric vector.
 - `FastWots32::checksig_verify_bitwise_size_optimized`: consumes 333 witness
   items and leaves the same 64 authenticated nibbles with the smallest measured
   recovery fragment.
 - `FastWots32::checksig_verify_bitwise_size_optimized_and_clear`: consumes its
   terminal-specific 333-item witness and leaves an empty stack with the
   smallest measured terminal fragment.
-- `FastWots32::checksig_verify_and_clear`: consumes the signature, fuses
-  checksum accumulation into the reverse chain walk, and leaves an empty stack.
+- `FastWots32::checksig_verify_and_clear`: consumes the signature, reduces
+  staged authenticated digits through the checksum, and leaves an empty stack.
   The caller must append a terminal predicate.
 
 All internal altstack state is balanced. Extra witness items remain below the
@@ -222,7 +276,14 @@ stack postcondition, a separately generated Python HASH160 vector, wrong chain
 values, wrong public endpoints, a valid-chain/invalid-checksum signature,
 negative and above-range digits, oversized ScriptNums, noncanonical bit items,
 exhaustive checksum values and carry boundaries, and the local strict stack
-ceiling. The legacy vectors remain unchanged.
+ceiling. Exhaustive digit/chain-pair tests cover exact and clamped selection;
+forwarded-chain forgeries and hostile raw maximum aliases exercise the clamped
+checksum boundary. A policy-disabled test preserves the legacy single-checksum
+raw-encoding rule and surrounding stack state. The legacy vectors remain unchanged.
+
+`cargo test --locked --test primitive_metrics winternitz_metrics_are_current`
+checks the focused snapshots during ordinary test runs; intentional metric
+updates use `UPDATE_PRIMITIVE_METRICS=1` with that same command.
 
 `cargo bench --bench winternitz` runs the host-side release diagnostic for
 legacy/Fast public-key generation and signing. It reports median, p10, and p90
