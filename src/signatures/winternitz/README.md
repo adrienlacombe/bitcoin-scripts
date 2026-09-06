@@ -1,6 +1,38 @@
 # Winternitz one-time signatures
 
-The table compares our size-focused **terminal verifiers**: every row verifies
+For **20-byte messages**, the best tested combined-cost profile is
+**constant-sum HASH160**: a **2,680-byte script** and **3,624-byte maximum
+script + signature witness**. The hybrid has the smallest script at
+**2,381 bytes**, with a larger **3,898-byte maximum combined cost**.
+The reversible encoding preserves all 20 message bytes.
+
+The first table compares terminal verifiers that consume the signature, with
+**16-byte initial secrets** and seed `[0x42;32]`. Witness columns include full
+signature-data serialization. Zero and all-`ff` are 20-byte messages; varied
+byte `i` is `(37*i) mod 256`. Maximum means the attained signer-witness maximum.
+
+| Terminal profile | Script bytes | Zero witness | All-`ff` witness | Varied witness | Maximum signer witness | Script + maximum witness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Constant-sum HASH160 | <!-- metric:w20_sum_hash160_script -->2680<!-- /metric:w20_sum_hash160_script --> | <!-- metric:w20_sum_hash160_witness_zero -->839<!-- /metric:w20_sum_hash160_witness_zero --> | <!-- metric:w20_sum_hash160_witness_ff -->934<!-- /metric:w20_sum_hash160_witness_ff --> | <!-- metric:w20_sum_hash160_witness_varied -->924<!-- /metric:w20_sum_hash160_witness_varied --> | <!-- metric:w20_sum_hash160_witness_max -->944<!-- /metric:w20_sum_hash160_witness_max --> | <!-- metric:w20_sum_hash160_total_max -->3624<!-- /metric:w20_sum_hash160_total_max --> |
+| Constant-sum HASH160, bounded | <!-- metric:w20_sum_bounded_hash160_script -->2853<!-- /metric:w20_sum_bounded_hash160_script --> | <!-- metric:w20_sum_bounded_hash160_witness_zero -->839<!-- /metric:w20_sum_bounded_hash160_witness_zero --> | <!-- metric:w20_sum_bounded_hash160_witness_ff -->934<!-- /metric:w20_sum_bounded_hash160_witness_ff --> | <!-- metric:w20_sum_bounded_hash160_witness_varied -->924<!-- /metric:w20_sum_bounded_hash160_witness_varied --> | <!-- metric:w20_sum_bounded_hash160_witness_max -->944<!-- /metric:w20_sum_bounded_hash160_witness_max --> | <!-- metric:w20_sum_bounded_hash160_total_max -->3797<!-- /metric:w20_sum_bounded_hash160_total_max --> |
+| Base-16 HASH160 clamped | <!-- metric:w20_base16_hash160_script -->2819<!-- /metric:w20_base16_hash160_script --> | <!-- metric:w20_base16_hash160_witness_zero -->785<!-- /metric:w20_base16_hash160_witness_zero --> | <!-- metric:w20_base16_hash160_witness_ff -->975<!-- /metric:w20_base16_hash160_witness_ff --> | <!-- metric:w20_base16_hash160_witness_varied -->960<!-- /metric:w20_base16_hash160_witness_varied --> | <!-- metric:w20_base16_hash160_witness_max -->990<!-- /metric:w20_base16_hash160_witness_max --> | <!-- metric:w20_base16_hash160_total_max -->3809<!-- /metric:w20_base16_hash160_total_max --> |
+| Constant-sum hybrid | <!-- metric:w20_sum_hybrid_script -->2381<!-- /metric:w20_sum_hybrid_script --> | <!-- metric:w20_sum_hybrid_witness_zero -->1142<!-- /metric:w20_sum_hybrid_witness_zero --> | <!-- metric:w20_sum_hybrid_witness_ff -->1454<!-- /metric:w20_sum_hybrid_witness_ff --> | <!-- metric:w20_sum_hybrid_witness_varied -->1430<!-- /metric:w20_sum_hybrid_witness_varied --> | <!-- metric:w20_sum_hybrid_witness_max -->1517<!-- /metric:w20_sum_hybrid_witness_max --> | <!-- metric:w20_sum_hybrid_total_max -->3898<!-- /metric:w20_sum_hybrid_total_max --> |
+| Constant-sum SHA-256 | <!-- metric:w20_sum_sha256_script -->2832<!-- /metric:w20_sum_sha256_script --> | <!-- metric:w20_sum_sha256_witness_zero -->1142<!-- /metric:w20_sum_sha256_witness_zero --> | <!-- metric:w20_sum_sha256_witness_ff -->1454<!-- /metric:w20_sum_sha256_witness_ff --> | <!-- metric:w20_sum_sha256_witness_varied -->1430<!-- /metric:w20_sum_sha256_witness_varied --> | <!-- metric:w20_sum_sha256_witness_max -->1517<!-- /metric:w20_sum_sha256_witness_max --> | <!-- metric:w20_sum_sha256_total_max -->4349<!-- /metric:w20_sum_sha256_total_max --> |
+
+These policy-compiled fragments include commitments, chain verification,
+checksum or fixed-sum checks, and cleanup. The terminal predicate, script-item
+framing, control block, and transaction overhead are excluded equally.
+Metrics are `locally-reproduced`, `research-unlimited`; the metric helper
+executes tapscript with the stack limit disabled. No Core or policy validation
+is established. All signature items coexist at entry and there are **0 hints**:
+HASH160 constant-sum uses 82 items and peaks at 93 across both stacks; its
+base-16 baseline uses 86/95; SHA-256 constant-sum profiles use 123/133.
+See [encoding and verification tradeoffs](#lossless-20-byte-messages-with-a-constant-sum-encoding)
+for the omitted individual upper bounds, bounded alternative, and hash choices.
+
+## 32-byte terminal comparison
+
+The following table compares our size-focused **terminal verifiers**: every row verifies
 and consumes a **32-byte message**, using the default **16-byte initial secrets**.
 Totals are **exact script + serialized signature-witness bytes** for each stated
 message, not averages or witness-size bounds. “Mixed” is the byte sequence
@@ -690,13 +722,8 @@ is `[0;20]`, all-`ff` is `[0xff;20]`, and varied byte `i` is `(37*i) mod 256`.
 All rows below use `Preimage16`. The bounded row adds explicit digit-range
 rejection; both constant-sum HASH160 rows use the same signer witness.
 
-| Terminal profile | Script bytes | Zero witness | All-`ff` witness | Varied witness | Maximum signer witness | Script + maximum witness |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Base-16 HASH160 clamped | <!-- metric:w20_base16_hash160_script -->2819<!-- /metric:w20_base16_hash160_script --> | <!-- metric:w20_base16_hash160_witness_zero -->785<!-- /metric:w20_base16_hash160_witness_zero --> | <!-- metric:w20_base16_hash160_witness_ff -->975<!-- /metric:w20_base16_hash160_witness_ff --> | <!-- metric:w20_base16_hash160_witness_varied -->960<!-- /metric:w20_base16_hash160_witness_varied --> | <!-- metric:w20_base16_hash160_witness_max -->990<!-- /metric:w20_base16_hash160_witness_max --> | <!-- metric:w20_base16_hash160_total_max -->3809<!-- /metric:w20_base16_hash160_total_max --> |
-| Constant-sum HASH160 | <!-- metric:w20_sum_hash160_script -->2680<!-- /metric:w20_sum_hash160_script --> | <!-- metric:w20_sum_hash160_witness_zero -->839<!-- /metric:w20_sum_hash160_witness_zero --> | <!-- metric:w20_sum_hash160_witness_ff -->934<!-- /metric:w20_sum_hash160_witness_ff --> | <!-- metric:w20_sum_hash160_witness_varied -->924<!-- /metric:w20_sum_hash160_witness_varied --> | <!-- metric:w20_sum_hash160_witness_max -->944<!-- /metric:w20_sum_hash160_witness_max --> | <!-- metric:w20_sum_hash160_total_max -->3624<!-- /metric:w20_sum_hash160_total_max --> |
-| Constant-sum HASH160, bounded | <!-- metric:w20_sum_bounded_hash160_script -->2853<!-- /metric:w20_sum_bounded_hash160_script --> | <!-- metric:w20_sum_bounded_hash160_witness_zero -->839<!-- /metric:w20_sum_bounded_hash160_witness_zero --> | <!-- metric:w20_sum_bounded_hash160_witness_ff -->934<!-- /metric:w20_sum_bounded_hash160_witness_ff --> | <!-- metric:w20_sum_bounded_hash160_witness_varied -->924<!-- /metric:w20_sum_bounded_hash160_witness_varied --> | <!-- metric:w20_sum_bounded_hash160_witness_max -->944<!-- /metric:w20_sum_bounded_hash160_witness_max --> | <!-- metric:w20_sum_bounded_hash160_total_max -->3797<!-- /metric:w20_sum_bounded_hash160_total_max --> |
-| Constant-sum SHA-256 | <!-- metric:w20_sum_sha256_script -->2832<!-- /metric:w20_sum_sha256_script --> | <!-- metric:w20_sum_sha256_witness_zero -->1142<!-- /metric:w20_sum_sha256_witness_zero --> | <!-- metric:w20_sum_sha256_witness_ff -->1454<!-- /metric:w20_sum_sha256_witness_ff --> | <!-- metric:w20_sum_sha256_witness_varied -->1430<!-- /metric:w20_sum_sha256_witness_varied --> | <!-- metric:w20_sum_sha256_witness_max -->1517<!-- /metric:w20_sum_sha256_witness_max --> | <!-- metric:w20_sum_sha256_total_max -->4349<!-- /metric:w20_sum_sha256_total_max --> |
-| Constant-sum hybrid | <!-- metric:w20_sum_hybrid_script -->2381<!-- /metric:w20_sum_hybrid_script --> | <!-- metric:w20_sum_hybrid_witness_zero -->1142<!-- /metric:w20_sum_hybrid_witness_zero --> | <!-- metric:w20_sum_hybrid_witness_ff -->1454<!-- /metric:w20_sum_hybrid_witness_ff --> | <!-- metric:w20_sum_hybrid_witness_varied -->1430<!-- /metric:w20_sum_hybrid_witness_varied --> | <!-- metric:w20_sum_hybrid_witness_max -->1517<!-- /metric:w20_sum_hybrid_witness_max --> | <!-- metric:w20_sum_hybrid_total_max -->3898<!-- /metric:w20_sum_hybrid_total_max --> |
+The [first table](#winternitz-one-time-signatures) lists these 20-byte
+script and witness measurements, including both best-cost profiles.
 
 | Terminal profile | Combined main/alt-stack peak | Static non-push opcodes | Complete entry data items | Auxiliary hint items |
 | --- | ---: | ---: | ---: | ---: |
