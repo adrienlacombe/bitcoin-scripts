@@ -13,6 +13,15 @@ cases must remain distinct from rejection. The independent Core harness is the
 oracle; local fragment acceptance must not be promoted to complete-transaction
 validity before those checks exist.
 
+The [signature differential experiment](tapscript-signature-validation.md)
+isolates 13 remaining disagreements at the resource-repaired interpreter pin,
+including six panics. Its complete funded transactions cover CODESEPARATOR,
+unknown-key empty signatures, invalid x-only keys and disabled multisig opcodes.
+All 20 local/Core comparisons agree after adopting `702544c9`, with zero panics
+and two identical reports. These focused repairs are prerequisites to the full
+transaction API; fixing them does not itself implement commitment, annex or
+full-witness budget checks. The context-free profiles retain their guard.
+
 ## OP-019 — PRINCEv2 M-hat circuit frontier
 
 Find a smaller repeated M-hat circuit for generation-time-key encryption.

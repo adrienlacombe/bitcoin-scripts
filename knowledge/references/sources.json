@@ -108,6 +108,13 @@
       "revision": "4b7269a415f21be3fccee9730547f1426eb80326; temporary integration of upstream PR18 (0fede45090b8ad1c560c7fc6abc35a8f09a30b13), PR19 (c91b3e6958703a801ab328bf97f5b9c557ef4bdb) and PR20 (7978c73c5e48c623a685785962de84d9fefc1165); adopted 2026-09-10. Historical bitcoin-scriptexec-locked evidence retains ba96bc2."
     },
     {
+      "id": "bitcoin-scriptexec-signatures-20260910",
+      "title": "Immutable integration of Taproot signature semantics and resource repairs",
+      "kind": "execution-tool",
+      "url": "https://github.com/adrienlacombe/rust-bitcoin-scriptexec/tree/702544c9a045ac4fc14846da6da6559e2b7cd9d1",
+      "revision": "702544c9a045ac4fc14846da6da6559e2b7cd9d1; retains 4b7269a4 resource repairs and integrates Sander Bosma's PR16 (4c9bf94e1508df9c77a579dde1831c88ab24cabb), additional CODESEPARATOR tests (474a6b6f0a67338ea61287cabf06c92fb0b7a3e0), empty-signature repair (f4e05a47dbdb465e8dbe970531825a973f0836d1), signature errors (2efd48f793b972edda33cdcf39b47d99ab6e6547), and SIGHASH_SINGLE error ordering (47e080651a1df90e67cce7c05a846f8befd8c08b). Adopted 2026-09-10; historical measurements retain their original pins."
+    },
+    {
       "id": "coins-bitcoin-scripts-8f442e4b",
       "title": "Coins Bitcoin Script construction notes",
       "kind": "upstream-source",

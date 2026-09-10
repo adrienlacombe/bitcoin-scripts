@@ -38,6 +38,7 @@ python3 tools/kb.py validate
 - [Normalized cost model](cost-model.md)
 - [Evidence and confidence](evidence.md)
 - [Pinned Bitcoin Core validation](core-validation.md)
+- [Taproot signature differential experiment](tapscript-signature-validation.md)
 - [Primitive entries](primitives/index.md)
 - [Reusable implementation techniques](techniques/index.md)
 - [Cross-construction comparisons](comparisons/index.md)

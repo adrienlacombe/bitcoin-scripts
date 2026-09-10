@@ -28,7 +28,7 @@ archive and binary SHA256 hashes, block acceptance and policy results for 24
 complete Taproot spends. Its evidence is `differentially-validated` within that
 fixture scope.
 
-The current local interpreter uses `bitcoin-scriptexec-repaired-20260910` at
+The resource-profile experiment uses `bitcoin-scriptexec-repaired-20260910` at
 `4b7269a415f21be3fccee9730547f1426eb80326`, an immutable fork integration of
 upstream PRs #18, #19 and #20. The Cargo patch applies to both the lab and its
 stack-tracking dependency. The existing `bitcoin-scriptexec-locked` source
@@ -36,6 +36,15 @@ remains at `ba96bc2` for historical measurements, including skipped field
 experiments; adoption does not rewrite that attribution. The
 [support guide](../../src/support/README.md) records the new profiles, supported
 scope, regression tests and acceptance criterion for returning upstream.
+
+The current local interpreter uses `bitcoin-scriptexec-signatures-20260910` at
+`702544c9a045ac4fc14846da6da6559e2b7cd9d1`. It retains those resource repairs,
+adopts Sander Bosma's CODESEPARATOR fix (`4c9bf94`) with additional regression
+tests (`474a6b6`), and adds unknown-key empty-signature handling (`f4e05a4`),
+invalid-key/multisig errors (`2efd48f`) and SIGHASH_SINGLE error ordering
+(`47e0806`). The [funded signature comparison](../tapscript-signature-validation.md)
+preserves a `4b7269a4` baseline separately from the repaired integration.
+Older catalog configurations and report artifacts retain their recorded pins.
 
 
 The Fast Winternitz hash-choice comparison inspects Bitcoin Core **v29.0**

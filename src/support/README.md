@@ -2,13 +2,19 @@
 
 The lab and `bitcoin-script-stack` use the same repaired `bitcoin-scriptexec`
 revision, selected by an immutable Cargo patch:
-[`4b7269a415f21be3fccee9730547f1426eb80326`](https://github.com/adrienlacombe/rust-bitcoin-scriptexec/commit/4b7269a415f21be3fccee9730547f1426eb80326).
-It integrates three focused repairs on upstream `ba96bc2`: entry/per-step
+[`702544c9a045ac4fc14846da6da6559e2b7cd9d1`](https://github.com/adrienlacombe/rust-bitcoin-scriptexec/commit/702544c9a045ac4fc14846da6da6559e2b7cd9d1).
+It retains three resource repairs on upstream `ba96bc2`: entry/per-step
 resource checks ([PR #18](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/18)),
 `OP_PICK`/`OP_ROLL` bounds ([PR #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19)),
 and checking minimal pushes only when executed
 ([PR #20](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/20)).
-All 34 upstream tests pass at the integration revision. The fork is temporary
+It additionally adopts Sander Bosma's existing
+[CODESEPARATOR fix #16](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/16)
+with extended regression tests, preserves empty signatures for unknown key types,
+and returns script errors for invalid x-only keys, missing SIGHASH_SINGLE outputs
+and executed Tapscript multisig. All **57 upstream tests** pass at this integration
+revision. The [signature experiment](../../knowledge/tapscript-signature-validation.md)
+records the exact comparison scope and original commits. The fork is temporary
 while the upstream PRs are reviewed; compiler and other dependency pins remain
 unchanged. Historical reports retain their original interpreter provenance.
 
@@ -93,6 +99,12 @@ and opcode counters are not complete Taproot transaction measurements. Use the
 new typed profiles for the supported context-free subset and Core for complete
 transaction evidence.
 
+Signature repairs are submitted as [#21](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/21)
+and [#22](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/22). Additional
+CODESEPARATOR tests [target the existing fix author's branch](https://github.com/bob-collective/rust-bitcoin-scriptexec/pull/1).
+All 20 funded signature cases now match pinned Core, including rejection
+diagnostics, with two identical reports and zero local panics in that corpus.
+
 ## Verification and adoption boundary
 
 ```sh
@@ -118,12 +130,12 @@ CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_TARGET_DIR=target/nonfield-opt1 cargo test 
 
 Only the host test optimization level is changed; debug assertions and overflow
 checks retain their defaults. Script compilation still uses the unchanged
-`124b561e` compiler and repository policy. The current 44-fixture Core report
-also reproduces identically on two fresh nodes; its 86 applicable local/Core
+`124b561e` compiler and repository policy. The recorded 44-fixture Core report
+reproduced identically on two fresh nodes at its original `4b7269a4` pin; its 86 applicable local/Core
 verdict comparisons pass, with commitment validation explicitly outside the
 local fragment API.
 
-Return to an immutable upstream revision when it contains all three repairs or
+Return to an immutable upstream revision when it contains all adopted repairs or
 equivalent implementations and passes these regressions, Core comparisons,
 unchanged primitive metrics and the non-field suite. Do not silently repoint
 historical evidence or update the other dependency pins during that migration.

@@ -7,6 +7,10 @@ outcomes for **44 deterministic fixtures**, including rejected inputs. The
 original 24-fixture report is retained as a historical dependency baseline.
 It does not generalize one successful profile to the entire primitive catalog.
 
+The separate [funded signature experiment](tapscript-signature-validation.md)
+adds transaction-aware signature cases and preserves its own before/after
+reports. The 24- and 44-fixture artifacts on this page keep their recorded pins.
+
 ## Reproduce
 
 ```sh
@@ -78,10 +82,12 @@ Rust and Python also agree on the complete serialized witness size.
 
 The new `support::tapscript::execute_tapscript` API keeps the caller's exact
 policy-compiled `ScriptBuf` and requires `TapscriptProfile::Consensus` or
-`TapscriptProfile::Policy`. The interpreter is pinned to the unmerged fork
+`TapscriptProfile::Policy`. The recorded 44-fixture report uses the unmerged fork
 integration commit
 [`4b7269a415f21be3fccee9730547f1426eb80326`](https://github.com/adrienlacombe/rust-bitcoin-scriptexec/commit/4b7269a415f21be3fccee9730547f1426eb80326),
 which incorporates the three separately submitted interpreter corrections below.
+The later signature integration `702544c9` also passes all 44 fixtures and 86
+applicable local/Core comparisons; the committed report remains at its original pin.
 The runner verifies the resolved graph through `cargo metadata --locked`: exactly
 one interpreter package must match the fixture's immutable fork source and commit.
 Legacy research helpers retain their default minimal-number option and

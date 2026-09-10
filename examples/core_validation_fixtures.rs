@@ -35,7 +35,7 @@ use std::{
 
 const CORE_VERSION: &str = "30.3";
 const CORE_COMMIT: &str = "49faec4f87f5cd19c88db01a82e5c68b087c8227";
-const LOCAL_INTERPRETER_COMMIT: &str = "4b7269a415f21be3fccee9730547f1426eb80326";
+const LOCAL_INTERPRETER_COMMIT: &str = "702544c9a045ac4fc14846da6da6559e2b7cd9d1";
 const RAW_BOUNDARY: &str = "raw-boundary-bytecode";
 const POLICY: &str = "repository-policy";
 type Wots = ConstantCompositionWinternitz20<Hash160, Preimage16>;

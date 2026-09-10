@@ -3,6 +3,34 @@
 These records prevent repeated dead ends. They are scoped observations, not
 universal impossibility proofs.
 
+## NR-049: Signature opcodes still diverge after resource repairs
+
+The [funded signature experiment](../tapscript-signature-validation.md) records
+20 complete Taproot transactions against pinned Core v30.3. At interpreter
+`4b7269a415f21be3fccee9730547f1426eb80326`, 13 local results disagree with Core:
+four CODESEPARATOR signature verdicts, three empty unknown-key signature
+verdicts, four invalid-x-only-key panics and two executed-multisig panics.
+Every Core consensus/policy expectation and exact diagnostic passes.
+Adopted integration `702544c9` resolves all 13 disagreements; two fresh runs
+produce identical final reports. [Upstream #21](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/21)
+and [#22](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/22) carry the new
+repairs, alongside the existing CODESEPARATOR fix and supplemental tests.
+
+CODESEPARATOR must commit to the opcode position, counting pushes and skipped
+instructions once each, rather than the byte offset. Unknown nonzero key types
+do not turn empty signatures into success. Invalid 32-byte curve points must
+produce signature failure after applicable signature hash-type validation.
+Executed Tapscript multisig opcodes fail with their dedicated error; skipped
+instances are ignored. These are local interpreter defects, not Bitcoin bugs.
+
+Evidence is `differentially-validated` for these exact funded comparisons;
+local execution alone is `unclassified`. Each fixture has zero auxiliary hints,
+two ordinary padding items, and two to five total entry data items; the complete
+Taproot witness adds script/control block. The report records all counts, full
+witness bytes, transaction weights and combined stack peaks (null for panics).
+No batched configuration or signature-budget boundary is measured. Existing
+catalog configurations keep their original evidence and deployment classes.
+
 ## NR-048: Minimal-push policy must follow execution
 
 Can numeric and push-minimality policy be selected independently of tapscript
