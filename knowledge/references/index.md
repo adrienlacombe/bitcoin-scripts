@@ -35,6 +35,12 @@ compiled measurements use `bitcoin-script-locked` at
 `124b561ed75ac3ec4c6ad99207d8dcdd3bc67180`, including SHA256-pair fusion.
 That Core source inspection is not a Core execution or policy reproduction.
 
+The separate `bitcoin-script-unchanged-run-candidate` source records optimizer
+commit `eb91d10de3e3adfbcc37c708924306dc9a7e58cd`, submitted upstream as PR #15.
+The [compiler experiment](../negative-results/compiler-validation-runtime.md)
+compares it against the retained `124b561e` dependency pin. This candidate is
+not the compiler used for the catalog's published primitive measurements.
+
 The default Preimage16 discussion uses `nist-hash-security-strengths` for the
 distinction between collision, preimage, and second-preimage resistance. The
 128-bit initial-secret exhaustive-search ceiling is a local inference from

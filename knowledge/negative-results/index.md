@@ -3,6 +3,24 @@
 These records prevent repeated dead ends. They are scoped observations, not
 universal impossibility proofs.
 
+## NR-047: Constant cleanup erases the stack peak under test
+
+The former BLAKE3 maximum-altstack test computed a known digest, dropped it
+and its constant padding, and returned `OP_TRUE`. Both the baseline and
+candidate compilers reduce bounded reproductions to that single byte, erasing
+the temporary peak. The [reproduction and scope](compiler-validation-runtime.md#constant-cleanup-erases-the-resource-being-tested)
+record exact inputs, output hashes, and the timeout on the larger baseline
+probe. Resource tests need an observable output boundary after compilation.
+
+## NR-046: Unchanged stack runs repeat redundant optimizer searches
+
+The [compiler-runtime experiment](compiler-validation-runtime.md) reproduces
+1,411,036 symbolic-window queries for an unchanged 512-operation stack run.
+A pass-local reuse of the unchanged result reduces this to 5,566 with identical
+output bytes. The correction is submitted upstream; the lab retains its
+compiler pin and primitive snapshots. Diagnostic timings do not establish a
+general compile-time speedup or a Bitcoin execution-cost improvement.
+
 ## NR-045: Core differentials expose local executor boundaries
 
 The [v30.3 regtest experiment](../core-validation.md) compares 24 complete
@@ -1240,11 +1258,12 @@ There is an independent local executor limitation: the pinned
 `ba96bc2bd76774c9d1b011461cb79d983c2c43a1` can panic when `OP_PICK` indexes
 outside the entire stack. The adversarial tests exercise a foreign-table
 trap that is still inside the complete stack. They do not prove the executor
-correctly rejects every genuinely out-of-stack index. Bitcoin consensus
-requires rejection in that case, but no pinned Core differential test has
-been performed here. This remains an explicit validation limit under OP-009;
-it must not be described as consensus success or as proof of a Bitcoin
-consensus vulnerability.
+correctly rejects every genuinely out-of-stack index. The later
+[v30.3 Core experiment](../core-validation.md) confirms consensus rejection
+at the exact `OP_PICK`/`OP_ROLL` boundaries and the isolated
+constant-composition pool bound; it does not validate the constant-sum
+construction's complete protocol. The local panic remains an executor
+limitation, not consensus success or a Bitcoin consensus vulnerability.
 
 The default metric has **82 complete data items**, **zero auxiliary hint
 items**, and a **93-item combined main/alt-stack peak**; the baseline has

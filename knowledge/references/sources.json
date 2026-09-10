@@ -262,6 +262,13 @@
       "revision": "DLMF version 1.2.7, released 2026-06-15; multinomial capacity formula only, not cryptographic security"
     },
     {
+      "id": "bitcoin-script-unchanged-run-candidate",
+      "title": "BitVM rust-bitcoin-script unchanged-run optimizer candidate",
+      "kind": "upstream-source",
+      "url": "https://github.com/BitVM/rust-bitcoin-script/tree/eb91d10de3e3adfbcc37c708924306dc9a7e58cd",
+      "revision": "eb91d10de3e3adfbcc37c708924306dc9a7e58cd; PR #15, locally compared with retained compiler pin 124b561ed75ac3ec4c6ad99207d8dcdd3bc67180 on 2026-09-10; diagnostic experiment only"
+    },
+    {
       "id": "bitcoin-core-v30.3-regtest",
       "title": "Bitcoin Core v30.3 pinned consensus and relay-policy oracle",
       "kind": "reference-implementation",

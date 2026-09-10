@@ -5177,9 +5177,9 @@
         "Terminal-only; no onchain decoder or unused-rank rejection",
         "New encoding, key namespace and witness format; incompatible with other Winternitz signatures",
         "Isolated requires the signature to occupy the entire main stack",
-        "Pinned local executor has an OP_ROLL off-by-one panic at index equal to entire pool size; Core source rejects it, but no Core differential execution performed; composable variants avoid that malformed index",
+        "Pinned local executor has an OP_ROLL off-by-one panic at index equal to entire pool size; the v30.3 Core differential fixture independently confirms consensus and policy rejection at that exact bound; composable variants avoid that malformed index",
         "Metric helper disables stack limit; strict local tests do not establish consensus or policy validity",
-        "Enabled opcodes exceed bare/P2SH/P2WSH 201-opcode limit; tapscript deployment remains unclassified",
+        "Enabled opcodes exceed bare/P2SH/P2WSH 201-opcode limit; fragment profiles remain unclassified for tapscript deployment except the separately recorded complete Core-validated leaf",
         "Finite parameter search with approximate screening; not a proof of global minimum",
         "Custom cryptographic argument and concrete multi-target security need further analysis",
         "Only configuration w20-composition-isolated-hash160-core-v30.3 is differentially-validated/policy-validated against a pinned Core executable. Record-level evidence/execution describe the older fragment suite; complete-leaf and transaction costs are separate boundaries."

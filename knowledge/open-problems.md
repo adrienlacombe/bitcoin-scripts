@@ -90,6 +90,30 @@ macOS ARM64 (one diagnostic run, no timing-dispersion claim). Production
 primitive generators and metric snapshots are unchanged. The ten resource
 regressions, five active metric snapshots, knowledge validation, upstream-C
 host PRINCE check, and corrected BLAKE3 lifecycle test also pass.
+
+The subsequent default-pin broad run completed 408 unit tests with 21 existing
+ignored tests and no observed failures. It was stopped after 2,310.48 seconds
+with only the old BLAKE3 maximum-altstack test still running, before integration
+tests. This run is incomplete. The
+[compiler investigation](negative-results/compiler-validation-runtime.md)
+found redundant unchanged-run searches, submitted as
+[compiler PR #15](https://github.com/BitVM/rust-bitcoin-script/pull/15), and a
+separate test-design flaw: constant BLAKE3 results plus unused-output cleanup
+allow the optimizer to erase the source-level stack peak. The candidate
+compiler reproduces all five active metrics and exact bytes for all 24 Core
+fixture records, but remains an isolated experiment rather than the lab's
+dependency pin.
+
+The repaired BLAKE3 resource test subsequently passes all 34 configurations
+under the unchanged compiler pin in 185.57 seconds, with all 56
+[boundary measurements](../tests/data/blake3-resource-boundaries.json)
+matching the candidate. Separate default-pin integration tests pass 18 checks
+with three existing ignores; six documentation tests pass. Together, the
+broad/targeted/integration/doc runs verify all 409 active non-field unit tests,
+18 integration tests and six doc tests under the retained pins. The isolated
+candidate also completes one uninterrupted non-field suite with those same
+pass counts (135.316 seconds command wall time, diagnostic concurrent sample).
+The original default-pin broad run remains explicitly incomplete.
 **Complete when:** the broad suite finishes with the field filter retained.
 
 ## OP-004 — Prime-log RNS frontier

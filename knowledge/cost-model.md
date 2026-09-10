@@ -63,6 +63,13 @@ from whole-script compilation because the optimizer rewrites across component
 boundaries; attribute that delta explicitly so the reported components sum to
 the final serialized size.
 
+Resource probes must also preserve the work they intend to measure. A known
+computation followed by unused-output cleanup can optimize to `OP_TRUE`,
+erasing its temporary stack peak. Use runtime witness inputs and an observable
+fragment output, or explicitly identified raw consensus-boundary vectors;
+measure the final executed serialization. See the
+[BLAKE3 counterexample](negative-results/compiler-validation-runtime.md#constant-cleanup-erases-the-resource-being-tested).
+
 ## Setup and amortization
 
 For reusable lookup memory, report setup/cleanup and per-query costs separately.
