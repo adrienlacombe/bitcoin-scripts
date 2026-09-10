@@ -73,6 +73,13 @@
       "revision": "rolling master; pin before reproduction"
     },
     {
+      "id": "bitcoin-core-v30-resource-limits",
+      "title": "Bitcoin Core v30.0 witness-entry and per-instruction resource limits",
+      "kind": "upstream-source",
+      "url": "https://github.com/bitcoin/bitcoin/blob/d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3/src/script/interpreter.cpp",
+      "revision": "d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3 (v30.0); ExecuteWitnessScript and EvalScript inspected 2026-09-10, not executed"
+    },
+    {
       "id": "bitcoin-script-locked",
       "title": "BitVM rust-bitcoin-script",
       "kind": "upstream-source",
@@ -253,6 +260,13 @@
       "title": "NIST Digital Library of Mathematical Functions, 26.16 Multiset Permutations",
       "url": "https://dlmf.nist.gov/26.16",
       "revision": "DLMF version 1.2.7, released 2026-06-15; multinomial capacity formula only, not cryptographic security"
+    },
+    {
+      "id": "bitcoin-core-v30.3-regtest",
+      "title": "Bitcoin Core v30.3 pinned consensus and relay-policy oracle",
+      "kind": "reference-implementation",
+      "url": "https://github.com/bitcoin/bitcoin/tree/49faec4f87f5cd19c88db01a82e5c68b087c8227",
+      "revision": "49faec4f87f5cd19c88db01a82e5c68b087c8227 (v30.3); official archive SHA256 pins in tools/bitcoin_core_release.json; 24 deterministic complete Taproot regtest comparisons recorded 2026-09-10"
     }
   ]
 }

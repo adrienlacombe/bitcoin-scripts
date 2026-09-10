@@ -17,8 +17,12 @@ boundary is not comparable evidence.
   or a narrower fragment boundary is being modeled. Hint-item count, serialized
   hint bytes, complete witness/data item count, and maximum stack items are
   separate metrics; none substitutes for another.
-- **Transaction weight:** base bytes multiplied by four plus witness bytes.
-  Record only for a complete transaction.
+- **Transaction weight:** stripped transaction bytes multiplied by three plus
+  total serialized transaction bytes. Equivalently, multiply stripped bytes
+  by four and add witness serialization plus the two marker/flag bytes for
+  a witness transaction. Record only for a complete transaction; the complete
+  Taproot witness already includes the locking script and control block. See
+  the [Core-checked example](core-validation.md).
 - **Maximum stack items:** peak combined main and alt stack unless a record
   explicitly says main-only. Table memory and unrelated live protocol state
   must be disclosed.
@@ -91,6 +95,17 @@ The current local metrics primarily use `bitcoin-scriptexec` in tapscript mode.
 Some helpers disable the stack limit. Such measurements remain useful for
 algorithmic comparison but are classified `research-unlimited` until validated
 under strict rules.
+
+The [shared execution wrapper](../src/support/README.md) explicitly records
+`stack_limit_enforced`. Since 2026-09-10 it checks entry and every instruction,
+including data pushes, and rejects oversized witness elements in both modes.
+Its repaired peak statistic includes the failing instruction's live depth.
+Earlier strict-helper success alone did not exclude entry or transient-push
+overflow; see [NR-043](negative-results/index.md#nr-043-upstream-stack-limit-enforcement-misses-entry-and-data-pushes).
+Even after this repair, local stack enforcement does not establish full
+consensus or policy validity, executed-opcode counts, or correctly framed
+Taproot signature budgets. Revalidate the specific configuration before
+strengthening its evidence or deployment class.
 
 ## Ordering objectives
 

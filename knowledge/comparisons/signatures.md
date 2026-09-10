@@ -321,6 +321,15 @@ checks the composition without enforcing the host's rank-below-`2^160` image
 or returning bytes. The search is bounded, not a proof of global optimality;
 see [NR-042](../negative-results/index.md#nr-042-constant-composition-search-and-endpoint-sharing-limits).
 
+The [separate Core v30.3 experiment](../core-validation.md) validates the
+varied-message isolated HASH160 complete leaf with terminal `OP_TRUE`: 1,599
+locking bytes, 2,432 complete Taproot witness bytes, and 2,810 WU / 703 vbytes
+for one input and one output. It has 70 entry data items, zero hints, and local
+stack-limited peak 119. This exact configuration is `differentially-validated`
+and `policy-validated`; its complete-transaction boundary is not comparable
+to the fragment-plus-data-witness totals above. Other profiles retain their
+existing classes.
+
 The following fixed-sum comparison records the earlier 20-byte frontier.
 The 20-byte comparison has a different message size and is separate from the
 32-byte tables above. `ConstantSumWinternitz20` ranks the unchanged input into

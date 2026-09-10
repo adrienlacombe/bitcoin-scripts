@@ -471,8 +471,10 @@ witness:       <…args…> <witnessScript>
 - **Single SHA-256**, not HASH160 — 256-bit, no collision concern.
 - The witnessScript *is* the scriptCode. No `FindAndDelete`.
 - Limits: witnessScript ≤ 10,000 bytes `[C]` but **3,600 bytes `[P]`**
-  (`MAX_STANDARD_P2WSH_SCRIPT_SIZE`); witness stack ≤ 100 items `[C]` of ≤ 520 bytes each `[C]`,
+  (`MAX_STANDARD_P2WSH_SCRIPT_SIZE`); witness data stack ≤ **100 items `[P]`** of ≤ 520 bytes each `[C]`,
   tightened to **≤ 80 bytes per item `[P]`** (`MAX_STANDARD_P2WSH_STACK_ITEM_SIZE`).
+  The 100-item count excludes the witnessScript and is a relay-policy restriction,
+  separate from the 1,000-item combined main/alt-stack consensus limit during execution.
 - The 80-byte standard stack-item limit is a frequent surprise — it blocks pushing, say, a 100-byte
   proof element in a relayable transaction.
 - Address: bech32, 32-byte program.
@@ -772,12 +774,24 @@ those are differs per context, and this is a persistent source of implementation
 
 - **P2SH**: redeemScript ≤ **520 bytes `[C]`** (it is a stack element). The binding constraint on
   legacy contracts.
-- **P2WSH**: witnessScript ≤ 10,000 `[C]` / **3,600 `[P]`**; witness stack ≤ 100 items `[C]`, each
+- **P2WSH**: witnessScript ≤ 10,000 `[C]` / **3,600 `[P]`**; witness data stack ≤ 100 items `[P]`, each
   ≤ 520 `[C]` / **80 `[P]`**.
 - **Bare script**: up to 10,000 bytes `[C]`, `[P]` non-standard. The only legacy route past 520 bytes.
 - **Tapscript**: the 10,000-byte script limit and the 201-opcode limit are **removed `[C]`**. The
   520-byte element cap and 1,000-element stack cap remain. Resource control moves to a
   validation-weight budget (§6.5).
+
+For ordinary tapscripts, the initial data stack is checked before execution,
+and combined main-plus-alt depth is checked after every instruction, including
+data pushes. Dropping an item in the next instruction cannot repair an earlier
+overflow. `OP_SUCCESSx` processing precedes those checks and can bypass them.
+These rules were inspected against Bitcoin Core v30.0 commit
+`d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3`
+([interpreter](https://github.com/bitcoin/bitcoin/blob/d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3/src/script/interpreter.cpp#L1684));
+the P2WSH 100-item restriction is enforced separately by
+[`IsWitnessStandard`](https://github.com/bitcoin/bitcoin/blob/d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3/src/policy/policy.cpp#L268).
+The local [execution helpers](../src/support/README.md) repair known resource
+check gaps but remain distinct from a full consensus validator.
 
 ## 5.3 Sigops
 

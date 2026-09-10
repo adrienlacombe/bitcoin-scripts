@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 1.1,
   "as_of": "2026-09-01",
   "cost_model": "knowledge/cost-model.md",
   "records": [
@@ -4714,7 +4714,7 @@
       "status": "experimental",
       "evidence": "locally-reproduced",
       "execution": "research-unlimited",
-      "as_of": "2026-09-06",
+      "as_of": "2026-09-10",
       "knowledge_page": "knowledge/primitives/winternitz-constant-composition20.md",
       "implementation": "src/signatures/winternitz/constant_composition/mod.rs",
       "documentation": "src/signatures/winternitz/constant_composition/README.md",
@@ -4722,7 +4722,10 @@
         "signatures::winternitz::constant_composition",
         "src/signatures/winternitz/constant_composition/tests/vectors.py",
         "src/signatures/winternitz/constant_composition/tests/search.rs",
-        "tests/primitive_metrics.rs"
+        "tests/primitive_metrics.rs",
+        "examples/core_validation_fixtures.rs",
+        "tools/core_regtest.py",
+        "tests/data/core-validation-v30.3.json"
       ],
       "references": [
         "nist-dlmf-multiset-permutations",
@@ -4733,7 +4736,8 @@
         "bitcoin-scriptexec-locked",
         "bitcoin-core-v29-hashes",
         "nist-hash-security-strengths",
-        "bitvm3s-2025"
+        "bitvm3s-2025",
+        "bitcoin-core-v30.3-regtest"
       ],
       "techniques": [
         "hash-chain",
@@ -5127,6 +5131,46 @@
             "w20_composition_isolated_sha256_witness_max",
             "w20_composition_isolated_sha256_stack"
           ]
+        },
+        {
+          "id": "w20-composition-isolated-hash160-core-v30.3",
+          "label": "Core v30.3 complete isolated HASH160 Taproot leaf, varied message",
+          "parameters": {
+            "message_bytes": 20,
+            "hash": "HASH160",
+            "preimage_mode": "Preimage16",
+            "seed_hex": "4242424242424242424242424242424242424242424242424242424242424242",
+            "message_hex": "00254a6f94b9de03284d7297bce1062b50759abf",
+            "witness_data_items": 70,
+            "complete_taproot_witness_items": 72,
+            "hint_stack_items": 0,
+            "hint_bytes": 0,
+            "all_data_items_coexist_at_entry": true,
+            "local_execution_class": "unclassified",
+            "local_stack_limit_enforced": true,
+            "core_version": "30.3",
+            "core_commit": "49faec4f87f5cd19c88db01a82e5c68b087c8227",
+            "data_witness_bytes": 796,
+            "static_non_push_opcodes": 567,
+            "spending_transaction_weight": 2810,
+            "spending_transaction_vsize": 703,
+            "transaction_inputs": 1,
+            "transaction_outputs": 1,
+            "report": "tests/data/core-validation-v30.3.json",
+            "fixture": "winternitz-valid"
+          },
+          "includes": "complete-leaf: isolated verifier with embedded commitments, validation, cleanup and terminal OP_TRUE; complete Taproot witness includes all 70 data items, script, 33-byte control block and count/length prefixes. One invocation, zero hints; all data coexist at entry. Local combined peak uses stack-limited tapscript; Core independently validates consensus and default standard policy. Transaction metrics are separately scoped to one input and one P2WSH output. Other profiles and fragment snapshots retain their prior evidence.",
+          "script_bytes": 1599,
+          "witness_bytes": 2432,
+          "max_stack_items": 119,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 1599,
+          "metric_keys": [],
+          "witness_bytes_max": null,
+          "evidence": "differentially-validated",
+          "execution": "policy-validated"
         }
       ],
       "limitations": [
@@ -5137,7 +5181,8 @@
         "Metric helper disables stack limit; strict local tests do not establish consensus or policy validity",
         "Enabled opcodes exceed bare/P2SH/P2WSH 201-opcode limit; tapscript deployment remains unclassified",
         "Finite parameter search with approximate screening; not a proof of global minimum",
-        "Custom cryptographic argument and concrete multi-target security need further analysis"
+        "Custom cryptographic argument and concrete multi-target security need further analysis",
+        "Only configuration w20-composition-isolated-hash160-core-v30.3 is differentially-validated/policy-validated against a pinned Core executable. Record-level evidence/execution describe the older fragment suite; complete-leaf and transaction costs are separate boundaries."
       ],
       "open_problems": [
         "OP-003",

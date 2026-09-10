@@ -3,6 +3,95 @@
 These records prevent repeated dead ends. They are scoped observations, not
 universal impossibility proofs.
 
+## NR-045: Core differentials expose local executor boundaries
+
+The [v30.3 regtest experiment](../core-validation.md) compares 24 complete
+Taproot spends with the pinned local executor after the stack-resource repair.
+All expected consensus/policy outcomes and diagnostics are reproduced. The
+remaining discrepancies are tooling limitations, not Bitcoin consensus bugs:
+
+- Exact `OP_PICK` and `OP_ROLL` upper bounds, including the isolated Winternitz
+  pool bound, panic locally; Core rejects them with invalid-stack-operation.
+- Mutating the control-block parity bit leaves local leaf execution successful,
+  while Core rejects the witness program commitment. The fragment helper does
+  not check the output commitment.
+- A nonminimal selector is consensus-valid but policy-rejected by Core; the
+  local helper rejects under its default minimal-number option.
+- 81- and 520-byte dropped witness elements are consensus-valid but policy
+  rejected. A 521-byte element violates consensus as well. Passing a local
+  resource check does not establish relay acceptance.
+
+Evidence is `differentially-validated` for these exact comparisons. Rejected
+transactions are `consensus-incompatible`; accepted nonstandard witnesses are
+`consensus-validated`; the honest Winternitz fixture is `policy-validated`.
+The local mode is stack-limited tapscript, deployment `unclassified` by itself.
+Winternitz has 70 data items, zero auxiliary hints, all items present at entry,
+and local combined peak 119. Invalid fixtures retain their explicit counts and
+peaks (null for panics) in the report. No batched configuration is measured;
+all surrounding live state shares the 1,000-item bound. Fixing malformed-index
+panics is the next falsifiable task under OP-001.
+
+The selector-bound correction is submitted as
+[upstream PR #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19), commit
+`c91b3e6958703a801ab328bf97f5b9c557ef4bdb`. Two new regression groups panic on
+the unchanged upstream revision; the patch passes all 18 upstream tests.
+The lab still pins `ba96bc2`, so its recorded local panic outcomes remain
+accurate. Dependency adoption and revalidation are separate follow-up work.
+
+## NR-044: Optimized lifecycle lengths do not isolate cleanup cost
+
+The BLAKE3 `packed_table_lifecycle_metrics` test formerly computed cleanup
+bytes by subtracting standalone setup bytes from an optimized setup/cleanup
+pair with no intervening consumer. The optimizer can erase unused table
+pushes, making the whole pair smaller than the 353-byte setup. The unsigned
+subtraction panicked at `utils.rs:1411` on the unmodified `20a7fb21a48efac1fc098d93c7536546a1d8992f` baseline,
+reproduced from an archive with a separate build directory on 2026-09-10.
+
+The corrected test declares the same table input layout and invokes the
+actual cleanup method in isolation, retaining its 166-byte expectation and
+the existing eager/late setup expectations. No generated hash implementation
+or primitive snapshot changed. This is `locally-reproduced` compilation
+evidence, with deployment `unclassified`; it does not execute a script or
+claim that component costs are additive under whole-script optimization.
+The [cost model](../cost-model.md#compilation-policy) still requires accounting
+for any optimizer delta when combining independently measured components.
+
+## NR-043: Upstream stack-limit enforcement misses entry and data pushes
+
+On 2026-09-10, six deterministic tests reproduced false acceptance through
+the former shared execution helpers with pinned `bitcoin-scriptexec`
+`ba96bc2bd76774c9d1b011461cb79d983c2c43a1`. Merely setting
+`Options.enforce_stack_limit = true` did not establish the documented bound:
+
+- An initial 1,001-item witness passed when cleanup immediately reduced it.
+- A 521-byte witness item passed when immediately dropped, in both modes.
+- A data push from 1,000 to 1,001 items passed when followed by a drop.
+- A 1,001-item combined peak passed with 1,000 items on main and one on alt.
+- A no-witness script could push 1,001 empty items and then clean up.
+- The compiled strict witness helper also accepted the oversized-item case.
+
+All fixtures use zero auxiliary hints. The complete entry data counts are
+1,001, one, 1,000, 999, zero, and one respectively; all data coexist at entry.
+These are resource-boundary counterexamples, not primitive cost comparisons.
+Raw bytecode preserves push/drop sequences that the optimizer could erase.
+
+The [shared wrapper](../../src/support/README.md) now rejects these cases before
+cleanup can conceal the violation. It also records stack-limit mode and includes
+failed-step live depth in peak statistics. Ten checked
+[tests](../../tests/execution_limits.rs) establish these corrections and valid
+neighboring boundaries. Evidence is `locally-reproduced`; deployment remains
+`unclassified`. Unlimited count tests are explicitly `research-unlimited`.
+
+The applicable entry and live-depth rules were `inspected` in Bitcoin Core
+v30.0, commit `d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3`
+([interpreter source](https://github.com/bitcoin/bitcoin/blob/d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3/src/script/interpreter.cpp)).
+These fixtures contain no `OP_SUCCESSx`, whose Core prescan bypasses the later
+resource checks. The later [v30.3 harness](../core-validation.md) independently
+validates representative entry/push boundaries as complete Taproot spends;
+that `differentially-validated` evidence does not retroactively upgrade earlier
+strict-helper results. The dependency repair is submitted as
+[upstream PR #18](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/18).
+
 ## NR-037: PRINCEv2 shared-selector corrections outweigh memory savings
 
 The [PRINCEv2 layout search](princev2-layout.md) records the discarded shared
@@ -1223,6 +1312,8 @@ Separate strict tests remain `unclassified`. At a selector exactly equal to
 the remaining pool length, pinned `bitcoin-scriptexec`
 `ba96bc2bd76774c9d1b011461cb79d983c2c43a1` checks bounds before removing the
 selector and then unwrap-panics. A dedicated test reproduces that panic;
-it must not be counted as a clean local rejection or Core validation.
-Negative and larger positive indices are tested separately. This executor
+it must not be counted as a clean local rejection. The later v30.3
+[Core differential experiment](../core-validation.md) confirms consensus and
+policy rejection independently and validates one complete isolated HASH160
+leaf. Negative and larger positive indices are tested separately. This executor
 limitation and missing complete-protocol validation remain under OP-009.

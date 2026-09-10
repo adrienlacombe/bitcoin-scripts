@@ -151,6 +151,13 @@ eight-word backend, setup is split into 241 bytes before message staging and
 112 bytes afterward. Metrics exclude input pushes or witness serialization and
 digest comparison.
 
+Setup and cleanup costs are measured as independent fragments. Compiling
+unused setup immediately followed by cleanup allows optimizer cancellation;
+subtracting the standalone setup size from that result is not a cleanup cost.
+The lifecycle regression test declares the table input layout and compiles
+the actual cleanup method independently. No snapshot values changed in this
+measurement-boundary correction.
+
 | Configuration | Compute script |
 | --- | ---: |
 | Empty message, 29-bit API | <!-- metric:blake3_empty_limb29 -->64<!-- /metric:blake3_empty_limb29 --> bytes |

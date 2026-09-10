@@ -216,5 +216,10 @@ The local one-time argument uses a fixed multiset as an antichain, honestly
 generated independent keys, and chain inversion/collision assumptions.
 HASH160 retains its existing security tradeoffs. The exact out-of-pool
 `OP_ROLL` boundary exposes a pinned-executor panic, so those tests establish
-neither clean local rejection nor Core validity. See
+neither clean local rejection nor Core validity. The later
+[v30.3 differential experiment](../core-validation.md) confirms that boundary
+rejection and validates one complete isolated HASH160 leaf (703 vbytes,
+70 entry data items, zero hints, local stack-limited peak 119). This is
+`differentially-validated`, `policy-validated` publication-leaf evidence; it
+does not validate a complete state-transport or BitVM transaction protocol. See
 [NR-042](../negative-results/index.md#nr-042-constant-composition-search-and-endpoint-sharing-limits).

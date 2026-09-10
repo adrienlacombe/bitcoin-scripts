@@ -3,6 +3,16 @@
 Each problem has a falsifiable completion criterion. Update comparisons and
 negative results when closing one.
 
+**Next priority (2026-09-10): OP-001, adopt the interpreter corrections and
+separate local consensus options from policy.** OP-002 now supplies a pinned
+Core oracle and 24 complete-transaction fixtures. It confirms three local
+`OP_PICK`/`OP_ROLL` panics, missing commitment validation, and default numeric
+minimality that rejects a consensus-valid witness. Fix the panic boundary
+first: every current panic fixture must return `InvalidStackOperation`, agree
+with Core rejection, and preserve the valid neighboring cases. The correction
+is submitted as [interpreter PR #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19);
+the repository retains its existing dependency pin pending upstream review.
+
 ## OP-019 — PRINCEv2 M-hat circuit frontier
 
 Find a smaller repeated M-hat circuit for generation-time-key encryption.
@@ -21,6 +31,19 @@ Add explicit legacy/P2WSH/tapscript strict and research-unlimited execution
 modes. **Complete when:** every cataloged local configuration records its mode,
 strict tests enforce relevant limits, and relaxed success is visibly labeled.
 
+Progress (2026-09-10): the shared tapscript wrapper now checks the initial
+1,000-item limit, the 520-byte witness-element limit, and combined main/alt
+depth after every instruction, including data pushes. Ten deterministic
+[resource regression tests](../tests/execution_limits.rs) cover the boundaries
+and all helper paths; the first six reproduced false acceptance before the
+repair. `ExecuteInfo` records the stack-limit choice and labels count-disabled
+execution `research-unlimited`. These are `locally-reproduced` resource checks,
+with deployment `unclassified`, not a completed strict consensus matrix.
+The [support README](../src/support/README.md) records upstream limitations.
+Remaining criteria include script-version modes, `OP_SUCCESSx`, experimental
+opcode isolation, malformed-input handling, complete signature context/budget,
+and configuration-by-configuration migration and revalidation.
+
 ## OP-002 — Bitcoin Core differential harness
 
 Validate complete leaves and transactions against a pinned Bitcoin Core
@@ -28,12 +51,46 @@ regtest. **Complete when:** deterministic fixtures compare local execution,
 consensus acceptance, and `testmempoolaccept` policy results with a recorded Core
 commit.
 
+**Completed 2026-09-10 for the initial fixture scope.** The
+[pinned Core harness](core-validation.md) compares 24 deterministic complete
+Taproot spends against Bitcoin Core v30.3 commit
+`49faec4f87f5cd19c88db01a82e5c68b087c8227`. It records local execution, independent
+block acceptance, standard-policy acceptance, rejection diagnostics, full
+witness sizes and transaction weights. All expectations pass. The isolated
+HASH160/Preimage16 Winternitz leaf is `differentially-validated` and
+`policy-validated` for the recorded message; other catalog configurations retain
+their existing classes. Extending coverage to signatures, annexes, `OP_SUCCESSx`,
+legacy/P2WSH, and other primitives remains under OP-001 and their own deployment
+criteria. [NR-045](negative-results/index.md#nr-045-core-differentials-expose-local-executor-boundaries)
+records the remaining local divergences.
+
 ## OP-003 — Complete metric surface
 
 Add executed opcodes, validation weight, complete witness size, and combined
 stack peaks where currently null. **Complete when:** every active catalog record
 has a representative configuration with a checked boundary or an explicit
 reason the metric is instance-specific.
+
+Progress (2026-09-10): the BLAKE3 table-lifecycle test now measures cleanup
+independently, using its declared input layout. Its earlier subtraction of
+optimized setup from an optimized unused setup/cleanup pair underflowed on
+the unmodified `20a7fb2` baseline. Existing 353-byte setup and 166-byte cleanup
+values are retained; no primitive snapshot was refreshed. See
+[NR-044](negative-results/index.md#nr-044-optimized-lifecycle-lengths-do-not-isolate-cleanup-cost).
+
+Validation-runtime follow-up: the first 2026-09-10 broad run with
+`--skip fields::` was stopped after 22 minutes, so that run is not a full-suite
+pass. The exhaustive u8 AND/OR/XOR tests formerly rebuilt table scripts for
+all 65,536 pairs. The tests now compile each fixed operation once and supply
+canonical ScriptNum witnesses, preserving every pair, carry/borrow result,
+rotation amount, and host arithmetic comparison. Selected u4/u32 and RNS loops
+receive the same treatment; touched random tests use fixed seeds. All 25
+focused arithmetic tests pass in 19.36 seconds in the debug test profile on
+macOS ARM64 (one diagnostic run, no timing-dispersion claim). Production
+primitive generators and metric snapshots are unchanged. The ten resource
+regressions, five active metric snapshots, knowledge validation, upstream-C
+host PRINCE check, and corrected BLAKE3 lifecycle test also pass.
+**Complete when:** the broad suite finishes with the field filter retained.
 
 ## OP-004 — Prime-log RNS frontier
 

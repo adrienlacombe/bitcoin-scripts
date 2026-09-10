@@ -81,9 +81,19 @@ uses tapscript and disables the stack limit. Separate strict local tests are
 `unclassified` for deployment. The pinned local executor panics for an isolated
 `OP_ROLL` index exactly equal to the pool length; the boundary regression test
 records this tooling bug. Bitcoin Core v29.0 source rejects the boundary, but
-no Core differential execution or policy acceptance is claimed. Composable
-bounds prevent that malformed index reaching `OP_ROLL`. Compilation uses
+the v30.3 [Core differential experiment](../core-validation.md) now confirms
+rejection independently. Composable bounds prevent that malformed index reaching
+`OP_ROLL`. Compilation uses
 `bitcoin-script-locked`; execution uses `bitcoin-scriptexec-locked`.
+
+A separate complete-leaf configuration is `differentially-validated` and
+`policy-validated` by Core v30.3 for the varied message: 1,599 locking bytes
+including terminal `OP_TRUE`, 2,432 full Taproot witness bytes, and a one-input,
+one-output spend of 2,810 WU / 703 vbytes. All 70 data items coexist at entry,
+with zero hints and a local stack-limited combined peak of 119. The full witness
+already includes the script and control block. This validates that exact
+transaction, not the other hash profiles, composable variants or a full BitVM
+protocol. Older fragment metrics retain their original evidence classes.
 
 These enabled opcodes nevertheless exceed the 201-opcode limit for bare
 Script, P2SH and P2WSH, making those script classes `consensus-incompatible`.

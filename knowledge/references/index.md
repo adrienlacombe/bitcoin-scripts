@@ -15,6 +15,19 @@ A rolling branch is discovery evidence, not immutable reproduction provenance.
 Before promoting a reported result, record the exact commit or document version
 used by the reproduction.
 
+The execution-resource audit uses `bitcoin-core-v30-resource-limits`, pinned
+to v30.0 commit `d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3`.
+`ExecuteWitnessScript` and `EvalScript` were inspected for entry and per-step
+stack limits, including `OP_SUCCESSx` precedence. The associated local tests
+reproduce wrapper corrections; they do not execute Bitcoin Core.
+
+The separate `bitcoin-core-v30.3-regtest` source pins the executable oracle to
+`49faec4f87f5cd19c88db01a82e5c68b087c8227` (v30.3). The
+[Core differential experiment](../core-validation.md) records verified official
+archive and binary SHA256 hashes, block acceptance and policy results for 24
+complete Taproot spends. Its evidence is `differentially-validated` within that
+fixture scope.
+
 
 The Fast Winternitz hash-choice comparison inspects Bitcoin Core **v29.0**
 native SHA256/HASH160/HASH256 semantics (`bitcoin-core-v29-hashes`). Its local
@@ -39,7 +52,9 @@ encoder has an independent Python reproduction in
 Bitcoin Core v29.0 rejects `OP_PICK` indices outside the entire stack in
 [`interpreter.cpp`, lines 759–769](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp#L759-L769).
 That source inspection is distinct from the local executor's known panic on
-some out-of-stack positive indices; no Core execution is claimed here.
+some out-of-stack positive indices. The later v30.3 differential fixtures
+confirm rejection for exact `OP_PICK`/`OP_ROLL` boundaries and the isolated
+constant-composition selector; other primitive-specific indices are untested.
 
 The fixed-composition construction uses `nist-dlmf-multiset-permutations`,
 NIST DLMF §26.16 version 1.2.7 (2026-06-15), for exact multiset capacity.

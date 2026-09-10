@@ -14,6 +14,14 @@ A protocol map should annotate every edge with its stack representation and
 trust status. Setup amortization is valid only if table memory can remain live
 across all intervening operations.
 
+Check the initial witness before any cleanup and the combined live depth after
+every instruction: an immediate drop cannot repair a prior overflow. The
+[resource regression suite](../../tests/execution_limits.rs) exercises these
+cases after the shared helper repair documented in
+[NR-043](../negative-results/index.md#nr-043-upstream-stack-limit-enforcement-misses-entry-and-data-pushes).
+The helper's explicit stack-limit flag is local execution evidence, not a
+complete consensus-validation result.
+
 Certificate provenance is part of that edge trust status. The prime-RNS
 composable multiplier, for example, is globally sound only when each operand
 vector is a verified-path output of its shared-integer field binder or a prior

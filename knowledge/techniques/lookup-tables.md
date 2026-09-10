@@ -114,4 +114,7 @@ are 119 isolated and 120 composable. HASH160/Preimage16 costs 2,400 and 2,498
 maximum script-plus-signer-witness bytes respectively. These measurements
 are `locally-reproduced`, `research-unlimited`. The pinned executor's exact
 `OP_ROLL` upper boundary panics and is recorded separately from successful
-strict tests; no Core validation is claimed.
+strict tests. The [v30.3 differential fixtures](../core-validation.md) now
+confirm Core rejection of that boundary and validate one complete isolated
+HASH160 leaf under consensus and policy; other table/fragment measurements
+retain their original scope.
