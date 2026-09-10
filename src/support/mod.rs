@@ -3,3 +3,4 @@
 pub mod execution;
 pub mod script;
 pub mod script_ops;
+pub mod tapscript;

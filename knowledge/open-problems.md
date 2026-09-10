@@ -3,15 +3,15 @@
 Each problem has a falsifiable completion criterion. Update comparisons and
 negative results when closing one.
 
-**Next priority (2026-09-10): OP-001, adopt the interpreter corrections and
-separate local consensus options from policy.** OP-002 now supplies a pinned
-Core oracle and 24 complete-transaction fixtures. It confirms three local
-`OP_PICK`/`OP_ROLL` panics, missing commitment validation, and default numeric
-minimality that rejects a consensus-valid witness. Fix the panic boundary
-first: every current panic fixture must return `InvalidStackOperation`, agree
-with Core rejection, and preserve the valid neighboring cases. The correction
-is submitted as [interpreter PR #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19);
-the repository retains its existing dependency pin pending upstream review.
+**Next priority (2026-09-10): OP-001, transaction-aware Taproot execution.**
+The interpreter repairs and explicit context-free consensus/policy profiles
+are adopted. Next, close the missing commitment and signature context:
+**complete when** valid and mutated Taproot commitments, annexes and Schnorr
+signatures produce supported local verdicts that agree with pinned Core,
+including budgets initialized from the full serialized witness. Unsupported
+cases must remain distinct from rejection. The independent Core harness is the
+oracle; local fragment acceptance must not be promoted to complete-transaction
+validity before those checks exist.
 
 ## OP-019 — PRINCEv2 M-hat circuit frontier
 
@@ -31,7 +31,7 @@ Add explicit legacy/P2WSH/tapscript strict and research-unlimited execution
 modes. **Complete when:** every cataloged local configuration records its mode,
 strict tests enforce relevant limits, and relaxed success is visibly labeled.
 
-Progress (2026-09-10): the shared tapscript wrapper now checks the initial
+Initial progress (2026-09-10): the shared tapscript wrapper checked the initial
 1,000-item limit, the 520-byte witness-element limit, and combined main/alt
 depth after every instruction, including data pushes. Ten deterministic
 [resource regression tests](../tests/execution_limits.rs) cover the boundaries
@@ -40,9 +40,34 @@ repair. `ExecuteInfo` records the stack-limit choice and labels count-disabled
 execution `research-unlimited`. These are `locally-reproduced` resource checks,
 with deployment `unclassified`, not a completed strict consensus matrix.
 The [support README](../src/support/README.md) records upstream limitations.
-Remaining criteria include script-version modes, `OP_SUCCESSx`, experimental
-opcode isolation, malformed-input handling, complete signature context/budget,
-and configuration-by-configuration migration and revalidation.
+
+Adoption follow-up: immutable interpreter integration
+`4b7269a415f21be3fccee9730547f1426eb80326` contains resource checks, stack-index
+bounds, and executed-only minimal-push validation (upstream PRs #18, #19, #20).
+The Cargo patch covers both direct execution and `bitcoin-script-stack`;
+duplicate wrapper checks are removed. Ten resource tests, 15 profile tests and
+the three-slot isolated Winternitz malformed-index regression pass against
+that dependency. Historical `ba96bc2` measurements retain their original pins.
+
+The new `support::tapscript` API separates consensus numeric rules from policy
+minimality and 80-byte witness-item limits, preserves mandatory `MINIMALIF`,
+and implements the sequential `OP_SUCCESSx` pre-scan with correct resource
+and parsing precedence. It disables experimental concatenation. Typed outcomes
+distinguish executed scripts, pre-scan success, policy rejection, invalid syntax
+and unsupported contexts; unsupported cases return no verdict. Existing
+research helpers retain their defaults and explicit stack-limit distinction.
+Local evidence is `locally-reproduced`, deployment `unclassified` by itself.
+
+Remaining criteria include legacy/P2WSH modes, transaction/commitment and annex
+validation, complete signature context/budget, full relay policy, malformed
+input handling in older research helpers, and configuration-by-configuration
+migration and revalidation. Signature operations, CODESEPARATOR, CLTV/CSV and
+policy's upgradeable NOP handling are currently refused conservatively by the
+context-free profiles, including when their opcodes appear in dead branches.
+The current [44-fixture Core experiment](core-validation.md) reproduces every
+consensus/policy expectation and rejection diagnostic, with 86 applicable
+local/Core verdict comparisons. Its separate control-block mutation still
+demonstrates why local leaf execution cannot establish commitment validity.
 
 ## OP-002 — Bitcoin Core differential harness
 
@@ -59,10 +84,13 @@ block acceptance, standard-policy acceptance, rejection diagnostics, full
 witness sizes and transaction weights. All expectations pass. The isolated
 HASH160/Preimage16 Winternitz leaf is `differentially-validated` and
 `policy-validated` for the recorded message; other catalog configurations retain
-their existing classes. Extending coverage to signatures, annexes, `OP_SUCCESSx`,
+their existing classes. Extending coverage to signatures, annexes,
 legacy/P2WSH, and other primitives remains under OP-001 and their own deployment
 criteria. [NR-045](negative-results/index.md#nr-045-core-differentials-expose-local-executor-boundaries)
-records the remaining local divergences.
+records the historical local divergences. The adoption follow-up extends the
+oracle to 44 fixtures with explicit local consensus/policy comparisons and
+`OP_SUCCESSx`/minimality boundaries. Its separately recorded report preserves
+the original 24-fixture baseline and its immutable interpreter provenance.
 
 ## OP-003 — Complete metric surface
 
@@ -114,7 +142,19 @@ broad/targeted/integration/doc runs verify all 409 active non-field unit tests,
 candidate also completes one uninterrupted non-field suite with those same
 pass counts (135.316 seconds command wall time, diagnostic concurrent sample).
 The original default-pin broad run remains explicitly incomplete.
-**Complete when:** the broad suite finishes with the field filter retained.
+**Validation-runtime follow-up completed 2026-09-10.** With repaired interpreter
+`4b7269a4` and unchanged compiler `124b561e`, one full
+`cargo test --locked -- --skip fields::` run passes 448 tests, with 24 existing
+ignores and 143 field tests filtered. It uses
+`CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_TARGET_DIR=target/nonfield-opt1` to optimize
+the host test binaries; debug assertions and overflow checks retain their
+defaults, and Script compilation policy is unchanged. Wall time is 175.76
+seconds in one reused-build run on Apple M3 Max/macOS ARM64, a diagnostic sample
+without dispersion. All five active metric baselines pass unchanged. An earlier
+attempt finished the library but encountered a not-yet-written Core report link
+in knowledge validation; the final complete run follows publication of that
+artifact and passes every integration and documentation test. The broader
+OP-003 metric-surface criterion remains open.
 
 ## OP-004 — Prime-log RNS frontier
 
@@ -291,9 +331,10 @@ onchain, and both retain the size-profile raw-width relation.
 overflow-tolerant whole-vector relation, including foreign-table reads,
 mixed radices, raw ScriptNum encodings, and both numeric and strided witnesses;
 validate boundary indices and complete leaves against pinned Bitcoin Core;
-then compare complete transactions under the same forgery target. The pinned
-local executor currently panics for `OP_PICK` outside the entire stack, so
-strict local trap tests do not close the malformed-index/consensus criterion.
+then compare complete transactions under the same forgery target. The former
+`ba96bc2` executor panic at the exact `OP_PICK` bound is repaired by `4b7269a4`
+and the exact fixture agrees with Core rejection. Strict table-escape tests
+still do not validate all indices or the constant-sum complete protocol.
 Any protocol claiming canonical 20-byte binding must additionally implement
 and cost-check a rank/byte consumer, or explicitly require only the larger
 terminal relation. See the [constant-sum primitive](primitives/winternitz-constant-sum20.md)
@@ -310,8 +351,8 @@ auxiliary hints. These `locally-reproduced`, `research-unlimited` results
 supersede the earlier 3,624-byte combined frontier for terminal verification.
 
 **Further acceptance criteria:** validate the shrinking-pool invariant and
-all selector boundaries against pinned Core, including the exact upper
-boundary where the local executor currently unwrap-panics; review the
+all selector boundaries against pinned Core, extending the exact upper-bound
+fixture already repaired locally and checked against Core; review the
 fixed-multiset one-time argument with cross-target chains, short starts, and
 same-message witness aliases; and reproduce a BitVM3 consumer that binds the
 reversible assignment and handles unused ranks without assuming an onchain

@@ -107,6 +107,14 @@ The [shared execution wrapper](../src/support/README.md) explicitly records
 `stack_limit_enforced`. Since 2026-09-10 it checks entry and every instruction,
 including data pushes, and rejects oversized witness elements in both modes.
 Its repaired peak statistic includes the failing instruction's live depth.
+After adoption of interpreter `4b7269a4`, entry/per-step checks run in that
+dependency directly; the duplicate wrapper checks are removed. Historical
+reports keep their original interpreter pins. The separate
+[`support::tapscript` profiles](../src/support/README.md#explicit-fragment-profiles)
+distinguish consensus-oriented options from the supported relay-policy subset.
+Their `OP_SUCCESSx` pre-scan outcomes have no executed-stack or validation-budget
+statistics; unsupported opcodes produce no local verdict. Neither case may be
+reported as ordinary interpreter rejection or silently assigned a measured peak.
 Earlier strict-helper success alone did not exclude entry or transient-push
 overflow; see [NR-043](negative-results/index.md#nr-043-upstream-stack-limit-enforcement-misses-entry-and-data-pushes).
 Even after this repair, local stack enforcement does not establish full

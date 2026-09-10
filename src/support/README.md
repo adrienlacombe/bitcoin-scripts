@@ -1,80 +1,129 @@
 # Local execution support
 
-All helpers in `execution.rs` use `ExecCtx::Tapscript` with the
-`bitcoin-scriptexec` revision pinned in `Cargo.lock`:
-`ba96bc2bd76774c9d1b011461cb79d983c2c43a1`. Generated scripts use
-`ScriptCompilation::compile_with_policy()`; raw-byte helpers execute the exact
-provided serialization.
+The lab and `bitcoin-script-stack` use the same repaired `bitcoin-scriptexec`
+revision, selected by an immutable Cargo patch:
+[`4b7269a415f21be3fccee9730547f1426eb80326`](https://github.com/adrienlacombe/rust-bitcoin-scriptexec/commit/4b7269a415f21be3fccee9730547f1426eb80326).
+It integrates three focused repairs on upstream `ba96bc2`: entry/per-step
+resource checks ([PR #18](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/18)),
+`OP_PICK`/`OP_ROLL` bounds ([PR #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19)),
+and checking minimal pushes only when executed
+([PR #20](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/20)).
+All 34 upstream tests pass at the integration revision. The fork is temporary
+while the upstream PRs are reviewed; compiler and other dependency pins remain
+unchanged. Historical reports retain their original interpreter provenance.
 
-## Resource checks
+Generated scripts use `ScriptCompilation::compile_with_policy()`; raw-byte
+helpers execute the exact supplied serialization. Every local entry point uses
+`tapscript`, and local acceptance alone has deployment `unclassified`.
+
+## Explicit fragment profiles
+
+`support::tapscript::execute_tapscript(script, witness, profile)` accepts a
+policy-compiled `ScriptBuf` and data witness items, excluding the script,
+control block and annex. All witness data and hints coexist at entry.
+
+| Check | `TapscriptProfile::Consensus` | `TapscriptProfile::Policy` |
+| --- | --- | --- |
+| Numeric encoding | Nonminimal encodings permitted | Minimal encodings required |
+| Data-push encoding | Nonminimal encodings permitted | Minimal only for executed pushes |
+| `OP_IF` / `OP_NOTIF` inputs | Exactly empty or `01` | Exactly empty or `01` |
+| Normal execution resources | 1,000 combined items; 520-byte elements | Same, plus 80-byte initial data items |
+| Decoded `OP_SUCCESSx`, including `OP_CAT` | Immediate pre-scan success | Policy rejection |
+| Experimental `OP_CAT` evaluation | Disabled | Disabled |
+
+The policy data-item check runs before script parsing, matching Core's
+`IsWitnessStandard` for a tapscript leaf. Both profiles then scan decoded
+instructions sequentially for `OP_SUCCESSx`, before entry resources or any
+execution. A malformed prefix rejects; malformed suffixes after the first
+`OP_SUCCESSx` are not reached. Bytes inside push payloads never count as
+opcodes. An earlier `OP_RETURN`, a skipped branch or an oversized initial stack
+does not prevent consensus pre-scan success. These are the rules in pinned
+Core v30.3
+[`ExecuteWitnessScript`](https://github.com/bitcoin/bitcoin/blob/49faec4f87f5cd19c88db01a82e5c68b087c8227/src/script/interpreter.cpp#L1827)
+and [`IsWitnessStandard`](https://github.com/bitcoin/bitcoin/blob/49faec4f87f5cd19c88db01a82e5c68b087c8227/src/policy/policy.cpp#L310).
+
+`TapscriptResult` records the selected profile and a typed outcome.
+`accepted()` returns `Some(true)` or `Some(false)` for supported local
+verdicts, and **`None` for unsupported opcodes or initialization errors**.
+An unsupported result must never be counted as a consensus rejection.
+`execution()` supplies stack statistics only when the interpreter actually ran.
+`OpSuccess` has no fabricated execution or budget measurements. A normally
+completed fragment with multiple outputs still has `ExecuteInfo.success = false`
+under the complete-leaf clean-stack convention; inspect its error and outputs
+when evaluating such a fragment.
+
+These are deliberately context-free fragment profiles. Signature operations,
+`OP_CODESEPARATOR`, CLTV and CSV return `UnsupportedOpcode`, including when
+present in a skipped branch. Policy additionally refuses upgradeable NOPs
+(`NOP1`, `NOP4` through `NOP10`) because the dependency lacks the corresponding
+policy flag. This conservative refusal avoids claiming an unchecked verdict;
+a later `OP_SUCCESSx` still takes precedence during the pre-scan. A complete
+Taproot commitment, annex, transaction, signature budget, fee rules, transaction
+standardness and unknown-key policy require the independent Core harness.
+
+## Existing research helpers
+
+The public helpers in `execution.rs` retain their research settings:
+minimal-number and executed-push checks are enabled, and experimental `OP_CAT`
+is enabled. They do not implement the `OP_SUCCESSx` pre-scan. Their names ending
+in `strict` refer to resource enforcement, not complete consensus validation.
 
 | Helpers | Combined main/alt-stack item limit | Initial witness element limit |
 | --- | --- | --- |
-| `execute_script`, `execute_script_buf` | 1,000, after every instruction | No witness |
+| `execute_script`, `execute_script_buf` | 1,000 after every instruction | No witness |
 | `execute_*_with_inputs_strict` | 1,000 at entry and after every instruction | 520 bytes |
 | `dry_run_taproot_input` | 1,000 at leaf entry and after every instruction | 520 bytes for data items |
 | `execute_*_without_stack_limit` | Disabled | No witness |
 | `execute_script_with_inputs`, `execute_raw_script_with_inputs` | Disabled | 520 bytes |
 
-`ExecuteInfo.stack_limit_enforced` exposes the choice. Display output labels
-the count-disabled mode `research-unlimited`; count enforcement alone leaves
-deployment `unclassified`. Disabling the item-count limit does not disable the
-520-byte element limit. The upstream interpreter checks script pushes against
-that element limit; this wrapper also checks witness elements before they can
-be consumed.
+`ExecuteInfo.stack_limit_enforced` exposes the choice. Count-disabled research
+execution is `research-unlimited`; count enforcement alone leaves deployment
+`unclassified`. Disabling the item-count limit does not disable element limits.
+All helpers now exercise the repaired upstream checks directly; the former
+duplicate resource wrapper has been removed. Peak statistics still include
+entry state and the failing instruction's live main-plus-alt stack. Exact
+out-of-stack indices now return `InvalidStackOperation` rather than panicking.
 
-The wrapper checks combined live depth after every instruction, including
-direct data pushes and `OP_0`, even when the next instruction would drop the
-extra item. Entry rejection leaves the witness intact. Stack statistics include
-the initial witness and the failing instruction's live main-plus-alt stack.
-All witness hints therefore coexist at entry; putting later inputs in script
-constants does not reproduce an all-witness-at-entry schedule.
+Research helper limitations remain: malformed script construction can panic,
+experimental opcode behavior differs from current consensus, and transaction
+context is a dummy template except in the Taproot dry run. The dry run extracts
+a leaf but does not validate its commitment or full transaction and does not
+pass the annex into signature checks. Upstream validation-weight initialization
+and opcode counters are not complete Taproot transaction measurements. Use the
+new typed profiles for the supported context-free subset and Core for complete
+transaction evidence.
 
-These checks repair gaps in the pinned upstream executor. See
-[NR-043](../../knowledge/negative-results/index.md#nr-043-upstream-stack-limit-enforcement-misses-entry-and-data-pushes)
-for the reproduced counterexamples.
-
-## Evidence boundary
-
-The resource tests are `locally-reproduced`, using exact bytecode so the
-optimizer cannot erase a temporary overflow. They cover 1,000/1,001 entry
-items, 520/521-byte witness elements, main/alt-stack coexistence, data and
-numeric pushes, skipped branches, and the raw, compiled, and transaction dry-run
-entry points:
+## Verification and adoption boundary
 
 ```sh
-cargo test --locked --test execution_limits
+cargo test --locked --test execution_limits --test tapscript_profiles
+cargo test --locked signatures::winternitz::constant_composition::tests::signature
 ```
 
-The applicable rules were `inspected` in Bitcoin Core **v30.0**, commit
-`d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3`:
-[`ExecuteWitnessScript`](https://github.com/bitcoin/bitcoin/blob/d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3/src/script/interpreter.cpp#L1684)
-checks entry resources, while `EvalScript` checks live main-plus-alt depth.
-Those source-inspection results are separate from the later
-[pinned v30.3 harness](../../knowledge/core-validation.md), which checks complete
-Taproot entry/push fixtures and a Winternitz spend against independent block
-and policy acceptance. Its recorded outcomes are `differentially-validated`;
-this wrapper alone still leaves deployment `unclassified`.
+The resource regressions exercise the repaired dependency itself, including
+initial 1,000/1,001 counts, 520/521-byte elements, main/alt coexistence and data
+pushes. The profile tests cover all 256 possible opcode bytes against the exact
+`OP_SUCCESSx` set, payload masking, malformed prefixes/suffixes, policy ordering,
+minimal numeric/push encodings and mandatory tapscript `MINIMALIF`.
+Evidence for these local tests is `locally-reproduced`, deployment
+`unclassified`. [Core comparisons](../../knowledge/core-validation.md) supply
+separate `differentially-validated` complete-transaction evidence.
 
-## Remaining limitations
+The full non-field suite passes 448 tests (24 existing ignores, 143 field tests
+filtered), with all five active primitive metric baselines unchanged:
 
-These helpers are fragment executors, not complete consensus validators:
+```sh
+CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_TARGET_DIR=target/nonfield-opt1 cargo test --locked -- --skip fields::
+```
 
-- The pinned interpreter does not implement the BIP342 `OP_SUCCESSx` scan and
-  enables experimental `OP_CAT` in its default options. The wrapper retains
-  these existing options. The resource results apply to ordinary tapscripts
-  without `OP_SUCCESSx`; Core processes that upgrade hook before entry limits.
-- Default options require minimal data, mixing policy restrictions into local
-  execution. There is no explicit legacy/P2WSH consensus/policy matrix here.
-- Except for `dry_run_taproot_input`, transaction context is a dummy template.
-  The dry run extracts a leaf but does not validate its Taproot commitment or
-  full transaction, and currently does not pass the annex into signature checks.
-- Upstream validation weight is initialized from the data-item vector rather
-  than the complete serialized Taproot witness. Its tapscript `opcode_count`
-  does not count executed non-push instructions. Neither statistic establishes
-  a complete transaction budget.
-- Malformed script construction and some invalid `OP_PICK` indices can still
-  panic in upstream code. These tests do not certify those paths.
+Only the host test optimization level is changed; debug assertions and overflow
+checks retain their defaults. Script compilation still uses the unchanged
+`124b561e` compiler and repository policy. The current 44-fixture Core report
+also reproduces identically on two fresh nodes; its 86 applicable local/Core
+verdict comparisons pass, with commitment validation explicitly outside the
+local fragment API.
 
-OP-001 and OP-002 in [open problems](../../knowledge/open-problems.md) track
-the remaining execution matrix and completed initial Core differential scope.
+Return to an immutable upstream revision when it contains all three repairs or
+equivalent implementations and passes these regressions, Core comparisons,
+unchanged primitive metrics and the non-field suite. Do not silently repoint
+historical evidence or update the other dependency pins during that migration.

@@ -23,6 +23,7 @@ use bitcoin_lab::{
     support::{
         execution::execute_raw_script_with_inputs_strict,
         script::{script, ScriptCompilation},
+        tapscript::{execute_tapscript, TapscriptOutcome, TapscriptProfile},
     },
 };
 use serde_json::{json, Value};
@@ -34,7 +35,7 @@ use std::{
 
 const CORE_VERSION: &str = "30.3";
 const CORE_COMMIT: &str = "49faec4f87f5cd19c88db01a82e5c68b087c8227";
-const LOCAL_INTERPRETER_COMMIT: &str = "ba96bc2bd76774c9d1b011461cb79d983c2c43a1";
+const LOCAL_INTERPRETER_COMMIT: &str = "4b7269a415f21be3fccee9730547f1426eb80326";
 const RAW_BOUNDARY: &str = "raw-boundary-bytecode";
 const POLICY: &str = "repository-policy";
 type Wots = ConstantCompositionWinternitz20<Hash160, Preimage16>;
@@ -52,16 +53,20 @@ fn panic_message(payload: &(dyn Any + Send)) -> String {
     }
 }
 
-fn local_execution(script: &ScriptBuf, witness: &[Vec<u8>]) -> Value {
-    // Exact-boundary PICK/ROLL currently panic upstream. Record that outcome,
-    // without leaking a backtrace or a large debug stack into the JSON stream.
+fn catch_local<T>(run: impl FnOnce() -> T) -> Result<T, String> {
+    // The legacy research helper still panics on malformed script syntax.
+    // Keep all panic outcomes distinct without polluting the JSON stream.
     let _lock = PANIC_HOOK_LOCK.lock().expect("panic-hook lock");
     let previous_hook = panic::take_hook();
     panic::set_hook(Box::new(|_| {}));
-    let result = panic::catch_unwind(AssertUnwindSafe(|| {
-        execute_raw_script_with_inputs_strict(script.to_bytes(), witness.to_vec())
-    }));
+    let result = panic::catch_unwind(AssertUnwindSafe(run));
     panic::set_hook(previous_hook);
+    result.map_err(|payload| panic_message(payload.as_ref()))
+}
+
+fn local_execution(script: &ScriptBuf, witness: &[Vec<u8>]) -> Value {
+    let result =
+        catch_local(|| execute_raw_script_with_inputs_strict(script.to_bytes(), witness.to_vec()));
 
     match result {
         Ok(result) => json!({
@@ -73,14 +78,65 @@ fn local_execution(script: &ScriptBuf, witness: &[Vec<u8>]) -> Value {
             "max_stack_items": result.stats.max_nb_stack_items,
             "final_main_stack_items": result.final_stack.len(),
         }),
-        Err(payload) => json!({
+        Err(error) => json!({
             "outcome": "panic",
-            "error": panic_message(payload.as_ref()),
+            "error": error,
             "stack_limit_enforced": true,
             "context": "tapscript",
             "deployment": "unclassified",
             "max_stack_items": null,
             "final_main_stack_items": null,
+        }),
+    }
+}
+
+fn local_profile(script: &ScriptBuf, witness: &[Vec<u8>], profile: TapscriptProfile) -> Value {
+    let name = match profile {
+        TapscriptProfile::Consensus => "consensus",
+        TapscriptProfile::Policy => "policy",
+    };
+    match catch_local(|| execute_tapscript(script.clone(), witness.to_vec(), profile)) {
+        Ok(result) => {
+            let (outcome, error, opcode) = match &result.outcome {
+                TapscriptOutcome::Executed(_) => ("executed", None, None),
+                TapscriptOutcome::OpSuccess(opcode) => ("op-success", None, Some(opcode.to_u8())),
+                TapscriptOutcome::PolicyRejected(error) => {
+                    ("policy-rejected", Some(format!("{error:?}")), None)
+                }
+                TapscriptOutcome::InvalidScript(error) => {
+                    ("invalid-script", Some(format!("{error:?}")), None)
+                }
+                TapscriptOutcome::UnsupportedOpcode(opcode) => {
+                    ("unsupported-opcode", None, Some(opcode.to_u8()))
+                }
+                TapscriptOutcome::InitializationError(error) => {
+                    ("initialization-error", Some(format!("{error:?}")), None)
+                }
+            };
+            json!({
+                "profile": name,
+                "outcome": outcome,
+                "accepted": result.accepted(),
+                "error": error,
+                "opcode": opcode,
+                "execution": result.execution().map(|execution| json!({
+                    "success": execution.success,
+                    "error": execution.error.as_ref().map(|error| format!("{error:?}")),
+                    "stack_limit_enforced": execution.stack_limit_enforced,
+                    "max_stack_items": execution.stats.max_nb_stack_items,
+                    "final_main_stack_items": execution.final_stack.len(),
+                })),
+                "deployment": "unclassified",
+            })
+        }
+        Err(error) => json!({
+            "profile": name,
+            "outcome": "panic",
+            "accepted": null,
+            "error": error,
+            "opcode": null,
+            "execution": null,
+            "deployment": "unclassified",
         }),
     }
 }
@@ -118,11 +174,19 @@ fn fixture(
     let output_script = ScriptBuf::new_p2tr_tweaked(spend_info.output_key());
     let static_non_push_opcodes = script
         .instructions()
-        .map(|instruction| instruction.expect("fixture bytecode parses"))
-        .filter(
-            |instruction| matches!(instruction, Instruction::Op(opcode) if opcode.to_u8() > 0x60),
-        )
-        .count();
+        .collect::<Result<Vec<_>, _>>()
+        .ok()
+        .map(|instructions| {
+            instructions
+                .into_iter()
+                .filter(|instruction| {
+                    // PushBytes includes OP_0; the other numeric pushes are
+                    // OP_1NEGATE and OP_1..OP_16. OP_SUCCESS80 is not a push.
+                    matches!(instruction, Instruction::Op(opcode)
+                        if !matches!(opcode.to_u8(), 0x4f | 0x51..=0x60))
+                })
+                .count()
+        });
     let mut complete_witness = witness.clone();
     complete_witness.push(script.to_bytes());
     complete_witness.push(control_bytes.clone());
@@ -137,8 +201,17 @@ fn fixture(
         "compilation": compilation,
         "expected": expected,
         "local": local_execution(&script, &witness),
+        "local_profiles": {
+            "consensus": local_profile(&script, &witness, TapscriptProfile::Consensus),
+            "policy": local_profile(&script, &witness, TapscriptProfile::Policy),
+        },
+        "local_profile_comparison": {
+            "scope": "script execution and data-witness policy; complete Taproot commitment separately validated by Core",
+            "compare_to_core": true,
+            "expected": {"consensus": expected["consensus"], "policy": expected["policy"]},
+        },
         "metrics": {
-            "includes": "complete-leaf: input data supplied by witness, embedded constants, validation, cleanup and terminal OP_TRUE; complete Taproot witness includes item count, data items, script and control block; transaction overhead excluded",
+            "includes": "complete-leaf bytecode and witness data; complete Taproot witness includes item count, data items, script and control block; transaction overhead excluded. OP_SUCCESS fixtures intentionally bypass script execution and clean-stack checks; malformed-script static opcode counts are unavailable.",
             "locking_script_bytes": script.len(),
             "data_witness_bytes": serialize(&Witness::from_slice(&witness)).len(),
             "taproot_witness_bytes": serialize(&Witness::from_slice(&complete_witness)).len(),
@@ -230,6 +303,132 @@ fn fixtures() -> Value {
         }
     }
 
+    for (name, bytes, rejection) in [
+        (
+            "nonminimal-push-executed",
+            vec![1, 1, 0x75, 0x51],
+            Some("minimal-push"),
+        ),
+        (
+            "nonminimal-push-skipped",
+            vec![0, 0x63, 1, 1, 0x68, 0x51],
+            None,
+        ),
+    ] {
+        fixtures.push(fixture(
+            name,
+            "A nonminimal data push is consensus-valid; MINIMALDATA policy rejects it only when executed.",
+            ScriptBuf::from_bytes(bytes),
+            vec![],
+            RAW_BOUNDARY,
+            expectations(None, rejection),
+        ));
+    }
+    for (name, condition, invalid) in [
+        ("minimal-if-false", vec![], false),
+        ("minimal-if-true", vec![1], false),
+        ("minimal-if-nonminimal-false", vec![0], true),
+        ("minimal-if-nonminimal-true", vec![2], true),
+    ] {
+        fixtures.push(fixture(
+            name,
+            "Tapscript IF requires exactly an empty vector or 01 under both consensus and policy, independently of numeric minimality options.",
+            ScriptBuf::from_bytes(vec![0x63, 0x51, 0x67, 0x51, 0x68]),
+            vec![condition],
+            RAW_BOUNDARY,
+            expectations(invalid.then_some("tapscript-minimal-if"), None),
+        ));
+    }
+    for size in [520u16, 521] {
+        let mut bytes = vec![0x4d]; // PUSHDATA2
+        bytes.extend(size.to_le_bytes());
+        bytes.extend(vec![0x42; size as usize]);
+        bytes.extend([0x75, 0x51]);
+        fixtures.push(fixture(
+            &format!("script-push-{size}"),
+            "The 520-byte element limit applies to executed script pushes; the 80-byte relay-policy limit applies only to initial witness data items.",
+            ScriptBuf::from_bytes(bytes),
+            vec![],
+            RAW_BOUNDARY,
+            expectations((size > 520).then_some("push-size"), None),
+        ));
+    }
+    for (name, opcode) in [
+        ("op-success-80", 80),
+        ("op-success-126-cat", 126),
+        ("op-success-254", 254),
+    ] {
+        fixtures.push(fixture(
+            name,
+            "A decoded OP_SUCCESS opcode unconditionally accepts the leaf under Core v30.3 consensus and is discouraged by policy; opcode 126 does not perform concatenation.",
+            ScriptBuf::from_bytes(vec![opcode]),
+            vec![],
+            RAW_BOUNDARY,
+            expectations(None, Some("discourage-op-success")),
+        ));
+    }
+    for (name, witness, policy_rejection) in [
+        (
+            "op-success-initial-stack-1001",
+            vec![vec![]; 1001],
+            "discourage-op-success",
+        ),
+        (
+            "op-success-witness-element-521",
+            vec![vec![0x42; 521]],
+            "witness-stack-item-size",
+        ),
+    ] {
+        fixtures.push(fixture(
+            name,
+            "Consensus OP_SUCCESS pre-scan precedes initial resource checks; policy checks the 80-byte witness-data limit before script flags.",
+            ScriptBuf::from_bytes(vec![0x7e]),
+            witness,
+            RAW_BOUNDARY,
+            expectations(None, Some(policy_rejection)),
+        ));
+    }
+    let mut oversized_before_success = vec![0x4d, 9, 2];
+    oversized_before_success.extend(vec![0x42; 521]);
+    oversized_before_success.push(0x7e);
+    for (name, bytes) in [
+        ("op-success-skipped-branch", vec![0, 0x63, 0x7e, 0x68, 0]),
+        ("op-success-after-op-return", vec![0x6a, 0x7e]),
+        ("op-success-malformed-after", vec![0x7e, 0x4c]),
+        ("op-success-after-nonminimal-push", vec![1, 1, 0x7e]),
+        ("op-success-after-oversized-push", oversized_before_success),
+    ] {
+        fixtures.push(fixture(
+            name,
+            "A decoded OP_SUCCESS precedes execution, branch selection, push-size/minimality checks, and any malformed suffix; policy discourages it during the same pre-scan.",
+            ScriptBuf::from_bytes(bytes),
+            vec![],
+            RAW_BOUNDARY,
+            expectations(None, Some("discourage-op-success")),
+        ));
+    }
+    for (name, bytes, rejection) in [
+        (
+            "op-success-byte-in-payload",
+            vec![1, 0x7e, 0x75, 0],
+            "eval-false",
+        ),
+        (
+            "op-success-malformed-before",
+            vec![0x4c, 2, 0x7e],
+            "bad-opcode",
+        ),
+    ] {
+        fixtures.push(fixture(
+            name,
+            "Only decoded opcodes trigger OP_SUCCESS; a payload byte does not, and a malformed push before that byte rejects the script.",
+            ScriptBuf::from_bytes(bytes),
+            vec![],
+            RAW_BOUNDARY,
+            expectations(Some(rejection), None),
+        ));
+    }
+
     let signing_key = Wots::signing_key_from_seed([0x42; 32]);
     let public_key = Wots::public_key(&signing_key);
     let message = core::array::from_fn(|i| (37 * i) as u8);
@@ -256,6 +455,11 @@ fn fixtures() -> Value {
     invalid_control["name"] = json!("winternitz-invalid-control-block");
     invalid_control["description"] = json!("The control-block output-key parity bit is flipped; local fragment success cannot validate the Taproot commitment.");
     invalid_control["expected"] = expectations(Some("taproot-commitment"), None);
+    invalid_control["local_profile_comparison"] = json!({
+        "scope": "Taproot commitment validation is outside the local fragment API; both profiles accept the unchanged leaf while Core rejects the invalid control block",
+        "compare_to_core": false,
+        "expected": {"consensus": true, "policy": true},
+    });
     fixtures.push(invalid_control);
 
     for (name, selector, rejection) in [
@@ -292,7 +496,7 @@ fn fixtures() -> Value {
     nonminimal[0].push(0); // Same nonnegative selector value, redundant high zero.
     fixtures.push(fixture(
         "winternitz-nonminimal-selector",
-        "Redundant numeric zero byte preserves the selected key under consensus but violates MINIMALDATA policy; the local helper also requires minimal numbers.",
+        "Redundant numeric zero byte preserves the selected key under consensus but violates MINIMALDATA policy; explicit local profiles reproduce this difference while the legacy research helper requires minimal numbers.",
         script.clone(),
         nonminimal,
         POLICY,
@@ -331,7 +535,7 @@ fn fixtures() -> Value {
     }
 
     json!({
-        "schema_version": 1,
+        "schema_version": 2,
         "expected_bitcoin_core_version": CORE_VERSION,
         "expected_bitcoin_core_commit": CORE_COMMIT,
         "local_interpreter": {
@@ -341,7 +545,11 @@ fn fixtures() -> Value {
             "helper": "execute_raw_script_with_inputs_strict",
             "stack_limit_enforced": true,
             "full_consensus_validation": false,
-            "limitations": "Default minimal-number policy and experimental opcodes remain enabled; no transaction or Taproot commitment validation; execution opcode and complete-witness budget counters unavailable; boundary panics are recorded.",
+            "limitations": "The legacy research helper retains default minimal-number policy and experimental OP_CAT. Explicit profiles use current OP_SUCCESS semantics, no experimental opcodes, consensus numeric encoding or policy MINIMALDATA, and policy's 80-byte witness-data limit. All are fragment-only: no transaction, Taproot commitment, annex or full policy validation; signature/timelock-dependent opcodes are unsupported. Execution opcode and complete-witness budget counters remain unavailable. Panics and unsupported outcomes are distinct, never converted to rejection.",
+            "profiles": {
+                "consensus": "support::tapscript::execute_tapscript with TapscriptProfile::Consensus",
+                "policy": "support::tapscript::execute_tapscript with TapscriptProfile::Policy; bounded script/witness policy subset",
+            },
         },
         "mining_address": Address::p2wsh(&ScriptBuf::from_bytes(vec![0x51]), Network::Regtest).to_string(),
         "internal_key_derivation": "secp256k1 x-only public key of secret [0x01;32]; public test key, never use with real funds",
@@ -376,6 +584,8 @@ mod tests {
         assert_eq!(first, fixtures());
         let rows = first["fixtures"].as_array().unwrap();
         assert_eq!(first["fixture_count"], rows.len());
+        assert_eq!(rows.len(), 44);
+        assert!(include_str!("../Cargo.lock").contains(LOCAL_INTERPRETER_COMMIT));
         let valid = rows
             .iter()
             .find(|row| row["name"] == "winternitz-valid")
@@ -389,6 +599,11 @@ mod tests {
         assert_eq!(valid["metrics"]["data_items"], 70);
         assert_eq!(valid["metrics"]["hint_items"], 0);
         assert_eq!(valid["metrics"]["static_non_push_opcodes"], 567);
+        let success80 = rows
+            .iter()
+            .find(|row| row["name"] == "op-success-80")
+            .unwrap();
+        assert_eq!(success80["metrics"]["static_non_push_opcodes"], 1);
         assert_eq!(valid["control_block_hex"].as_str().unwrap().len(), 66);
         assert_eq!(valid["script_pubkey_hex"].as_str().unwrap().len(), 68);
         let names: std::collections::HashSet<_> = rows.iter().map(|row| &row["name"]).collect();
@@ -399,6 +614,31 @@ mod tests {
                 row["metrics"]["data_items"],
                 row["data_witness_hex"].as_array().unwrap().len()
             );
+            for profile in ["consensus", "policy"] {
+                assert!(
+                    row["local_profiles"][profile]["accepted"].is_boolean(),
+                    "{} {profile}: panic/unsupported/init failure is not a rejection",
+                    row["name"]
+                );
+                assert_eq!(
+                    row["local_profiles"][profile]["accepted"],
+                    row["local_profile_comparison"]["expected"][profile],
+                    "{} {profile}: profile verdict",
+                    row["name"]
+                );
+                if row["local_profile_comparison"]["compare_to_core"] == true {
+                    assert_eq!(
+                        row["local_profiles"][profile]["accepted"], row["expected"][profile],
+                        "{} {profile}: declared Core expectation",
+                        row["name"]
+                    );
+                } else {
+                    assert_eq!(row["name"], "winternitz-invalid-control-block");
+                }
+                if row["local_profiles"][profile]["outcome"] == "op-success" {
+                    assert!(row["local_profiles"][profile]["execution"].is_null());
+                }
+            }
         }
     }
 }

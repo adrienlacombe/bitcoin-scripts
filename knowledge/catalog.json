@@ -4697,7 +4697,7 @@
         "Script does not reject the small unused encoder-rank suffix; unbounded mode also permits some tuples outside the radix box when the signer knows the secrets",
         "Native outputs remain 20/32 bytes; only zero digits reveal 16-byte initial secrets",
         "Metric execution disables the stack limit; strict local tests are separate, with no Bitcoin Core execution or policy validation",
-        "The pinned local executor can panic on OP_PICK indices beyond the entire stack; Bitcoin Core source rejects them. Tests with table escapes keep indices inside the full stack",
+        "Historical ba96bc2 executor measurements can panic on OP_PICK indices beyond the entire stack; the current 4b7269a4 integration repairs this bound. Table-escape tests still concern indices inside the full stack, and the complete constant-sum protocol is not Core-validated",
         "Smallest result among measured candidates, not a proof of a global Bitcoin Script optimum",
         "Offchain ranking/unranking uses exact multiprecision counts; no onchain decoder is included"
       ],
@@ -4725,7 +4725,8 @@
         "tests/primitive_metrics.rs",
         "examples/core_validation_fixtures.rs",
         "tools/core_regtest.py",
-        "tests/data/core-validation-v30.3.json"
+        "tests/data/core-validation-v30.3.json",
+        "tests/data/core-validation-v30.3.profiles.json"
       ],
       "references": [
         "nist-dlmf-multiset-permutations",
@@ -4737,7 +4738,8 @@
         "bitcoin-core-v29-hashes",
         "nist-hash-security-strengths",
         "bitvm3s-2025",
-        "bitcoin-core-v30.3-regtest"
+        "bitcoin-core-v30.3-regtest",
+        "bitcoin-scriptexec-repaired-20260910"
       ],
       "techniques": [
         "hash-chain",
@@ -5177,7 +5179,7 @@
         "Terminal-only; no onchain decoder or unused-rank rejection",
         "New encoding, key namespace and witness format; incompatible with other Winternitz signatures",
         "Isolated requires the signature to occupy the entire main stack",
-        "Pinned local executor has an OP_ROLL off-by-one panic at index equal to entire pool size; the v30.3 Core differential fixture independently confirms consensus and policy rejection at that exact bound; composable variants avoid that malformed index",
+        "Historical ba96bc2 report records an OP_ROLL off-by-one panic at the full pool bound; the current 4b7269a4 integration returns InvalidStackOperation at all three tested slots. Core independently rejects the exact bound; this repair does not expand the complete-protocol validation scope",
         "Metric helper disables stack limit; strict local tests do not establish consensus or policy validity",
         "Enabled opcodes exceed bare/P2SH/P2WSH 201-opcode limit; fragment profiles remain unclassified for tapscript deployment except the separately recorded complete Core-validated leaf",
         "Finite parameter search with approximate screening; not a proof of global minimum",

@@ -28,6 +28,15 @@ archive and binary SHA256 hashes, block acceptance and policy results for 24
 complete Taproot spends. Its evidence is `differentially-validated` within that
 fixture scope.
 
+The current local interpreter uses `bitcoin-scriptexec-repaired-20260910` at
+`4b7269a415f21be3fccee9730547f1426eb80326`, an immutable fork integration of
+upstream PRs #18, #19 and #20. The Cargo patch applies to both the lab and its
+stack-tracking dependency. The existing `bitcoin-scriptexec-locked` source
+remains at `ba96bc2` for historical measurements, including skipped field
+experiments; adoption does not rewrite that attribution. The
+[support guide](../../src/support/README.md) records the new profiles, supported
+scope, regression tests and acceptance criterion for returning upstream.
+
 
 The Fast Winternitz hash-choice comparison inspects Bitcoin Core **v29.0**
 native SHA256/HASH160/HASH256 semantics (`bitcoin-core-v29-hashes`). Its local
@@ -57,8 +66,9 @@ encoder has an independent Python reproduction in
 
 Bitcoin Core v29.0 rejects `OP_PICK` indices outside the entire stack in
 [`interpreter.cpp`, lines 759–769](https://github.com/bitcoin/bitcoin/blob/v29.0/src/script/interpreter.cpp#L759-L769).
-That source inspection is distinct from the local executor's known panic on
-some out-of-stack positive indices. The later v30.3 differential fixtures
+That source inspection is distinct from the historical `ba96bc2` executor's
+panic on some out-of-stack positive indices, repaired in the current `4b7269a4`
+integration. The later v30.3 differential fixtures
 confirm rejection for exact `OP_PICK`/`OP_ROLL` boundaries and the isolated
 constant-composition selector; other primitive-specific indices are untested.
 

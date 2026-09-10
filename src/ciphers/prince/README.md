@@ -89,7 +89,7 @@ script type; bare script, P2SH, and P2WSH are not. The fragment alone does not
 satisfy cleanstack because it intentionally returns 16 ciphertext nibbles. A
 caller must compare or consume all 16 and leave one truthy item.
 
-Focused tests use `bitcoin-scriptexec` revision
+The recorded focused measurements used `bitcoin-scriptexec` revision
 `ba96bc2bd76774c9d1b011461cb79d983c2c43a1` in tapscript context with the combined
 1,000-item limit enabled. They reject generated OP_SUCCESSx and conditional
 opcodes, so the fragment's static non-push count is also its executed count on
@@ -98,6 +98,12 @@ integration tests append a separately disclosed, unoptimized 33-byte output
 predicate to the exact policy-produced fragment. Evidence is
 `differentially-validated`; deployment remains `unclassified` pending complete
 transaction/Bitcoin Core and relay-policy validation.
+
+Current reproduction commands resolve the repaired interpreter integration
+`4b7269a415f21be3fccee9730547f1426eb80326` through the repository Cargo patch.
+The provenance above remains attached to the recorded measurements; the
+interpreter migration does not silently rerun or relabel the ignored extended
+randomized Script campaign. See the [support guide](../../support/README.md).
 
 ## Witness and hints
 

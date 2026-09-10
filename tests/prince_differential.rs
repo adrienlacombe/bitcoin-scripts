@@ -168,7 +168,7 @@ fn prince_randomized_differential_compiled_once() {
     let mut keys = vec![0, u128::MAX, VECTOR_KEY];
     keys.extend((0..random_keys).map(|_| rng.gen::<u128>()));
     println!(
-        "PRINCEv2 seed={seed} fixed_keys=3 random_keys={random_keys} random_plaintexts_per_key={random_plaintexts} target={}-{} profile={} interpreter=bitcoin-scriptexec@ba96bc2 context=tapscript stack_limit=1000 hints_per_invocation=0 witness_data_items=16",
+        "PRINCEv2 seed={seed} fixed_keys=3 random_keys={random_keys} random_plaintexts_per_key={random_plaintexts} target={}-{} profile={} interpreter=bitcoin-scriptexec@4b7269a415f21be3fccee9730547f1426eb80326 context=tapscript stack_limit=1000 hints_per_invocation=0 witness_data_items=16",
         std::env::consts::ARCH,
         std::env::consts::OS,
         if cfg!(debug_assertions) { "debug" } else { "release" }

@@ -972,7 +972,9 @@ Third parties could historically alter a transaction's txid without invalidating
 | Non-strict DER encodings | BIP-66 `[C]`, 2015 |
 | High-S signatures | `LOW_S` `[P]`, structurally moot with segwit |
 | CHECKMULTISIG dummy element | BIP-147 `[C]` |
-| Non-minimal pushes, extra scriptSig data | `MINIMALDATA`/`CLEANSTACK` `[P]`; `[C]` for segwit |
+| Non-minimal executed pushes or consumed numbers | `MINIMALDATA` `[P]`, including segwit/tapscript |
+| Extra final stack items | `CLEANSTACK` `[P]`; `[C]` for segwit/tapscript |
+| Extra scriptSig data in a witness spend | Native witness requires an empty scriptSig; P2SH-wrapped witness requires exactly the redeem-program push `[C]` |
 | Non-minimal `OP_IF` operand | `MINIMALIF` `[P]`, `[C]` in tapscript |
 
 SegWit's structural fix: the **txid excludes witness data entirely**, so signature malleability

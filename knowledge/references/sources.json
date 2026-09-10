@@ -101,6 +101,13 @@
       "revision": "ba96bc2bd76774c9d1b011461cb79d983c2c43a1"
     },
     {
+      "id": "bitcoin-scriptexec-repaired-20260910",
+      "title": "Immutable integration of Bitcoin Script interpreter resource, index and minimal-push repairs",
+      "kind": "execution-tool",
+      "url": "https://github.com/adrienlacombe/rust-bitcoin-scriptexec/tree/4b7269a415f21be3fccee9730547f1426eb80326",
+      "revision": "4b7269a415f21be3fccee9730547f1426eb80326; temporary integration of upstream PR18 (0fede45090b8ad1c560c7fc6abc35a8f09a30b13), PR19 (c91b3e6958703a801ab328bf97f5b9c557ef4bdb) and PR20 (7978c73c5e48c623a685785962de84d9fefc1165); adopted 2026-09-10. Historical bitcoin-scriptexec-locked evidence retains ba96bc2."
+    },
+    {
       "id": "coins-bitcoin-scripts-8f442e4b",
       "title": "Coins Bitcoin Script construction notes",
       "kind": "upstream-source",

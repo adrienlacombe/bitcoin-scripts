@@ -39,6 +39,11 @@ SCRIPT_ERRORS = {
     "equalverify": "Script failed an OP_EQUALVERIFY operation",
     "scriptnum-overflow": "unknown error",
     "minimaldata": "unknown error",
+    "minimal-push": "Data push larger than necessary",
+    "tapscript-minimal-if": "OP_IF/NOTIF argument must be minimal in tapscript",
+    "discourage-op-success": "OP_SUCCESSx reserved for soft-fork upgrades",
+    "bad-opcode": "Opcode missing or not understood",
+    "eval-false": "Script evaluated without error but finished with a false/empty top stack element",
     "taproot-commitment": "Witness program hash mismatch",
 }
 
@@ -142,6 +147,52 @@ def rejection_matches(result: dict, category: str | None, policy: bool = False) 
     if policy:
         return result.get("reject-reason") == f"mempool-script-verify-flag-failed ({message})"
     return result.get("reason", "").startswith(f"TestBlockValidity failed: block-script-verify-flag-failed ({message}), input 0 of ")
+
+
+def compare_local_profiles(fixture: dict, consensus: dict, policy: dict) -> dict:
+    """Require actual profile verdicts; None/panics must never resemble rejection."""
+    comparison = fixture["local_profile_comparison"]
+    compare_to_core = comparison["compare_to_core"]
+    if type(compare_to_core) is not bool:
+        raise ValueError("Local comparison mode must be boolean")
+    if not compare_to_core and fixture["name"] != "winternitz-invalid-control-block":
+        raise ValueError("Unexpected fixture excluded from local/Core comparison")
+    results = {}
+    for name, core in [("consensus", consensus["accepted"]), ("policy", policy["allowed"])]:
+        local = fixture["local_profiles"][name]
+        expected = comparison["expected"][name]
+        if type(expected) is not bool:
+            raise ValueError("Local profile expectation must be boolean")
+        has_verdict = (type(local.get("accepted")) is bool
+                       and local.get("outcome") in {"executed", "op-success", "policy-rejected", "invalid-script"})
+        expected_match = has_verdict and local["accepted"] == expected
+        core_match = has_verdict and local["accepted"] == core if compare_to_core else None
+        results[name] = {
+            "has_verdict": has_verdict,
+            "matches_expected": expected_match,
+            "matches_core": core_match,
+            "status": ("no-verdict" if not has_verdict else
+                       "mismatch" if not expected_match or core_match is False else
+                       "matched" if compare_to_core else "outside-local-commitment-scope"),
+        }
+    return {"profiles": results,
+            "matches_expected": all(row["matches_expected"] and row["matches_core"] is not False
+                                    for row in results.values())}
+
+
+def interpreter_provenance(fixtures: dict, metadata: dict) -> dict:
+    """Match fixture claims to the single interpreter in Cargo's resolved graph."""
+    packages = [package for package in metadata["packages"] if package["name"] == "bitcoin-scriptexec"]
+    if len(packages) != 1:
+        raise RuntimeError("Expected exactly one resolved bitcoin-scriptexec package")
+    commit = fixtures["local_interpreter"]["commit"]
+    if len(commit) != 40 or any(character not in "0123456789abcdef" for character in commit):
+        raise RuntimeError("Interpreter fixture pin must be an immutable commit")
+    expected_source = f"git+https://github.com/adrienlacombe/rust-bitcoin-scriptexec?rev={commit}#{commit}"
+    package = packages[0]
+    if package.get("source") != expected_source:
+        raise RuntimeError("Resolved interpreter source differs from the fixture's immutable fork pin")
+    return {key: package[key] for key in ("name", "version", "source")}
 
 
 class Node:
@@ -260,21 +311,24 @@ def run(node: Node, fixtures: dict, report: dict):
         if policy.get("txid") != tx["txid"] or policy.get("wtxid") != tx["wtxid"] or "allowed" not in policy:
             raise RuntimeError(f"Incomplete mempool result: {policy}")
         consensus = consensus_check(node, address, tx)
+        local_comparison = compare_local_profiles(fixture, consensus, policy)
         matches = (consensus["accepted"] == fixture["expected"]["consensus"]
                    and policy["allowed"] == fixture["expected"]["policy"]
                    and rejection_matches(consensus, fixture["expected"]["consensus_rejection"])
-                   and rejection_matches(policy, fixture["expected"]["policy_rejection"], policy=True))
+                   and rejection_matches(policy, fixture["expected"]["policy_rejection"], policy=True)
+                   and local_comparison["matches_expected"])
         # Keep report reviewable; the generator reproduces full witness bytecode.
         row = {key: value for key, value in fixture.items()
                if key not in {"script_hex", "data_witness_hex", "control_block_hex"}}
         row.update({"script_sha256": sha256(bytes.fromhex(fixture["script_hex"])),
                     "transaction": {key: value for key, value in tx.items() if key != "hex"},
-                    "core": {"consensus": consensus, "policy": policy}, "matches_expected": matches})
+                    "core": {"consensus": consensus, "policy": policy},
+                    "local_profile_checks": local_comparison, "matches_expected": matches})
         row["evidence"] = "differentially-validated"
         row["deployment"] = ("policy-validated" if consensus["accepted"] and policy["allowed"]
                              else "consensus-validated" if consensus["accepted"] else "consensus-incompatible")
         report["results"].append(row)
-        print(f"{'PASS' if matches else 'FAIL'} {fixture['name']}: consensus={consensus['accepted']} policy={policy['allowed']} local={fixture['local']['outcome']}", file=sys.stderr)
+        print(f"{'PASS' if matches else 'FAIL'} {fixture['name']}: consensus={consensus['accepted']} policy={policy['allowed']} profiles={local_comparison['matches_expected']} legacy={fixture['local']['outcome']}", file=sys.stderr)
     report["all_expectations_met"] = all(row["matches_expected"] for row in report["results"])
 
 
@@ -282,22 +336,28 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--download-core", action="store_true", help="allow first download of the hash-pinned release archive")
     parser.add_argument("--cache-dir", type=Path, default=ROOT / "target/core-regtest")
-    parser.add_argument("--output", type=Path, default=ROOT / "target/core-validation.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "target/core-validation.profiles.json")
     args = parser.parse_args()
-    report = {"schema_version": 1, "all_expectations_met": False, "results": []}
+    report = {"schema_version": 2, "all_expectations_met": False, "results": []}
     try:
         binary, provenance = core_binary(args.cache_dir.resolve(), args.download_core)
         fixture_bytes = subprocess.check_output(["cargo", "run", "--locked", "--quiet", "--example", "core_validation_fixtures"], cwd=ROOT)
         fixtures = json.loads(fixture_bytes)
+        if fixtures.get("schema_version") != 2:
+            raise RuntimeError("Explicit local-profile fixture schema version 2 is required")
         if (fixtures["expected_bitcoin_core_version"] != RELEASE["version"]
                 or fixtures["expected_bitcoin_core_commit"] != RELEASE["commit"]):
             raise RuntimeError("Fixture oracle pin differs from binary manifest")
+        metadata = json.loads(subprocess.check_output(
+            ["cargo", "metadata", "--locked", "--format-version", "1"], cwd=ROOT))
+        resolved_interpreter = interpreter_provenance(fixtures, metadata)
         report.update({"bitcoin_core": provenance, "fixture_sha256": sha256(fixture_bytes),
                        "fixture_count": fixtures["fixture_count"], "local_interpreter": fixtures["local_interpreter"],
+                       "resolved_interpreter": resolved_interpreter,
                        "winternitz": fixtures["winternitz"], "initial_mocktime": START_TIME,
                        "consensus_method": "generateblock with raw transactions; verifies connected block contains txid",
                        "policy_method": "testmempoolaccept; -acceptnonstdtxn=0; remaining v30.3 default policy",
-                       "scope": "These exact complete Taproot spends on regtest with active SegWit/Taproot rules. No mainnet broadcast, adversarial completeness, or general primitive deployment claim."})
+                       "scope": "These exact complete Taproot spends on regtest with active SegWit/Taproot rules. Supported local consensus/policy fragment verdicts must match Core, except the explicitly separate invalid-control-block commitment test. No mainnet broadcast, adversarial completeness, or general primitive deployment claim."})
         with tempfile.TemporaryDirectory(prefix="bitcoin-lab-core-") as temporary:
             node = Node(binary, Path(temporary))
             try:

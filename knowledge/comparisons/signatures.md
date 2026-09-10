@@ -315,8 +315,11 @@ isolated verification preserves alt state only. HASH160 wins the combined
 objective, while the hybrid has the smallest locking fragment. These are
 `locally-reproduced`, `research-unlimited` measurements with the same witness
 serialization and excluded terminal/framing costs as below. Strict local
-tests remain `unclassified`; one exact out-of-pool `OP_ROLL` boundary is
-recorded as a pinned-interpreter panic, not a successful rejection. Script
+tests remain `unclassified`; the historical `ba96bc2` report recorded one exact
+out-of-pool `OP_ROLL` boundary as a panic, not a successful rejection. The lab
+now pins repaired interpreter `4b7269a`; see
+[adoption and scope](../negative-results/index.md#nr-048-minimal-push-policy-must-follow-execution).
+Earlier metrics retain their original provenance and evidence classes. Script
 checks the composition without enforcing the host's rank-below-`2^160` image
 or returning bytes. The search is bounded, not a proof of global optimality;
 see [NR-042](../negative-results/index.md#nr-042-constant-composition-search-and-endpoint-sharing-limits).
@@ -383,8 +386,10 @@ terminal predicate, script framing, control block, and transaction overhead
 are excluded equally. Metrics are `locally-reproduced` and
 `research-unlimited` under the stack-limit-disabled tapscript helper with
 `OP_TRUE`; separate strict-stack tests remain `unclassified` deployment
-evidence. No Core consensus or policy acceptance is established. The pinned
-executor's out-of-entire-stack `OP_PICK` panic limits malformed-index coverage.
+evidence. No Core consensus or policy acceptance is established for this
+constant-sum construction. The historical executor's out-of-entire-stack
+`OP_PICK` panic was a tooling limitation; the repaired `4b7269a` pin does not
+retroactively strengthen these measurements or establish protocol validity.
 
 See the [constant-sum primitive](../primitives/winternitz-constant-sum20.md)
 for exact code capacity, public API, proof scope, hash alternatives,

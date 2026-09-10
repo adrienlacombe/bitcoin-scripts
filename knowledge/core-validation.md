@@ -1,15 +1,17 @@
 # Pinned Bitcoin Core differential validation
 
-Question: do the local resource-boundary decisions and one complete
-constant-composition Winternitz spend agree with Bitcoin consensus, and which
-consensus-valid witnesses also satisfy relay policy? This experiment establishes
-those outcomes for **24 deterministic fixtures**, including rejected inputs.
+Question: do explicit local consensus and policy profiles agree with Bitcoin
+Core on resource limits, minimal encoding, OP_SUCCESS ordering and one complete
+constant-composition Winternitz spend? The current experiment establishes those
+outcomes for **44 deterministic fixtures**, including rejected inputs. The
+original 24-fixture report is retained as a historical dependency baseline.
 It does not generalize one successful profile to the entire primitive catalog.
 
 ## Reproduce
 
 ```sh
 cargo test --locked --test execution_limits
+cargo test --locked --test tapscript_profiles
 cargo test --locked --example core_validation_fixtures
 python3 -m unittest discover -s tools -p 'test_core_regtest.py'
 python3 tools/core_regtest.py --download-core
@@ -36,9 +38,11 @@ Block times, keys, messages, transaction amounts and fixture ordering are fixed.
 - [Runner](../tools/core_regtest.py) and [release manifest](../tools/bitcoin_core_release.json).
 - [Rust fixture generator](../examples/core_validation_fixtures.rs): full bytecode,
   data witnesses, Taproot commitments, local outcomes and explicit expectations.
-- [Recorded report](../tests/data/core-validation-v30.3.json): source/binary pins,
+- [Current profile report](../tests/data/core-validation-v30.3.profiles.json): source/binary pins,
   fixture SHA256, transaction identities/weights, raw Core results and local differences.
-- Fresh output defaults to `target/core-validation.json`; `--output PATH` chooses
+- [Historical 24-fixture report](../tests/data/core-validation-v30.3.json): the
+  original `ba96bc2` interpreter observations, preserved without regeneration.
+- Fresh output defaults to `target/core-validation.profiles.json`; `--output PATH` chooses
   another location. Do not overwrite the committed report without reviewing
   the intended experiment change.
 
@@ -64,13 +68,88 @@ fail the run. Expected rejection categories also match the pinned diagnostics;
 an unrelated commitment failure cannot satisfy a stack-boundary test. Core
 reports both oversized and nonminimal ScriptNums as `unknown error`, so their
 finer labels describe the specific fixture mutations rather than distinct Core
-error codes. All raw reasons are retained. `decoderawtransaction` independently
+error codes. An executed nonminimal push instead reports `Data push larger than
+necessary`; its separate category prevents confusing these checks. All raw
+reasons are retained. `decoderawtransaction` independently
 checks every transaction's txid, wtxid, serialized size, weight and vsize;
 Rust and Python also agree on the complete serialized witness size.
 
-## Results recorded 2026-09-10
+## Explicit local profiles, recorded 2026-09-10
 
-All 24 consensus/policy expectations and rejection diagnostics pass; two fresh
+The new `support::tapscript::execute_tapscript` API keeps the caller's exact
+policy-compiled `ScriptBuf` and requires `TapscriptProfile::Consensus` or
+`TapscriptProfile::Policy`. The interpreter is pinned to the unmerged fork
+integration commit
+[`4b7269a415f21be3fccee9730547f1426eb80326`](https://github.com/adrienlacombe/rust-bitcoin-scriptexec/commit/4b7269a415f21be3fccee9730547f1426eb80326),
+which incorporates the three separately submitted interpreter corrections below.
+The runner verifies the resolved graph through `cargo metadata --locked`: exactly
+one interpreter package must match the fixture's immutable fork source and commit.
+Legacy research helpers retain their default minimal-number option and
+experimental `OP_CAT`; their outcomes remain visible in the report's `local`
+field. The explicit profiles are recorded separately under `local_profiles`.
+
+| Rule | Local Consensus profile | Local Policy profile |
+| --- | --- | --- |
+| Minimal encoding of consumed numbers and executed pushes | Optional | Required |
+| Minimal IF/NOTIF input | Required | Required |
+| Initial data item of 81–520 bytes | Allowed | Rejected before script parsing |
+| Decoded OP_SUCCESS, including opcode 126 formerly named OP_CAT | Immediate leaf acceptance | Discouraged |
+| Entry/per-step stack limits and 520-byte elements | Enforced when execution applies | Enforced when execution applies |
+
+The profile settings follow the pinned
+[Core execution rules](https://github.com/bitcoin/bitcoin/blob/49faec4f87f5cd19c88db01a82e5c68b087c8227/src/script/interpreter.cpp#L1827-L1865),
+[policy flags](https://github.com/bitcoin/bitcoin/blob/49faec4f87f5cd19c88db01a82e5c68b087c8227/src/policy/policy.h#L110-L128)
+and [witness-data policy](https://github.com/bitcoin/bitcoin/blob/49faec4f87f5cd19c88db01a82e5c68b087c8227/src/policy/policy.cpp#L307-L326).
+The 80-byte check applies to initial witness data, not constants pushed by the
+script. Consensus MINIMALIF remains enabled when numeric minimality is disabled.
+Push encoding is checked only when a push executes, so a nonminimal push in a
+skipped branch passes both profiles.
+
+All **44 Core consensus/policy expectations and exact rejection diagnostics
+pass**. For 43 fixtures, both supported local profile verdicts also agree with
+Core. The remaining fixture changes only the control-block parity bit: both
+local profiles must accept the unchanged leaf while Core must reject its
+commitment. The runner explicitly permits only that named exception to profile
+equality. Missing verdicts, panics, initialization errors and unsupported
+opcodes fail the comparison; none can count as a consensus rejection.
+There are no explicit-profile panics. The preserved legacy helper still panics
+on malformed script syntax in the two malformed-prefix/suffix fixtures; those
+historical-API outcomes remain separate from the explicit profile verdicts.
+
+| Added boundary | Core consensus | Core policy | Explicit local profiles |
+| --- | --- | --- | --- |
+| Nonminimal push, executed / skipped | Accept / accept | Reject / accept | Agree |
+| IF witness empty or `01` / `00` or `02` | Accept / reject | Accept / reject | Agree |
+| Script push of 520 / 521 bytes | Accept / reject | Accept / reject | Agree |
+| OP_SUCCESS80, OP_SUCCESS126, OP_SUCCESS254 | Accept | Reject | Agree |
+| OP_SUCCESS with 1,001 initial items | Accept | Reject: discouraged opcode | Agree |
+| OP_SUCCESS with a 521-byte witness item | Accept | Reject: witness-item policy | Agree |
+| OP_SUCCESS in a skipped branch or after OP_RETURN | Accept | Reject | Agree |
+| OP_SUCCESS after a nonminimal or oversized script push | Accept | Reject | Agree |
+| Malformed push before / after OP_SUCCESS | Reject / accept | Reject / reject | Agree |
+| Byte `7e` inside push data, followed by a false result | Reject | Reject | Agree |
+
+The scan decodes instructions, so an OP_SUCCESS-valued payload byte cannot
+trigger unconditional acceptance. Once an OP_SUCCESS is decoded, later
+malformed bytes, stack limits, branch execution and the final stack no longer
+control consensus acceptance. These ordering rules are explicit in the pinned
+[BIP342 specification](https://github.com/bitcoin/bips/blob/24e96e870fffaa257b465ce1f0370c14aac588e8/bip-0342.mediawiki#specification).
+An `OpSuccess` outcome carries no fabricated execution statistics; it is not
+experimental concatenation. Complete Taproot commitments are still checked by
+Core before these leaf rules apply.
+
+These profiles are bounded fragment APIs, with local deployment `unclassified`.
+They do not establish full transaction validity, annex policy or relay acceptance.
+Signature, timelock and other unsupported context-dependent opcodes return no
+verdict; the policy profile also conservatively refuses upgradeable NOPs even
+inside dead branches. This scope contains no such unsupported fixture. All
+witness/data items coexist at entry and every measured fixture uses **zero
+auxiliary hint items**. Only the independent Core run supplies consensus/policy
+deployment labels for these exact transactions.
+
+## Historical 24-fixture baseline, recorded 2026-09-10
+
+The original 24 consensus/policy expectations and rejection diagnostics pass; two fresh
 runs on the recorded platform produce byte-identical reports. Evidence
 is `differentially-validated` for these comparisons. A rejected fixture is
 `consensus-incompatible`; successful ones are `consensus-validated` or
@@ -116,13 +195,16 @@ The catalog's older fragment measurements remain `locally-reproduced` and
 result with schema 1.1 configuration-level qualifiers; `best` filters use those
 qualifiers while `list` retains the conservative record-level defaults. Other
 hash profiles, composable variants, mainnet propagation and full
-BitVM protocol transactions were not exercised. These fixtures contain no
-`OP_SUCCESSx` or experimental `OP_CAT`; the local helper still does not implement
-the full consensus or policy matrix. See [OP-001 and OP-002](open-problems.md)
+BitVM protocol transactions were not exercised. The original 24 fixtures contain
+no `OP_SUCCESSx` or experimental `OP_CAT`. The current experiment above adds an
+explicit OP_SUCCESS comparison; full consensus and policy coverage remains
+incomplete. See [OP-001 and OP-002](open-problems.md)
 and [NR-045](negative-results/index.md#nr-045-core-differentials-expose-local-executor-boundaries).
 
 The interpreter corrections are submitted upstream as
 [resource checks #18](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/18)
-and [stack-index bounds #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19).
-The recorded comparison retains the original pinned dependency, with the local
-resource wrapper repair; it does not assume either upstream PR has merged.
+and [stack-index bounds #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19),
+followed by [executed-push minimality #20](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/20).
+The historical report retains the original dependency and local resource
+wrapper repair. The current profile report uses the explicit fork integration
+pin; neither report assumes these PRs have merged upstream.

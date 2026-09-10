@@ -15,9 +15,6 @@ use bitcoin::{
 };
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
-const MAX_STACK_ITEMS: usize = 1000;
-const MAX_ELEMENT_BYTES: usize = 520;
-
 pub struct FmtStack(pub Stack);
 impl fmt::Display for FmtStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -183,6 +180,16 @@ fn execute_script_buf_with_inputs_optional_stack_limit(
         ..Default::default()
     };
 
+    execute_script_buf_with_options(script, witness, opts).expect("error creating exec")
+}
+
+pub(crate) fn execute_script_buf_with_options(
+    script: ScriptBuf,
+    witness: Vec<Vec<u8>>,
+    opts: Options,
+) -> Result<ExecuteInfo, bitcoin_scriptexec::Error> {
+    let stack_limit = opts.enforce_stack_limit;
+
     let exec = Exec::new(
         ExecCtx::Tapscript,
         opts,
@@ -199,43 +206,20 @@ fn execute_script_buf_with_inputs_optional_stack_limit(
         },
         script,
         witness,
-    )
-    .expect("error creating exec");
+    )?;
 
-    run_exec(exec, stack_limit)
+    Ok(run_exec(exec, stack_limit))
 }
 
-/// Cover resource checks missing from the pinned upstream executor. In
-/// particular, its opcode handler skips the limit check for data pushes, and
-/// its constructor accepts oversized initial stacks and witness elements.
+/// The repaired pinned interpreter checks entry resources and every executed
+/// instruction, including data pushes. Keep one driver for all research and
+/// explicit-profile entry points so the same upstream checks are exercised.
 fn run_exec(mut exec: Exec, stack_limit: bool) -> ExecuteInfo {
-    if stack_limit && exec.stack().len() > MAX_STACK_ITEMS {
-        return execution_snapshot(&exec, stack_limit, Some(ExecError::StackSize));
-    }
-    if exec
-        .stack()
-        .iter_str()
-        .any(|item| item.len() > MAX_ELEMENT_BYTES)
-    {
-        return execution_snapshot(&exec, stack_limit, Some(ExecError::PushSize));
-    }
-
-    loop {
-        let finished = exec.exec_next().is_err();
-        if stack_limit && exec.stack().len() + exec.altstack().len() > MAX_STACK_ITEMS {
-            return execution_snapshot(&exec, stack_limit, Some(ExecError::StackSize));
-        }
-        if finished {
-            return execution_snapshot(&exec, stack_limit, None);
-        }
-    }
+    while exec.exec_next().is_ok() {}
+    execution_snapshot(&exec, stack_limit)
 }
 
-fn execution_snapshot(
-    exec: &Exec,
-    stack_limit: bool,
-    resource_error: Option<ExecError>,
-) -> ExecuteInfo {
+fn execution_snapshot(exec: &Exec, stack_limit: bool) -> ExecuteInfo {
     let res = exec.result();
     let mut stats = exec.stats().clone();
     // Upstream can fail before updating statistics. Include the failing
@@ -246,8 +230,8 @@ fn execution_snapshot(
 
     ExecuteInfo {
         stack_limit_enforced: stack_limit,
-        success: resource_error.is_none() && res.is_some_and(|result| result.success),
-        error: resource_error.or_else(|| res.and_then(|result| result.error.clone())),
+        success: res.is_some_and(|result| result.success),
+        error: res.and_then(|result| result.error.clone()),
         last_opcode: res.and_then(|result| result.opcode),
         final_stack: FmtStack(exec.stack().clone()),
         remaining_script: exec.remaining_script().to_owned().to_asm_string(),
