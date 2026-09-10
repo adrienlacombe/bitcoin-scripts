@@ -107,6 +107,16 @@ diagnostics, with two identical reports and zero local panics in that corpus.
 
 ## Verification and adoption boundary
 
+Fresh experiment generators use `support::provenance::{interpreter, compiler,
+stack}` or `dependency(package_name)` to report the resolved package name,
+version, full Git source and immutable commit from the build-time embedded
+`Cargo.lock`. Missing or ambiguous packages, malformed identities and non-Git
+sources return errors. Rebuilding after a lock change updates the values; an
+already built binary retains its own identity even if the on-disk lock changes.
+This does not attest uncommitted edits in a Cargo Git checkout. The shared
+utility replaces copied pins in Core fixtures and PRINCE differential output;
+historical artifacts retain their original metadata.
+
 ```sh
 cargo test --locked --test execution_limits --test tapscript_profiles
 cargo test --locked signatures::winternitz::constant_composition::tests::signature
@@ -121,8 +131,10 @@ Evidence for these local tests is `locally-reproduced`, deployment
 `unclassified`. [Core comparisons](../../knowledge/core-validation.md) supply
 separate `differentially-validated` complete-transaction evidence.
 
-The full non-field suite passes 448 tests (24 existing ignores, 143 field tests
-filtered), with all five active primitive metric baselines unchanged:
+The full non-field suite passes 460 tests (24 existing ignores, 143 field tests
+filtered). All six active primitive metric tests pass: the five historical
+baselines are unchanged, and the new checked-PRINCE test adds three complete-leaf
+rows with 15 explicit measurements:
 
 ```sh
 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_TARGET_DIR=target/nonfield-opt1 cargo test --locked -- --skip fields::
@@ -134,6 +146,12 @@ checks retain their defaults. Script compilation still uses the unchanged
 reproduced identically on two fresh nodes at its original `4b7269a4` pin; its 86 applicable local/Core
 verdict comparisons pass, with commitment validation explicitly outside the
 local fragment API.
+
+The [checked PRINCE experiment](../../knowledge/prince-core-validation.md)
+extends the supported subset to a computation leaf with consensus-enforced
+input validation. Its 20 funded cases and 40 local profile comparisons pass,
+with three exact valid spends accepted by default Core policy. This adds
+primitive-specific evidence without widening the context-free API's claims.
 
 Return to an immutable upstream revision when it contains all adopted repairs or
 equivalent implementations and passes these regressions, Core comparisons,

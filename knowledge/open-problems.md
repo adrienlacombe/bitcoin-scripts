@@ -13,6 +13,12 @@ cases must remain distinct from rejection. The independent Core harness is the
 oracle; local fragment acceptance must not be promoted to complete-transaction
 validity before those checks exist.
 
+The [checked PRINCE experiment](prince-core-validation.md) adds another bounded
+primitive: three exact funded computation leaves are `policy-validated`, and
+17 invalid-input/ciphertext fixtures reject. All 40 local/Core profile
+comparisons match. The local API still checks only the leaf; complete
+transaction and commitment checks come from Core.
+
 The [signature differential experiment](tapscript-signature-validation.md)
 isolates 13 remaining disagreements at the resource-repaired interpreter pin,
 including six panics. Its complete funded transactions cover CODESEPARATOR,
@@ -33,6 +39,9 @@ uses zero hints and 16 input data items, and executes with the combined
 The current zero-key baseline is 6,136 bytes and a 633-item peak. Table packing
 and algebraic sketches without a priced executable circuit do not satisfy
 this criterion; see [the layout search](negative-results/princev2-layout.md).
+The new checked 6,426-byte zero-key leaf measures input validation and a
+terminal predicate as well; it is a separate boundary and does not advance
+the sub-5,000-byte fragment objective.
 
 ## OP-001 — Strict execution matrix
 
@@ -101,6 +110,12 @@ oracle to 44 fixtures with explicit local consensus/policy comparisons and
 `OP_SUCCESSx`/minimality boundaries. Its separately recorded report preserves
 the original 24-fixture baseline and its immutable interpreter provenance.
 
+The PRINCE follow-up records 20 more complete spends, including canonical
+nibble and exact-input-count enforcement under consensus. All expectations and
+40 local profile comparisons pass, with two identical fresh-node reports.
+Coverage of other keys, compositions and primitives remains an explicit
+per-configuration obligation.
+
 ## OP-003 — Complete metric surface
 
 Add executed opcodes, validation weight, complete witness size, and combined
@@ -164,6 +179,18 @@ attempt finished the library but encountered a not-yet-written Core report link
 in knowledge validation; the final complete run follows publication of that
 artifact and passes every integration and documentation test. The broader
 OP-003 metric-surface criterion remains open.
+
+Checked-PRINCE follow-up: three new active snapshot rows measure complete leaf,
+data witness, full Taproot witness and combined stack peaks separately. Each
+has exactly 16 entry data items, zero hints and 18 complete witness items.
+Core verifies the full transaction weights. Executed non-push counts remain
+null because input validation has branches; static counts are recorded
+separately. Existing fragment baselines and their historical pins are retained.
+With the provenance and checked-leaf additions, the full non-field suite passes
+460 tests (24 existing ignores, 143 field tests filtered), including all six
+active metric tests. Three fixture example tests and 30 Python tests pass
+separately. The CI workflow now enforces these checks and all three Core
+harnesses while retaining the field-test filter.
 
 ## OP-004 — Prime-log RNS frontier
 

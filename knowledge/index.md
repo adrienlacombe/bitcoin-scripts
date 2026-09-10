@@ -39,6 +39,7 @@ python3 tools/kb.py validate
 - [Evidence and confidence](evidence.md)
 - [Pinned Bitcoin Core validation](core-validation.md)
 - [Taproot signature differential experiment](tapscript-signature-validation.md)
+- [Checked PRINCEv2 complete-leaf experiment](prince-core-validation.md)
 - [Primitive entries](primitives/index.md)
 - [Reusable implementation techniques](techniques/index.md)
 - [Cross-construction comparisons](comparisons/index.md)

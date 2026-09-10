@@ -46,3 +46,14 @@ and 29 hint items, but currently exposes no resident-table or batch API. Its
 stored values mean `E(x)=x/16`, so an ordinary-domain batch estimate cannot be
 transferred to it without also specifying conversions and downstream domain
 compatibility.
+
+The checked [`prince_verify`](../../src/ciphers/prince/README.md#checked-computation-leaf)
+illustrates a complete-leaf boundary: it accepts exactly 16 canonical nibble
+items, consumes them, and returns one true item. Its 633/685-item measured peaks
+include all 16 inputs, zero hints, tables and temporaries. Extra main-stack
+state rejects at entry, so its unused stack capacity cannot be advertised as
+composition capacity. The underlying `prince_encrypt` fragment preserves a
+surrounding prefix but requires the caller to validate nibble encodings/ranges,
+budget that live prefix, consume every ciphertext output and add authorization
+where the protocol requires it. The three Core-validated complete spends do
+not transfer their deployment class to a differently composed leaf.

@@ -19,7 +19,10 @@ use bitcoin::{
     transaction, Address, Amount, Network, OutPoint, ScriptBuf, Sequence, TapLeafHash, Transaction,
     TxIn, TxOut, Txid, Witness,
 };
-use bitcoin_lab::support::script::{script, ScriptCompilation};
+use bitcoin_lab::support::{
+    provenance,
+    script::{script, ScriptCompilation},
+};
 use bitcoin_scriptexec::{Exec, ExecCtx, Experimental, Options, TxTemplate};
 use serde_json::{json, Value};
 use std::{
@@ -253,25 +256,8 @@ fn fixtures() -> Vec<Fixture> {
 }
 
 fn interpreter_pin() -> Value {
-    let packages = include_str!("../Cargo.lock")
-        .split("[[package]]")
-        .filter(|block| {
-            block
-                .lines()
-                .any(|line| line == "name = \"bitcoin-scriptexec\"")
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(packages.len(), 1);
-    let source = packages[0]
-        .lines()
-        .find_map(|line| {
-            line.strip_prefix("source = \"")
-                .and_then(|value| value.strip_suffix('"'))
-        })
-        .unwrap();
-    let commit = source.rsplit_once('#').unwrap().1;
-    assert_eq!(commit.len(), 40);
-    json!({"name": "bitcoin-scriptexec", "source": source, "commit": commit,
+    let interpreter = provenance::interpreter().expect("embedded interpreter provenance");
+    json!({"name": interpreter.name, "source": interpreter.source, "commit": interpreter.commit,
         "context": "tapscript", "require_minimal": false, "experimental_op_cat": false,
         "stack_limit_enforced": true, "comparison": "consensus only; policy independently measured by Core",
         "limitations": "Full real transaction/prevouts/leaf context supplied, but local initial signature budget counts serialized data witness only rather than complete Taproot witness. Each fixture has at most one nonempty signature opcode, with a conservative lower bound of at least 67 budget units after one charge; empty signatures incur no charge. Two ordinary 32-byte witness padding items are removed by initial OP_2DROP; these are not signature hints and are included in data/witness/stack metrics. Remaining budget is unavailable on instruction errors because upstream statistics may precede the failed instruction's charge. Upstream opcode_count is not an executed non-push count; that measurement is unavailable. No annex or budget-boundary claim."})

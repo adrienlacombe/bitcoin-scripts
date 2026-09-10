@@ -46,6 +46,13 @@ invalid-key/multisig errors (`2efd48f`) and SIGHASH_SINGLE error ordering
 preserves a `4b7269a4` baseline separately from the repaired integration.
 Older catalog configurations and report artifacts retain their recorded pins.
 
+The [checked PRINCE experiment](../prince-core-validation.md) combines the same
+Core and interpreter pins with `bitcoin-script-locked` and the independent
+`princev2-reference` C vectors at `0c6172dc`. Its three exact valid complete
+spends are `policy-validated`. New Rust generator metadata comes from
+`support::provenance`, using the lockfile embedded in the binary; the source
+registry continues to describe immutable historical evidence.
+
 
 The Fast Winternitz hash-choice comparison inspects Bitcoin Core **v29.0**
 native SHA256/HASH160/HASH256 semantics (`bitcoin-core-v29-hashes`). Its local

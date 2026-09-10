@@ -22,6 +22,7 @@ use bitcoin_lab::{
     signatures::winternitz::{ConstantCompositionWinternitz20, Hash160, Preimage16},
     support::{
         execution::execute_raw_script_with_inputs_strict,
+        provenance,
         script::{script, ScriptCompilation},
         tapscript::{execute_tapscript, TapscriptOutcome, TapscriptProfile},
     },
@@ -35,7 +36,6 @@ use std::{
 
 const CORE_VERSION: &str = "30.3";
 const CORE_COMMIT: &str = "49faec4f87f5cd19c88db01a82e5c68b087c8227";
-const LOCAL_INTERPRETER_COMMIT: &str = "702544c9a045ac4fc14846da6da6559e2b7cd9d1";
 const RAW_BOUNDARY: &str = "raw-boundary-bytecode";
 const POLICY: &str = "repository-policy";
 type Wots = ConstantCompositionWinternitz20<Hash160, Preimage16>;
@@ -238,6 +238,7 @@ fn drop_items(count: usize) -> Vec<u8> {
 }
 
 fn fixtures() -> Value {
+    let interpreter = provenance::interpreter().expect("embedded interpreter provenance");
     let mut fixtures = Vec::new();
     for count in [1000, 1001] {
         fixtures.push(fixture(
@@ -539,8 +540,8 @@ fn fixtures() -> Value {
         "expected_bitcoin_core_version": CORE_VERSION,
         "expected_bitcoin_core_commit": CORE_COMMIT,
         "local_interpreter": {
-            "name": "bitcoin-scriptexec",
-            "commit": LOCAL_INTERPRETER_COMMIT,
+            "name": interpreter.name,
+            "commit": interpreter.commit,
             "context": "tapscript",
             "helper": "execute_raw_script_with_inputs_strict",
             "stack_limit_enforced": true,
@@ -585,7 +586,9 @@ mod tests {
         let rows = first["fixtures"].as_array().unwrap();
         assert_eq!(first["fixture_count"], rows.len());
         assert_eq!(rows.len(), 44);
-        assert!(include_str!("../Cargo.lock").contains(LOCAL_INTERPRETER_COMMIT));
+        let interpreter = provenance::interpreter().unwrap();
+        assert_eq!(first["local_interpreter"]["name"], interpreter.name);
+        assert_eq!(first["local_interpreter"]["commit"], interpreter.commit);
         let valid = rows
             .iter()
             .find(|row| row["name"] == "winternitz-valid")

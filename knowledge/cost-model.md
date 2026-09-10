@@ -98,6 +98,14 @@ Every measured result must identify:
 - policy rules, if claimed;
 - transaction context, if signature or validation-weight behavior matters.
 
+New Rust experiment generators should obtain resolved Git identities from
+[`support::provenance`](../src/support/provenance.rs), which embeds `Cargo.lock`
+at build time. Record both interpreter and compiler; do not copy a historical
+pin into a fresh run. An old binary retains its embedded lockfile even after
+the file on disk changes. This identifies the resolved source, not uncommitted
+edits in a Cargo Git checkout. Historical artifacts retain the identities under
+which they were actually measured.
+
 The current local metrics primarily use `bitcoin-scriptexec` in tapscript mode.
 Some helpers disable the stack limit. Such measurements remain useful for
 algorithmic comparison but are classified `research-unlimited` until validated
