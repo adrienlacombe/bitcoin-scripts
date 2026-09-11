@@ -3693,7 +3693,8 @@
       "documentation": "src/hashes/sha256/README.md",
       "tests": [
         "hashes::sha256::sha2_u32::tests::test_sha256",
-        "hashes::sha256::sha2_u32::tests::test_sha256_80bytes_from_midstate"
+        "hashes::sha256::sha2_u32::tests::test_sha256_80bytes_from_midstate",
+        "hashes::sha256::sha2_u32::tests::test_sha256_tagged_hash_matches_multiple_vectors"
       ],
       "references": [
         "fips-180-4",
@@ -3746,6 +3747,33 @@
             "sha2_u32_80_midstate",
             "sha2_u32_80_midstate_witness",
             "sha2_u32_80_midstate_stack"
+          ]
+        },
+        {
+          "id": "bip340-tagged-32",
+          "label": "BIP340-style tagged hash over a 32-byte message",
+          "parameters": {
+            "tag_hash_bytes": 32,
+            "message_bytes": 32,
+            "total_message_bytes": 96,
+            "data_items": 32,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: host-precomputed tag block plus one Script continuation block; excludes message pushes and digest comparison",
+          "script_bytes": 530755,
+          "witness_bytes": 65,
+          "witness_bytes_max": 97,
+          "max_stack_items": 856,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 530755,
+          "execution_class": "research-unlimited",
+          "strict_stack_limit_test": true,
+          "metric_keys": [
+            "sha2_u32_tagged_32",
+            "sha2_u32_tagged_32_witness",
+            "sha2_u32_tagged_32_stack"
           ]
         }
       ],

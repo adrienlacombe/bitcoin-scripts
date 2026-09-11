@@ -7,6 +7,7 @@
 use std::{env, fs, path::Path};
 
 use bitcoin::consensus::encode::serialize;
+use bitcoin::hashes::{sha256 as bitcoin_sha256, Hash};
 use bitcoin::{script::Instruction, Witness};
 use bitcoin_lab::arithmetic::rns::prime::carry::bound;
 use bitcoin_lab::{
@@ -72,6 +73,14 @@ fn sha256_midstate_u4_witness() -> Vec<Vec<u8>> {
 
 fn sha256_midstate_u32_witness() -> Vec<Vec<u8>> {
     (0u8..16).map(|byte| vec![byte]).collect()
+}
+
+fn bip340_challenge_tag_hash() -> [u8; 32] {
+    bitcoin_sha256::Hash::hash(b"BIP0340/challenge").to_byte_array()
+}
+
+fn sha256_tagged_hash_witness() -> Vec<Vec<u8>> {
+    vec![vec![0x42]; 32]
 }
 
 struct Metric {
@@ -3931,6 +3940,32 @@ fn metrics() -> Vec<Metric> {
                     OP_TRUE
                 },
                 vec![Vec::new(); 16],
+            ),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_tagged_32",
+            value: script_len(sha256::sha2_u32::sha256_tagged_hash_32bytes(
+                bip340_challenge_tag_hash(),
+            )),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_tagged_32_witness",
+            value: witness_size(&sha256_tagged_hash_witness()),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_tagged_32_stack",
+            value: max_stack_items_strict(
+                script! {
+                    { sha256::sha2_u32::sha256_tagged_hash_32bytes(
+                        bip340_challenge_tag_hash(),
+                    ) }
+                    for _ in 0..32 { OP_DROP }
+                    OP_TRUE
+                },
+                vec![Vec::new(); 32],
             ),
         },
         Metric {
@@ -8412,6 +8447,36 @@ fn sha256_midstate_metrics_are_current() {
             readme: "src/hashes/sha256/README.md",
             key: "sha2_u4_80_midstate_opcodes",
             value: static_non_push_opcodes(u4_boundary),
+        },
+    ]);
+}
+
+#[test]
+fn sha256_tagged_hash_metrics_are_current() {
+    let fragment = sha256::sha2_u32::sha256_tagged_hash_32bytes(bip340_challenge_tag_hash());
+    let boundary = script! {
+        { fragment.clone() }
+        for _ in 0..32 { OP_DROP }
+        OP_TRUE
+    };
+    let witness = sha256_tagged_hash_witness();
+    assert_eq!(witness_size(&witness), 65);
+    assert_eq!(witness_size(&vec![vec![0x80, 0]; 32]), 97);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_tagged_32",
+            value: script_len(fragment),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_tagged_32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_tagged_32_stack",
+            value: max_stack_items_strict(boundary, vec![Vec::new(); 32]),
         },
     ]);
 }
