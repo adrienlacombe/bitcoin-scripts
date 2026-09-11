@@ -13,6 +13,9 @@ the concrete algorithm to SHA-256.
   documented default is 32 bytes.
 - `sha2_u4`: two nibbles per input byte and optional addition-table use chosen
   from the block count. The documented default is 32 bytes.
+- `sha256_80bytes_from_midstate`: one fixed 64-byte prefix is represented by a
+  caller-supplied chaining state; the u4 fragment consumes the remaining 16
+  bytes as 32 nibble witness items.
 - `sha2_u4_stack`: the tracked-stack generator additionally selects addition
   tables and full/half XOR tables; defaults in its size tests are enabled.
 
@@ -53,6 +56,16 @@ The midstate stack figure includes the 32-item digest cleanup and terminal
 predicate shown in the composition wrapper. The caller must bind the supplied
 chaining state to the fixed prefix; the fragment does not prove that relation.
 
+The u4 midstate continuation has a separate fixed-shape boundary:
+
+| Configuration | Locking script | Unlocking witness | Combined peak | Static non-push opcodes |
+| --- | ---: | ---: | ---: | ---: |
+| 64-byte prefix midstate + 16-byte suffix | <!-- metric:sha2_u4_80_midstate -->332830<!-- /metric:sha2_u4_80_midstate --> bytes | <!-- metric:sha2_u4_80_midstate_witness -->48<!-- /metric:sha2_u4_80_midstate_witness --> bytes | <!-- metric:sha2_u4_80_midstate_stack -->969<!-- /metric:sha2_u4_80_midstate_stack --> items | <!-- metric:sha2_u4_80_midstate_opcodes -->195219<!-- /metric:sha2_u4_80_midstate_opcodes --> |
+
+The u4 row is a research boundary: its state is not authenticated against the
+fixed prefix by the fragment. Strict local execution passes at the measured
+969-item peak; complete deployment remains unclassified.
+
 Maximum stack depth depends on input length and implementation. The
 `sha2_u4_stack` generator records it with `StackTracker`; executable hash tests
 cover the u32 and u4 layouts.
@@ -75,4 +88,4 @@ legacy limits. The caller must append output verification and cleanstack logic.
 No hints are required. `sha2_u32` consumes one stack item per byte;
 `sha2_u4` consumes two canonical nibbles per byte in the order documented by
 the push helpers. The u32 midstate continuation consumes exactly 16 byte-valued
-suffix items.
+suffix items; the u4 continuation consumes 32 canonical nibble items.

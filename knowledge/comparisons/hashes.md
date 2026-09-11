@@ -13,6 +13,7 @@ Measured fragments exclude input pushes and output comparison.
 | HASH160 shared byte table | 32-byte input | 752,327 | differentially-validated | Saves 324 bytes by sharing the 256-item lookup |
 | SHA-256 u4 | 32-byte input | 332,942 | differentially-validated | Large research fragment |
 | SHA-256 u4 shared lookup | 80-byte input, two chunks | 736,595 | locally-reproduced | 905-item strict peak; 11-byte saving per extra chunk over table reload |
+| SHA-256 u4 midstate | 64-byte prefix + 16-byte suffix | 332,830 | locally-reproduced | 32 nibble witness items; 969-item peak; caller binds the state |
 | SHA-256 u32 | 32-byte input | 512,428 | differentially-validated | Larger than local u4 variant |
 | SHA-256 u32 midstate | 64-byte fixed prefix + 16-byte suffix | 530,631 | differentially-validated | Caller must bind the supplied midstate to the prefix |
 | SHAKE256 byte | 32-byte input, 1,024-byte output | 15,927,814 | locally-reproduced | Raw output exceeds 1,000 items |
@@ -29,6 +30,11 @@ the row is `fragment-with-memory` because it owns full lookup-table setup and
 cleanup. The short-profile executor enforces the 1,000-item local limit, but it
 is not a pinned Bitcoin Core consensus run, so the result remains
 `research-unlimited` rather than consensus-validated.
+
+The u4 midstate continuation is smaller than the corresponding u32 boundary
+but carries twice as many suffix witness items and a higher measured stack peak
+(969 versus 856); both require the caller to bind the supplied state to the
+fixed prefix.
 
 Every nontrivial row in the table exceeds the repository optimizer's 32 KiB
 input cutoff and is unoptimized by those upstream passes. BLAKE3 still applies
