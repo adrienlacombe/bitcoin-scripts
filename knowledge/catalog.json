@@ -7701,11 +7701,33 @@
             "shake256_prefix_witness_32",
             "shake256_prefix_stack_32_32"
           ]
+        },
+        {
+          "id": "message-32-output-137",
+          "label": "32-byte input and 137-byte prefix",
+          "parameters": {
+            "message_bytes": 32,
+            "output_bytes": 137
+          },
+          "includes": "fragment-with-memory: generated sponge, lookup-table setup/cleanup, and prefix squeeze; excludes message pushes, output comparison, terminal predicate, and transaction framing",
+          "script_bytes": 3989612,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 893,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 3989612,
+          "metric_keys": [
+            "shake256_prefix_32_137",
+            "shake256_prefix_witness_32",
+            "shake256_prefix_stack_32_137"
+          ]
         }
       ],
       "limitations": [
-        "Only the representative 32-byte prefix has a strict local stack measurement",
-        "The 2,000,127-byte fragment remains impractical for ordinary script-size and relay-policy limits",
+        "Only the 32-byte and rate-crossing 137-byte prefixes have strict local stack measurements",
+        "The prefix fragments remain impractical for ordinary script-size and relay-policy limits",
         "Executed-opcode counter is unavailable in the local tapscript interpreter",
         "Bitcoin Core consensus and policy validation not performed"
       ],
