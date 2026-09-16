@@ -1434,3 +1434,13 @@ wins only after setup amortization. Its 32-digit row saves 564 bytes but peaks
 at 348 items versus 194 for branches, which can dominate in a composed scalar
 schedule. These are `locally-reproduced` tapscript measurements for the stated
 boundary, not a claim about all signed-digit layouts.
+## NR-051: Compressed u32 addition loses locking bytes
+
+The canonical compressed ScriptNum adapter for modulo-`2^32` addition measures
+1,016 locking bytes, 11 representative witness bytes, and an 11-item strict
+peak. The ordinary four-byte carry chain measures 78 locking bytes, 20 witness
+bytes, and a 10-item peak at the same two-word boundary. The compressed form
+saves nine witness bytes and six entry items, but adds 938 locking bytes and is
+dominated whenever script size or combined local cost is primary. It remains a
+locally reproduced option for protocols whose binding constraint is witness
+width; this is not a universal lower-bound claim.

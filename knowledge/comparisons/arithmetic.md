@@ -18,6 +18,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Checked u8 high-bit extraction | `u8_extract_hbit_checked(4)` | 73 | 5-item peak; 4-byte witness; rejects non-byte ScriptNums |
 | Canonical checked nibble boundary | `verify_canonical_nibble()` | 10 | 4-item peak; 3-byte witness; rejects noncanonical ScriptNums |
 | 32 checked signed radix-32 digits to sign/magnitude bits | signed-window staggered table | 1,866 | 348-item peak; wins bytes only after 8–16 digit crossover |
+| Compressed total-domain u32 addition | two-item compressed wire | 1,016 | 11-byte representative witness; byte baseline is 78 bytes and 20-byte witness |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide multiply | U254 multiply | 111,466 | Above optimizer cutoff; unoptimized |
 | Ed25519 ordinary-domain multiply | 51 biased centered radix-32 digits, 13 signed tables | <!-- metric:ed25519_field_mul -->9893<!-- /metric:ed25519_field_mul --> | 245-byte/51-item incremental hint; certified operands; 523-item strict peak |
@@ -49,6 +50,11 @@ bytes over checked conditional extraction, but raises the peak from 194 to 348
 items. The deterministic sweep measures the table at 643 bytes versus 607 for
 the branch baseline at eight digits, and 1,051 versus 1,215 at sixteen; short
 or stack-constrained callers should keep the branch form.
+The compressed u32 addition row is a deliberate witness-width tradeoff: it
+saves nine representative witness bytes and six entry items, but expands to
+the byte carry chain and costs 1,016 locking bytes versus 78 for the ordinary
+adder. It is retained for witness-constrained composition, not as a general
+locking-byte winner.
 
 The 9,893-byte Ed25519 row is the current locking-script-size winner for this
 field. It keeps host values in the ordinary field domain but uses a unique
