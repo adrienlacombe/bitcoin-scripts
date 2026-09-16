@@ -3,6 +3,7 @@ pub mod bits;
 pub mod compare;
 pub mod logic;
 pub mod parity;
+pub mod lsb;
 pub mod rotate;
 pub mod shift;
 pub mod stack;
