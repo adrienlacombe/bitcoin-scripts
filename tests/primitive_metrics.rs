@@ -4465,3 +4465,34 @@ fn u4_canonical_nibble_metrics_are_current() {
         },
     ]);
 }
+
+#[test]
+fn u32_canonical_byte_metrics_are_current() {
+    let fragment = u32::stack::verify_canonical_byte();
+    let witness = vec![scriptnum(255)];
+    let stack = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            OP_DROP
+            OP_1
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_canonical_byte",
+            value: script_len(fragment),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_canonical_byte_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_canonical_byte_stack",
+            value: stack,
+        },
+    ]);
+}
