@@ -1,4 +1,5 @@
 pub mod add;
+pub mod bit_planes;
 pub mod bits;
 pub mod compare;
 pub mod logic;
