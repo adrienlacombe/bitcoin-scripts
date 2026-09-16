@@ -72,6 +72,7 @@ The same representative byte baseline has
 <!-- metric:u32_add_drop_witness -->20<!-- /metric:u32_add_drop_witness --> serialized witness bytes and a
 <!-- metric:u32_add_drop_byte_stack -->10<!-- /metric:u32_add_drop_byte_stack --> item strict peak.
 | `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
+| `u32_to_le_bits()` | <!-- metric:u32_le_bits -->520<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
 
 Operand witness serialization is deliberately excluded: callers may construct
 words inside the locking script or supply four witness items per word. No
@@ -128,3 +129,13 @@ with the same `... a b -> ... (a < b)` contract as `u32_lessthan()`. It
 validates hostile encodings, maps the signed compressed domain to a sign bit
 and a legal 31-bit magnitude, and compares those values without expanding
 four byte limbs. The representative witness is two items and <!-- metric:u32_compressed_lessthan_witness -->11<!-- /metric:u32_compressed_lessthan_witness --> serialized bytes versus <!-- metric:u32_lessthan_witness -->17<!-- /metric:u32_lessthan_witness --> bytes for the byte baseline. The sentinel-boundary maximum is <!-- metric:u32_compressed_lessthan_witness_max -->8<!-- /metric:u32_compressed_lessthan_witness_max --> bytes. The fragment costs 124 locking bytes and peaks at <!-- metric:u32_compressed_lessthan_stack -->6<!-- /metric:u32_compressed_lessthan_stack --> items, so it is a witness-shape tradeoff rather than a general byte win.
+## Bit conversion
+
+`u32_to_le_bits()` consumes one u32 word and returns 32 numeric bit items. The
+least-significant byte is on top of the input word; its bit zero is on top of
+the output, followed by bits one through seven and then the next byte. Each
+byte is range-checked numerically against `0..=255`. The 520-byte fragment has
+<!-- metric:u32_le_bits_opcodes -->370<!-- /metric:u32_le_bits_opcodes --> static non-push opcodes and a 35-item local peak with four one-byte witness
+items; it does not establish byte-unique ScriptNum encodings.
+This is a byte-input adapter rather than a replacement for the smaller
+nibble-input table when a caller already owns canonical u4 values.
