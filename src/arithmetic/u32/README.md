@@ -17,6 +17,8 @@ they do not use BN254 or any other field modulus.
   word modulo `2^32` when it is nonzero.
 - `u32_{less,greater}than[orequal]()` compares the top two words as unsigned
   integers and consumes both.
+- `u32_iszero()` consumes the top word and returns whether all four limbs are
+  numerically zero.
 - `u32_or(a, b, stack_size)`, like XOR and AND, takes distinct word offsets.
   `stack_size` is one plus the number of u32 words above the shared byte-logic
   table. With exactly two working words, the usual value is `3`.
@@ -51,6 +53,7 @@ as less-than-or-equal.
 | `u32_notequal()` | <!-- metric:u32_notequal -->19<!-- /metric:u32_notequal --> bytes | 0 bytes | <!-- metric:u32_notequal_stack -->9<!-- /metric:u32_notequal_stack --> items |
 | `u32_compressed_equal()` | <!-- metric:u32_compressed_equal -->37<!-- /metric:u32_compressed_equal --> bytes | <!-- metric:u32_compressed_equal_witness -->11<!-- /metric:u32_compressed_equal_witness --> bytes | <!-- metric:u32_compressed_equal_stack -->5<!-- /metric:u32_compressed_equal_stack --> items |
 | `u32_conditional_select()` | <!-- metric:u32_conditional_select -->9<!-- /metric:u32_conditional_select --> bytes | <!-- metric:u32_conditional_select_witness_min -->10<!-- /metric:u32_conditional_select_witness_min -->–<!-- metric:u32_conditional_select_witness_max -->19<!-- /metric:u32_conditional_select_witness_max --> bytes | <!-- metric:u32_conditional_select_stack -->9<!-- /metric:u32_conditional_select_stack --> items |
+| `u32_iszero()` | <!-- metric:u32_iszero -->4<!-- /metric:u32_iszero --> bytes | <!-- metric:u32_iszero_witness -->5<!-- /metric:u32_iszero_witness --> bytes | <!-- metric:u32_iszero_stack -->4<!-- /metric:u32_iszero_stack --> items |
 | `u8_push_xor_table()` | <!-- metric:u8_logic_table_push -->236<!-- /metric:u8_logic_table_push --> bytes | 0 bytes | 256 table items |
 | `u8_drop_xor_table()` | <!-- metric:u8_logic_table_drop -->128<!-- /metric:u8_logic_table_drop --> bytes | 0 bytes | consumes 256 table items |
 | `u32_uncompress_canonical()` | <!-- metric:u32_uncompress_canonical -->431<!-- /metric:u32_uncompress_canonical --> bytes | <!-- metric:u32_uncompress_canonical_witness -->7<!-- /metric:u32_uncompress_canonical_witness --> bytes, 1 data item | <!-- metric:u32_uncompress_canonical_stack -->7<!-- /metric:u32_uncompress_canonical_stack --> items |
@@ -156,3 +159,8 @@ word unchanged for zero, or returns its modulo-`2^32` negation for any nonzero
 condition. It normalizes the condition before `OP_IF`, so non-minimal boolean
 values such as `2` and `-1` are accepted as true. It inherits the module's
 byte-limb contract and does not itself range-check the four word limbs.
+`u32_iszero()` has no second operand: its four-item zero witness serializes to
+5 bytes, and its 4-byte fragment is smaller than the 21-byte
+`u32_push(0) + u32_equal()` baseline under the same policy compilation. The
+zero predicate contains <!-- metric:u32_iszero_opcodes -->4<!-- /metric:u32_iszero_opcodes -->
+static non-push opcodes; the baseline measures <!-- metric:u32_iszero_equal_baseline -->21<!-- /metric:u32_iszero_equal_baseline --> bytes.

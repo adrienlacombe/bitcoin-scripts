@@ -2452,6 +2452,34 @@ fn metrics() -> Vec<Metric> {
             readme: "src/arithmetic/u32/README.md",
             key: "u32_conditional_select_stack",
             value: max_stack_items(u32::stack::u32_conditional_select(), vec![vec![1]; 9]),
+            key: "u32_iszero",
+            value: script_len(u32::stack::u32_iszero()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_witness",
+            value: witness_size(&[scriptnum(0), scriptnum(0), scriptnum(0), scriptnum(0)]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_stack",
+            value: max_stack_items(
+                u32::stack::u32_iszero(),
+                vec![scriptnum(0), scriptnum(0), scriptnum(0), scriptnum(0)],
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_opcodes",
+            value: static_non_push_opcodes(u32::stack::u32_iszero()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_equal_baseline",
+            value: script_len(script! {
+                { u32::stack::u32_push(0) }
+                { u32::stack::u32_equal() }
+            }),
         },
         Metric {
             readme: "src/arithmetic/u32/README.md",
