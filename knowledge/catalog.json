@@ -265,8 +265,8 @@
         "lookup-table",
         "tracked-stack"
       ],
-      "security": "No independent cryptographic claim. Checked bit conversion, bit-plane transposition, and bit reversal enforce numeric nibble range before table indexing; unchecked conversion and other u4 operations require callers to supply certified canonical nibbles. Byte-unique ScriptNum encoding remains a protocol obligation where applicable.",
-      "stack_contract": "Values are expanded into four-bit stack digits. The batch bit converter consumes contiguous nibbles, uses a temporary 61-item table, and returns four bits per input on the main or altstack as selected by the API; the API chooses big- or little-endian bit order within each nibble. The bit-plane adapter preserves unrelated state and groups those bits by bit position. The bit-reversal adapter preserves nibble order while replacing each value with its four-bit reversal.",
+      "security": "No independent cryptographic claim. Checked bit conversion, bit-plane transposition, and bit reversal enforce numeric nibble range before table indexing; the zero-mask projection performs canonical-nibble checks without a lookup table; unchecked conversion and other u4 operations require callers to supply certified canonical nibbles. Byte-unique ScriptNum encoding remains a protocol obligation where applicable.",
+      "stack_contract": "Values are expanded into four-bit stack digits. The batch bit converter consumes contiguous nibbles, uses a temporary 61-item table, and returns four bits per input on the main or altstack as selected by the API; the API chooses big- or little-endian bit order within each nibble. The bit-plane adapter preserves unrelated state and groups those bits by bit position. The bit-reversal adapter preserves nibble order while replacing each value with its four-bit reversal. The zero-mask projection consumes canonical nibbles and returns one numeric zero predicate per input without resident table memory.",
       "configurations": [
         {
           "id": "addition-memory",
@@ -7775,6 +7775,74 @@
         "Lookup table and outputs consume combined stack capacity",
         "Static non-push opcode count is not an executed-opcode measurement",
         "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
+    },
+    {
+      "id": "arithmetic/u4-zero-mask",
+      "name": "Checked u4 zero-mask projection",
+      "class": "arithmetic/word",
+      "summary": "Range-checked batch projection from canonical u4 nibbles to numeric zero predicates without a lookup table.",
+      "status": "active",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-16",
+      "knowledge_page": "knowledge/primitives/u4-zero-mask.md",
+      "implementation": "src/arithmetic/u4/zero.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "src/arithmetic/u4/zero.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "batch-projection",
+        "canonical-encoding",
+        "direct-opcode"
+      ],
+      "security": "Every hostile input is checked for canonical ScriptNum encoding and numeric range 0..=15 before OP_NUMEQUAL; the fragment makes no cryptographic claim and does not provide a terminal predicate.",
+      "stack_contract": "Consumes preserved | nibble[0] ... nibble[n-1] and returns preserved | (nibble[0] == 0) ... | (nibble[n-1] == 0), with the last predicate on top; no lookup table or auxiliary hint items are used.",
+      "configurations": [
+        {
+          "id": "checked-batch32",
+          "label": "u4_nibbles_to_zero_mask(32)",
+          "parameters": {
+            "nibble_count": 32,
+            "data_items": 32,
+            "hint_items": 0,
+            "input_check": "canonical-and-range",
+            "table_items": 0
+          },
+          "includes": "fragment-only: canonical ScriptNum and numeric nibble checks, direct zero equality, and output restoration; excludes input pushes, witness serialization from the script, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 414,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 35,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 414,
+          "static_non_push_opcodes": 318,
+          "metric_keys": [
+            "u4_zero_mask_batch32",
+            "u4_zero_mask_batch32_witness",
+            "u4_zero_mask_batch32_stack",
+            "u4_zero_mask_batch32_opcodes"
+          ]
+        }
+      ],
+      "limitations": [
+        "Output is a numeric zero predicate per nibble, not a packed byte or terminal aggregate",
+        "Batch capacity depends on unrelated main/altstack state; the standalone strict formula permits at most 997 inputs",
+        "Numeric and raw encoding checks are local to this fragment; protocol bindings and terminal predicates remain caller obligations",
+        "Bitcoin Core consensus and relay-policy validation have not been performed"
       ],
       "open_problems": [
         "OP-001",
