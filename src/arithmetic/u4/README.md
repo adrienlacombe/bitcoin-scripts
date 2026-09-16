@@ -20,6 +20,9 @@ these operations, but this module contains no hash-specific round logic.
   checked nibble decomposition and transposes batches up to 234 nibbles.
 - `bit_reverse::u4_nibbles_to_bit_reverse(nibble_count)` checks and reverses
   each nibble in a shared 16-item lookup table.
+- `bits::u4_nibbles_to_be_bits[_toaltstack](nibble_count, check_inputs)` and
+  `bits::u4_nibbles_to_le_bits[_toaltstack](nibble_count, check_inputs)` take
+  an explicit batch size in `1..=234` and have no default for input checking.
 
 ## Script metrics
 
@@ -29,13 +32,15 @@ setup, all queries, table cleanup, and restoration of 128 output bits to the
 main stack. The branch baseline applies the existing four-bit limb splitter to
 each input with the same output-restoration boundary.
 
-| Fragment | Locking script | Maximum combined stack | Executed non-push opcodes |
+| Fragment | Locking script | Maximum combined stack | Static non-push opcodes |
 | --- | ---: | ---: | ---: |
 | `u4_push_add_tables()` | <!-- metric:u4_add_tables -->92<!-- /metric:u4_add_tables --> bytes | instance-specific | not recorded |
 | Staggered bit-table setup | <!-- metric:u4_bits_table_push -->61<!-- /metric:u4_bits_table_push --> bytes | 61 table items | not recorded |
 | Staggered bit-table cleanup | <!-- metric:u4_bits_table_drop -->31<!-- /metric:u4_bits_table_drop --> bytes | consumes 61 items | not recorded |
 | One checked table query, output on altstack | <!-- metric:u4_bits_checked_query -->22<!-- /metric:u4_bits_checked_query --> bytes | composition-dependent | not recorded |
+| Little-endian staggered bit-table setup | <!-- metric:u4_bits_le_table_push -->61<!-- /metric:u4_bits_le_table_push --> bytes | 61 table items | not recorded |
 | Checked table batch, 32 nibbles | <!-- metric:u4_bits_checked_batch32 -->924<!-- /metric:u4_bits_checked_batch32 --> bytes | <!-- metric:u4_bits_checked_batch32_stack -->189<!-- /metric:u4_bits_checked_batch32_stack --> items | <!-- metric:u4_bits_checked_batch32_opcodes -->735<!-- /metric:u4_bits_checked_batch32_opcodes --> |
+| Checked little-endian table batch, 32 nibbles | <!-- metric:u4_bits_le_checked_batch32 -->924<!-- /metric:u4_bits_le_checked_batch32 --> bytes | <!-- metric:u4_bits_le_checked_batch32_stack -->189<!-- /metric:u4_bits_le_checked_batch32_stack --> items | <!-- metric:u4_bits_le_checked_batch32_opcodes -->735<!-- /metric:u4_bits_le_checked_batch32_opcodes --> |
 | Unchecked table batch, 32 nibbles | <!-- metric:u4_bits_unchecked_batch32 -->764<!-- /metric:u4_bits_unchecked_batch32 --> bytes | 189 items | not recorded |
 | Existing branch splitter, 32 four-bit limbs | <!-- metric:u4_bits_branch_batch32 -->1374<!-- /metric:u4_bits_branch_batch32 --> bytes | <!-- metric:u4_bits_branch_batch32_stack -->130<!-- /metric:u4_bits_branch_batch32_stack --> items | not recorded |
 | Checked high/low nibble pair to one byte | <!-- metric:u4_pair_to_u8_checked -->20<!-- /metric:u4_pair_to_u8_checked --> bytes | 4 bytes, 2 data items | <!-- metric:u4_pair_to_u8_checked_stack -->5<!-- /metric:u4_pair_to_u8_checked_stack --> items |
@@ -77,6 +82,12 @@ The bit-reversal primitive installs 16 table items, checks each nibble, and
 uses no witness hints beyond its input nibbles. Its 32-nibble row below is the
 representative batch; callers with unrelated live state must reduce the 981
 nibble standalone ceiling.
+The little-endian row has the same size and stack profile: it changes only the
+four values stored in each staggered table group. It is intended for callers
+that consume each nibble least-significant-bit first; reversing four output
+bits per nibble after the big-endian adapter is a separate composition cost.
+The representative little-endian witness is 32 canonical `0x0f` stack items,
+serialized as <!-- metric:u4_bits_le_checked_batch32_witness -->64<!-- /metric:u4_bits_le_checked_batch32_witness --> bytes.
 
 ## Security
 
@@ -129,6 +140,11 @@ inputs are consumed and replaced by four bits per nibble. The top input's most
 significant bit is the top output, followed by that nibble's remaining bits and
 then each deeper nibble. The `_toaltstack` variant leaves `preserved` on the
 main stack and all new bits above any pre-existing altstack state.
+
+For `u4_nibbles_to_le_bits(n, ...)`, the stack contract and input order are the
+same, but each nibble's least-significant bit is emitted first. The checked
+32-nibble representative consumes 32 witness data items (64 serialized
+witness bytes for the all-15 fixture); no hint items are required.
 
 The standalone batch peak is `4*n + 61` combined main/alt-stack items. The
 generator rejects `n > 234`, but callers must reduce the batch further for any
