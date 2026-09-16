@@ -1465,3 +1465,12 @@ measured peak is 6 rather than 9 items. This is useful when witness shape or
 live stack items dominate, but it is dominated for locking-script bytes and
 is not a general byte win. Evidence is `locally-reproduced`; deployment is
 `unclassified`.
+## NR-054: Full SHAKE256 output remains non-composable; prefixing only fixes the stack boundary
+
+The fixed 1,024-byte SHAKE256 output materializes 1,024 stack items and has a
+1,709-item local peak, so it remains consensus-incompatible. A parameterized
+32-byte prefix reduces the peak to 813 and preserves the FIPS 202 output, but
+still generates a 2,000,127-byte fragment. The prefix is therefore a useful
+stack-boundary experiment, not a deployable replacement or a complete
+incremental squeeze protocol. Larger prefixes require their own strict
+measurement because the live state, lookup table, and output all coexist.
