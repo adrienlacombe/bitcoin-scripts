@@ -10,8 +10,6 @@ these operations, but this module contains no hash-specific round logic.
   preloaded addition tables are used. There is no universal default.
 - Logic may use full or triangular half tables; shifts and rotations take
   `1..=3` bit counts unless their function documents otherwise.
-- `bits::u4_nibbles_to_be_bits[_toaltstack](nibble_count, check_inputs)` takes
-  an explicit batch size in `1..=234` and has no default for input checking.
 - `parity::u4_nibbles_to_parity(nibble_count)` takes a checked batch size in
   `1..=982`.
 - `lsb::u4_nibbles_to_lsb(nibble_count)` takes a checked batch size in
@@ -43,18 +41,18 @@ each input with the same output-restoration boundary.
 | Checked little-endian table batch, 32 nibbles | <!-- metric:u4_bits_le_checked_batch32 -->924<!-- /metric:u4_bits_le_checked_batch32 --> bytes | <!-- metric:u4_bits_le_checked_batch32_stack -->189<!-- /metric:u4_bits_le_checked_batch32_stack --> items | <!-- metric:u4_bits_le_checked_batch32_opcodes -->735<!-- /metric:u4_bits_le_checked_batch32_opcodes --> |
 | Unchecked table batch, 32 nibbles | <!-- metric:u4_bits_unchecked_batch32 -->764<!-- /metric:u4_bits_unchecked_batch32 --> bytes | 189 items | not recorded |
 | Existing branch splitter, 32 four-bit limbs | <!-- metric:u4_bits_branch_batch32 -->1374<!-- /metric:u4_bits_branch_batch32 --> bytes | <!-- metric:u4_bits_branch_batch32_stack -->130<!-- /metric:u4_bits_branch_batch32_stack --> items | not recorded |
-| Checked high/low nibble pair to one byte | <!-- metric:u4_pair_to_u8_checked -->20<!-- /metric:u4_pair_to_u8_checked --> bytes | 4 bytes, 2 data items | <!-- metric:u4_pair_to_u8_checked_stack -->5<!-- /metric:u4_pair_to_u8_checked_stack --> items |
-| Checked byte to high/low nibble pair | <!-- metric:u8_to_u4_pair_checked -->62<!-- /metric:u8_to_u4_pair_checked --> bytes | <!-- metric:u8_to_u4_pair_checked_witness -->4<!-- /metric:u8_to_u4_pair_checked_witness --> bytes, 1 data item | <!-- metric:u8_to_u4_pair_checked_stack -->4<!-- /metric:u8_to_u4_pair_checked_stack --> items |
-| `verify_canonical_nibble()` | <!-- metric:u4_canonical_nibble -->10<!-- /metric:u4_canonical_nibble --> bytes | <!-- metric:u4_canonical_nibble_witness -->3<!-- /metric:u4_canonical_nibble_witness --> bytes, 1 data item | <!-- metric:u4_canonical_nibble_stack -->4<!-- /metric:u4_canonical_nibble_stack --> items |
+| Checked high/low nibble pair to one byte | <!-- metric:u4_pair_to_u8_checked -->20<!-- /metric:u4_pair_to_u8_checked --> bytes | <!-- metric:u4_pair_to_u8_checked_stack -->5<!-- /metric:u4_pair_to_u8_checked_stack --> items | not recorded |
+| Checked byte to high/low nibble pair | <!-- metric:u8_to_u4_pair_checked -->62<!-- /metric:u8_to_u4_pair_checked --> bytes | <!-- metric:u8_to_u4_pair_checked_stack -->4<!-- /metric:u8_to_u4_pair_checked_stack --> items | not recorded |
+| `verify_canonical_nibble()` | <!-- metric:u4_canonical_nibble -->10<!-- /metric:u4_canonical_nibble --> bytes | <!-- metric:u4_canonical_nibble_stack -->4<!-- /metric:u4_canonical_nibble_stack --> items | not recorded |
 | `lexicographic_le(128)` | <!-- metric:u4_lexicographic_le_128 -->7500<!-- /metric:u4_lexicographic_le_128 --> bytes | <!-- metric:u4_lexicographic_le_128_stack -->259<!-- /metric:u4_lexicographic_le_128_stack --> items | <!-- metric:u4_lexicographic_le_128_opcodes -->4354<!-- /metric:u4_lexicographic_le_128_opcodes --> |
 | Checked parity batch, 32 nibbles | <!-- metric:u4_parity_batch32 -->440<!-- /metric:u4_parity_batch32 --> bytes | <!-- metric:u4_parity_batch32_stack -->50<!-- /metric:u4_parity_batch32_stack --> items | <!-- metric:u4_parity_batch32_opcodes -->328<!-- /metric:u4_parity_batch32_opcodes --> |
-
-<!-- metric:u4_parity_batch32_witness -->65<!-- /metric:u4_parity_batch32_witness --> serialized witness bytes for the representative parity batch.
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
-
-<!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 | Checked 16-nibble bit-plane transpose | <!-- metric:u4_bit_planes_batch16 -->776<!-- /metric:u4_bit_planes_batch16 --> bytes | <!-- metric:u4_bit_planes_batch16_stack -->125<!-- /metric:u4_bit_planes_batch16_stack --> items | <!-- metric:u4_bit_planes_batch16_opcodes -->573<!-- /metric:u4_bit_planes_batch16_opcodes --> |
 | Checked 32-nibble bit reversal | <!-- metric:u4_bit_reverse_batch32 -->344<!-- /metric:u4_bit_reverse_batch32 --> bytes | <!-- metric:u4_bit_reverse_batch32_stack -->51<!-- /metric:u4_bit_reverse_batch32_stack --> items | <!-- metric:u4_bit_reverse_batch32_opcodes -->232<!-- /metric:u4_bit_reverse_batch32_opcodes --> |
+
+<!-- metric:u4_parity_batch32_witness -->65<!-- /metric:u4_parity_batch32_witness --> serialized witness bytes for the representative parity batch.
+
+<!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -77,9 +75,9 @@ bytes and 50 combined stack items, with no hints and 65 witness bytes across
 expanding each nibble to four bits when only parity is needed.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
-16-nibble row below includes the reused decomposition and the transpose.
+16-nibble row above includes the reused decomposition and the transpose.
 The bit-reversal primitive installs 16 table items, checks each nibble, and
-uses no witness hints beyond its input nibbles. Its 32-nibble row below is the
+uses no witness hints beyond its input nibbles. Its 32-nibble row above is the
 representative batch; callers with unrelated live state must reduce the 981
 nibble standalone ceiling.
 The little-endian row has the same size and stack profile: it changes only the
@@ -87,7 +85,7 @@ four values stored in each staggered table group. It is intended for callers
 that consume each nibble least-significant-bit first; reversing four output
 bits per nibble after the big-endian adapter is a separate composition cost.
 The representative little-endian witness is 32 canonical `0x0f` stack items,
-serialized as <!-- metric:u4_bits_le_checked_batch32_witness -->64<!-- /metric:u4_bits_le_checked_batch32_witness --> bytes.
+serialized as <!-- metric:u4_bits_le_checked_batch32_witness -->65<!-- /metric:u4_bits_le_checked_batch32_witness --> bytes.
 
 ## Security
 
@@ -127,10 +125,9 @@ Bitcoin Core validation.
 No cryptographic hints are required. Operand nibbles may come from the witness;
 their order is operation-specific. The bit-plane adapter adds zero data or
 incremental hint items beyond the source nibbles. Tables are generated by the
-locking script.
-their order is operation-specific. The bit-reversal batch consumes one data
+locking script. The bit-reversal batch consumes one data
 item per nibble and has zero incremental hint items; its 32-nibble metric uses
-65 serialized witness bytes. Tables are generated by the locking script.
+65 serialized witness bytes.
 
 ## Stack contract
 
@@ -143,7 +140,7 @@ main stack and all new bits above any pre-existing altstack state.
 
 For `u4_nibbles_to_le_bits(n, ...)`, the stack contract and input order are the
 same, but each nibble's least-significant bit is emitted first. The checked
-32-nibble representative consumes 32 witness data items (64 serialized
+32-nibble representative consumes 32 witness data items (65 serialized
 witness bytes for the all-15 fixture); no hint items are required.
 
 The standalone batch peak is `4*n + 61` combined main/alt-stack items. The
@@ -180,3 +177,5 @@ The four-equal-index query is derived from the combined nibble-table sketch in
 The published direct table layout is not correct for every nibble under Bitcoin
 `OP_PICK` semantics. This implementation substitutes a locally reproduced
 61-item staggered layout; see the corresponding negative result.
+
+Canonical input witnesses, including the CompactSize item count: nibble packing uses <!-- metric:u4_pair_to_u8_checked_witness -->5<!-- /metric:u4_pair_to_u8_checked_witness --> bytes across two data items; byte splitting uses <!-- metric:u8_to_u4_pair_checked_witness -->4<!-- /metric:u8_to_u4_pair_checked_witness --> bytes in one data item; canonical-nibble validation uses <!-- metric:u4_canonical_nibble_witness -->3<!-- /metric:u4_canonical_nibble_witness --> bytes in one data item. None requires hints.

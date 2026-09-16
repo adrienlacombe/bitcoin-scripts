@@ -1950,26 +1950,6 @@ fn metrics() -> Vec<Metric> {
         four_way_hash_path_integer_commitment(&hash_path_preimage, hash_path_value, 31);
     let four_way_hash_path_witness =
         four_way_hash_path_integer_witness(&hash_path_preimage, hash_path_value, 31);
-    let hash_path_chain_alice_preimage = [0x42; 32];
-    let hash_path_chain_alice_bits = [true, false, false, true];
-    let hash_path_chain_bob_bits = [false, true, true];
-    let hash_path_chain_alice_commitment =
-        compute_hash_path_commitment(&hash_path_chain_alice_preimage, &hash_path_chain_alice_bits);
-    let hash_path_chain_bob_commitment =
-        compute_hash_path_commitment(&hash_path_chain_alice_commitment, &hash_path_chain_bob_bits);
-    let hash_path_chain_witness = hash_path_chain_bob_bits
-        .iter()
-        .rev()
-        .chain(hash_path_chain_alice_bits.iter().rev())
-        .map(|bit| if *bit { vec![1] } else { vec![] })
-        .chain(std::iter::once(hash_path_chain_alice_preimage.to_vec()))
-        .collect::<Vec<_>>();
-    let hash_path_chain_script = verify_hash_path_chain(
-        hash_path_chain_alice_bits.len(),
-        hash_path_chain_alice_commitment,
-        hash_path_chain_bob_bits.len(),
-        hash_path_chain_bob_commitment,
-    );
 
     let length_preimage = vec![0x24; 32];
     let length_commitment = preimage_length_commitment(&length_preimage);
@@ -1977,7 +1957,6 @@ fn metrics() -> Vec<Metric> {
     let division_witness = vec![scriptnum(14), scriptnum(119)];
     const U4_BITS_BATCH: u32 = 32;
     let u4_bits_checked_batch = u4::bits::u4_nibbles_to_be_bits(U4_BITS_BATCH, true);
-    let u4_bits_le_checked_batch = u4::bits::u4_nibbles_to_le_bits(U4_BITS_BATCH, true);
     let u4_bits_unchecked_batch = u4::bits::u4_nibbles_to_be_bits(U4_BITS_BATCH, false);
     let u4_bits_branch_batch = script! {
         for _ in 0..U4_BITS_BATCH {
@@ -2220,37 +2199,6 @@ fn metrics() -> Vec<Metric> {
         },
         Metric {
             readme: "src/arithmetic/u4/README.md",
-            key: "u4_bits_le_table_push",
-            value: script_len(u4::bits::u4_push_to_le_bits_table()),
-        },
-        Metric {
-            readme: "src/arithmetic/u4/README.md",
-            key: "u4_bits_le_checked_batch32",
-            value: script_len(u4_bits_le_checked_batch.clone()),
-        },
-        Metric {
-            readme: "src/arithmetic/u4/README.md",
-            key: "u4_bits_le_checked_batch32_witness",
-            value: witness_size(&u4_bits_inputs),
-        },
-        Metric {
-            readme: "src/arithmetic/u4/README.md",
-            key: "u4_bits_le_checked_batch32_stack",
-            value: max_stack_items(
-                script! {
-                    { u4_bits_le_checked_batch.clone() }
-                    { u4::stack::u4_drop(4 * U4_BITS_BATCH - 1) }
-                },
-                u4_bits_inputs.clone(),
-            ),
-        },
-        Metric {
-            readme: "src/arithmetic/u4/README.md",
-            key: "u4_bits_le_checked_batch32_opcodes",
-            value: static_non_push_opcodes(u4_bits_le_checked_batch),
-        },
-        Metric {
-            readme: "src/arithmetic/u4/README.md",
             key: "u4_bits_unchecked_batch32",
             value: script_len(u4_bits_unchecked_batch),
         },
@@ -2269,35 +2217,6 @@ fn metrics() -> Vec<Metric> {
                 },
                 u4_bits_inputs,
             ),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_le_bits",
-            value: script_len(u32::bits::u32_to_le_bits()),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_le_bits_witness",
-            value: witness_size(&vec![vec![0x42]; 4]),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_le_bits_stack",
-            value: max_stack_items(
-                script! {
-                    { u32::bits::u32_to_le_bits() }
-                    for _ in 0..32 {
-                        OP_DROP
-                    }
-                    OP_TRUE
-                },
-                vec![vec![0x42]; 4],
-            ),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_le_bits_opcodes",
-            value: static_non_push_opcodes(u32::bits::u32_to_le_bits()),
         },
         Metric {
             readme: "src/arithmetic/u32/README.md",
@@ -2336,29 +2255,6 @@ fn metrics() -> Vec<Metric> {
                 },
                 vec![],
             ),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_conditional_negate",
-            value: script_len(u32::stack::u32_conditional_negate()),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_conditional_negate_stack",
-            value: max_stack_items(
-                script! {
-                    { u32::stack::u32_push(0x8000_0000) }
-                    { 1 }
-                    { u32::stack::u32_conditional_negate() }
-                    OP_TRUE
-                },
-                vec![],
-            ),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_conditional_negate_opcodes",
-            value: static_non_push_opcodes(u32::stack::u32_conditional_negate()),
         },
         Metric {
             readme: "src/arithmetic/u32/README.md",
@@ -2432,54 +2328,6 @@ fn metrics() -> Vec<Metric> {
                 },
                 vec![],
             ),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_conditional_select",
-            value: script_len(u32::stack::u32_conditional_select()),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_conditional_select_witness_min",
-            value: witness_size(&vec![Vec::new(); 9]),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_conditional_select_witness_max",
-            value: witness_size(&vec![vec![1]; 9]),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_conditional_select_stack",
-            value: max_stack_items(u32::stack::u32_conditional_select(), vec![vec![1]; 9]),
-            key: "u32_iszero",
-            value: script_len(u32::stack::u32_iszero()),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_iszero_witness",
-            value: witness_size(&[scriptnum(0), scriptnum(0), scriptnum(0), scriptnum(0)]),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_iszero_stack",
-            value: max_stack_items(
-                u32::stack::u32_iszero(),
-                vec![scriptnum(0), scriptnum(0), scriptnum(0), scriptnum(0)],
-            ),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_iszero_opcodes",
-            value: static_non_push_opcodes(u32::stack::u32_iszero()),
-        },
-        Metric {
-            readme: "src/arithmetic/u32/README.md",
-            key: "u32_iszero_equal_baseline",
-            value: script_len(script! {
-                { u32::stack::u32_push(0) }
-                { u32::stack::u32_equal() }
-            }),
         },
         Metric {
             readme: "src/arithmetic/u32/README.md",
@@ -3823,30 +3671,6 @@ fn metrics() -> Vec<Metric> {
             value: script_len(sha256::sha2_u4::sha256(32)),
         },
         Metric {
-            readme: "src/hashes/hash160/README.md",
-            key: "hash160_32",
-            value: script_len(hash160::hash160(32)),
-        },
-        Metric {
-            readme: "src/hashes/hash160/README.md",
-            key: "hash160_witness_32",
-            value: witness_size(&vec![vec![0x42]; 32]),
-        },
-        Metric {
-            readme: "src/hashes/hash160/README.md",
-            key: "hash160_stack_32",
-            value: max_stack_items_strict(
-                script! {
-                    { hash160::hash160(32) }
-                    for _ in 0..20 {
-                        OP_DROP
-                    }
-                    OP_TRUE
-                },
-                vec![vec![0x42]; 32],
-            ),
-        },
-        Metric {
             readme: "src/hashes/shake256/README.md",
             key: "shake256_32_1024",
             value: script_len(shake256::shake256(32)),
@@ -3977,26 +3801,6 @@ fn metrics() -> Vec<Metric> {
                 verify_hash_path_to_integer(31, hash_path_commitment),
                 hash_path_witness,
             ),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "hash_path_chain_4_3",
-            value: script_len(hash_path_chain_script.clone()),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "hash_path_chain_4_3_witness",
-            value: witness_size(&hash_path_chain_witness),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "hash_path_chain_4_3_stack",
-            value: max_stack_items(hash_path_chain_script.clone(), hash_path_chain_witness),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "hash_path_chain_4_3_opcodes",
-            value: static_non_push_opcodes(hash_path_chain_script),
         },
         Metric {
             readme: "src/commitments/README.md",
@@ -4284,9 +4088,6 @@ fn metrics() -> Vec<Metric> {
         },
     ]
     .into_iter()
-    .chain(u32_compressed_add_metrics())
-    .chain(u32_compressed_equal_metrics())
-    .chain(u32_compressed_lessthan_metrics())
     .chain(prince_metrics())
     .chain(winternitz_metrics())
     .chain(winternitz_sha256_metrics())
@@ -4295,7 +4096,17 @@ fn metrics() -> Vec<Metric> {
     .chain(winternitz_overview_metrics())
     .chain(winternitz20_metrics())
     .chain(winternitz20_composition_metrics())
+    .chain(u32_compressed_add_metrics())
+    .chain(u32_compressed_equal_metrics())
+    .chain(u32_compressed_lessthan_metrics())
     .chain(signed_window_metrics())
+    .chain(hash_path_chain_metrics())
+    .chain(hash160_composition_metrics())
+    .chain(u32_le_bits_metrics())
+    .chain(u32_conditional_select_metrics())
+    .chain(u32_conditional_negate_metrics())
+    .chain(u4_le_bits_metrics())
+    .chain(u32_iszero_metrics())
     .collect()
 }
 
@@ -4592,6 +4403,11 @@ fn u4_pair_to_u8_metrics_are_current() {
         witness.clone(),
     );
     check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_pair_to_u8_checked_witness",
+            value: witness_size(&witness),
+        },
         Metric {
             readme: "src/arithmetic/u4/README.md",
             key: "u4_pair_to_u8_checked",
@@ -4983,7 +4799,7 @@ fn u32_compressed_lessthan_metrics() -> Vec<Metric> {
             readme: "src/arithmetic/u32/README.md",
             key: "u32_compressed_lessthan_witness_max",
             value: witness_size(&[
-                compressed_u32_witness(0),
+                compressed_u32_witness(0x8000_0000),
                 compressed_u32_witness(0x8000_0000),
             ]),
         },
@@ -5239,7 +5055,62 @@ fn u4_bit_reverse_metrics_are_current() {
 
 #[test]
 fn hash160_metrics_are_current() {
-    check_readme_metrics(vec![
+    check_readme_metrics(hash160_composition_metrics());
+}
+
+fn hash_path_chain_metrics() -> Vec<Metric> {
+    let hash_path_chain_alice_preimage = [0x42; 32];
+    let hash_path_chain_alice_bits = [true, false, false, true];
+    let hash_path_chain_bob_bits = [false, true, true];
+    let hash_path_chain_alice_commitment =
+        compute_hash_path_commitment(&hash_path_chain_alice_preimage, &hash_path_chain_alice_bits);
+    let hash_path_chain_bob_commitment =
+        compute_hash_path_commitment(&hash_path_chain_alice_commitment, &hash_path_chain_bob_bits);
+    let hash_path_chain_witness = hash_path_chain_bob_bits
+        .iter()
+        .rev()
+        .chain(hash_path_chain_alice_bits.iter().rev())
+        .map(|bit| if *bit { vec![1] } else { vec![] })
+        .chain(std::iter::once(hash_path_chain_alice_preimage.to_vec()))
+        .collect::<Vec<_>>();
+    let hash_path_chain_script = verify_hash_path_chain(
+        hash_path_chain_alice_bits.len(),
+        hash_path_chain_alice_commitment,
+        hash_path_chain_bob_bits.len(),
+        hash_path_chain_bob_commitment,
+    );
+
+    vec![
+        Metric {
+            readme: "src/commitments/README.md",
+            key: "hash_path_chain_4_3",
+            value: script_len(hash_path_chain_script.clone()),
+        },
+        Metric {
+            readme: "src/commitments/README.md",
+            key: "hash_path_chain_4_3_witness",
+            value: witness_size(&hash_path_chain_witness),
+        },
+        Metric {
+            readme: "src/commitments/README.md",
+            key: "hash_path_chain_4_3_stack",
+            value: max_stack_items(hash_path_chain_script.clone(), hash_path_chain_witness),
+        },
+        Metric {
+            readme: "src/commitments/README.md",
+            key: "hash_path_chain_4_3_opcodes",
+            value: static_non_push_opcodes(hash_path_chain_script),
+        },
+    ]
+}
+
+#[test]
+fn hash_path_chain_metrics_are_current() {
+    check_readme_metrics(hash_path_chain_metrics());
+}
+
+fn hash160_composition_metrics() -> Vec<Metric> {
+    vec![
         Metric {
             readme: "src/hashes/hash160/README.md",
             key: "hash160_32",
@@ -5256,11 +5127,227 @@ fn hash160_metrics_are_current() {
             value: max_stack_items_strict(
                 script! {
                     { hash160::hash160(32) }
-                    for _ in 0..20 { OP_DROP }
+                    for _ in 0..20 {
+                        OP_DROP
+                    }
                     OP_TRUE
                 },
                 vec![vec![0x42]; 32],
             ),
         },
-    ]);
+    ]
+}
+
+fn u32_le_bits_metrics() -> Vec<Metric> {
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_witness_max",
+            value: witness_size(&vec![scriptnum(255); 4]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits",
+            value: script_len(u32::bits::u32_to_le_bits()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_witness",
+            value: witness_size(&vec![vec![0x42]; 4]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_stack",
+            value: max_stack_items_strict(
+                script! {
+                    { u32::bits::u32_to_le_bits() }
+                    for _ in 0..32 {
+                        OP_DROP
+                    }
+                    OP_TRUE
+                },
+                vec![vec![0x42]; 4],
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_opcodes",
+            value: static_non_push_opcodes(u32::bits::u32_to_le_bits()),
+        },
+    ]
+}
+
+#[test]
+fn u32_le_bits_metrics_are_current() {
+    check_readme_metrics(u32_le_bits_metrics());
+}
+
+fn u32_conditional_select_metrics() -> Vec<Metric> {
+    let mut maximum = vec![scriptnum(i64::from(i32::MAX))];
+    maximum.extend((0..8).map(|_| scriptnum(255)));
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_conditional_select",
+            value: script_len(u32::stack::u32_conditional_select()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_conditional_select_witness_min",
+            value: witness_size(&vec![Vec::new(); 9]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_conditional_select_witness_max",
+            value: witness_size(&maximum),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_conditional_select_stack",
+            value: max_stack_items_strict(
+                script! {
+                    { u32::stack::u32_conditional_select() }
+                    for _ in 0..4 { 255 OP_EQUALVERIFY }
+                    OP_TRUE
+                },
+                maximum,
+            ),
+        },
+    ]
+}
+
+#[test]
+fn u32_conditional_select_metrics_are_current() {
+    check_readme_metrics(u32_conditional_select_metrics());
+}
+
+fn u32_conditional_negate_metrics() -> Vec<Metric> {
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_conditional_negate",
+            value: script_len(u32::stack::u32_conditional_negate()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_conditional_negate_stack",
+            value: max_stack_items_strict(
+                script! {
+                    { u32::stack::u32_conditional_negate() }
+                    0 OP_EQUALVERIFY
+                    0 OP_EQUALVERIFY
+                    0 OP_EQUALVERIFY
+                    128 OP_EQUALVERIFY
+                    OP_TRUE
+                },
+                vec![
+                    scriptnum(128),
+                    scriptnum(0),
+                    scriptnum(0),
+                    scriptnum(0),
+                    scriptnum(1),
+                ],
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_conditional_negate_opcodes",
+            value: static_non_push_opcodes(u32::stack::u32_conditional_negate()),
+        },
+    ]
+}
+
+#[test]
+fn u32_conditional_negate_metrics_are_current() {
+    check_readme_metrics(u32_conditional_negate_metrics());
+}
+
+fn u4_le_bits_metrics() -> Vec<Metric> {
+    const U4_BITS_BATCH: u32 = 32;
+    let u4_bits_le_checked_batch = u4::bits::u4_nibbles_to_le_bits(U4_BITS_BATCH, true);
+    let u4_bits_inputs = vec![scriptnum(15); U4_BITS_BATCH as usize];
+    vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bits_le_table_push",
+            value: script_len(u4::bits::u4_push_to_le_bits_table()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bits_le_checked_batch32",
+            value: script_len(u4_bits_le_checked_batch.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bits_le_checked_batch32_witness",
+            value: witness_size(&u4_bits_inputs),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bits_le_checked_batch32_stack",
+            value: max_stack_items_strict(
+                script! {
+                    { u4_bits_le_checked_batch.clone() }
+                    { u4::stack::u4_drop(4 * U4_BITS_BATCH - 1) }
+                },
+                u4_bits_inputs.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bits_le_checked_batch32_opcodes",
+            value: static_non_push_opcodes(u4_bits_le_checked_batch),
+        },
+    ]
+}
+
+#[test]
+fn u4_le_bits_metrics_are_current() {
+    check_readme_metrics(u4_le_bits_metrics());
+}
+
+fn u32_iszero_metrics() -> Vec<Metric> {
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_witness_max",
+            value: witness_size(&vec![scriptnum(255); 4]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero",
+            value: script_len(u32::stack::u32_iszero()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_witness",
+            value: witness_size(&[scriptnum(0), scriptnum(0), scriptnum(0), scriptnum(0)]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_stack",
+            value: max_stack_items_strict(
+                u32::stack::u32_iszero(),
+                vec![scriptnum(0), scriptnum(0), scriptnum(0), scriptnum(0)],
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_opcodes",
+            value: static_non_push_opcodes(u32::stack::u32_iszero()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_iszero_equal_baseline",
+            value: script_len(script! {
+                { u32::stack::u32_push(0) }
+                { u32::stack::u32_equal() }
+            }),
+        },
+    ]
+}
+
+#[test]
+fn u32_iszero_metrics_are_current() {
+    check_readme_metrics(u32_iszero_metrics());
 }

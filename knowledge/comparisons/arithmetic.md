@@ -14,7 +14,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to 128 bits | u4 staggered batch table | 924 | 189-item peak; tapscript-oriented |
 | Canonical compressed-u32 decode | u32 raw-encoding boundary | 431 | 7-item peak; 7-byte maximum witness; rejects aliases |
 | Checked u31 width-9 decomposition | u31 range boundary | 85 | 10-item peak; 4-byte representative witness; numeric `0..=511` check |
-| Checked u4 nibble pair to byte | `u4_pair_to_u8(true)` | 20 | 5-item peak; 2 data items; 4-byte witness |
+| Checked u4 nibble pair to byte | `u4_pair_to_u8(true)` | 20 | 5-item peak; 2 data items; 5-byte witness |
 | Checked u8 byte to nibble pair | `u8_to_u4_pair(true)` | 62 | 4-item peak; 4-byte witness; two nibble outputs |
 | Checked u8 high-bit extraction | `u8_extract_hbit_checked(4)` | 73 | 5-item peak; 4-byte witness; rejects non-byte ScriptNums |
 | Canonical checked nibble boundary | `verify_canonical_nibble()` | 10 | 4-item peak; 3-byte witness; rejects noncanonical ScriptNums |
@@ -26,9 +26,9 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to LSB bits | `u4_nibbles_to_lsb(32)` | 440 | 50-item peak; one output bit per input |
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |
 | 32 checked nibble bit reversals | u4 16-item reversal table | 344 | 51-item peak; 65-byte witness |
-| One checked u32 word to little-endian bits | u32 byte splitter | 520 | 9-byte witness; 35-item peak; numeric byte range only |
-| u32 conditional word selection | u32 normalized truthy selector | 9 | 10–19-byte witness; 9-item peak |
-| 32 checked nibbles to 128 little-endian bits | u4 mirrored staggered table | 924 | 64-byte witness; 189-item peak; same table cost, no per-nibble reversal |
+| One checked u32 word to little-endian bits | u32 byte splitter | 514 | 9-byte witness; 35-item peak; numeric byte range only |
+| u32 conditional word selection | u32 normalized truthy selector | 9 | 10–30-byte witness; 9-item peak |
+| 32 checked nibbles to 128 little-endian bits | u4 mirrored staggered table | 924 | 65-byte witness; 189-item peak; same table cost, no per-nibble reversal |
 | u32 zero predicate | direct four-limb `OP_0NOTEQUAL`/`OP_BOOLAND` fold | 4 | 5-byte four-limb witness; 4-item peak; canonical byte limbs required |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide multiply | U254 multiply | 111,466 | Above optimizer cutoff; unoptimized |

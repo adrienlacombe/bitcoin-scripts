@@ -27,7 +27,9 @@ boundary is not comparable evidence.
   explicitly says main-only. Table memory and unrelated live protocol state
   must be disclosed.
 - **Executed opcodes:** actual executed non-push operations for the stated
-  branch and input. Static opcode count is a different metric.
+  branch and input. Static opcode count is a different metric, recorded in the
+  optional `static_non_push_opcodes` catalog field; it must not populate
+  `executed_opcodes` when dynamic counting is unavailable.
 - **Validation weight:** tapscript validation budget consumed under the stated
   interpreter and transaction context.
 - **Generation/execution time:** wall time is diagnostic, not a consensus

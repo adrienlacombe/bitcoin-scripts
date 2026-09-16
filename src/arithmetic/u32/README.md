@@ -40,7 +40,7 @@ includes the required 256-item shared logic table. Strict greater-than has the
 same metrics as strict less-than, and greater-than-or-equal has the same metrics
 as less-than-or-equal.
 
-| Fragment | Locking script | Auxiliary unlocking hints | Maximum main-stack depth |
+| Fragment | Locking script | Witness bytes (see boundary below) | Combined stack peak |
 | --- | ---: | ---: | ---: |
 | `u32_add_drop(0, 1)` | <!-- metric:u32_add_drop -->78<!-- /metric:u32_add_drop --> bytes | 0 bytes | <!-- metric:u32_add_drop_stack -->10<!-- /metric:u32_add_drop_stack --> items |
 | `u32_compressed_add()` | <!-- metric:u32_compressed_add -->1016<!-- /metric:u32_compressed_add --> bytes | <!-- metric:u32_compressed_add_witness -->11<!-- /metric:u32_compressed_add_witness --> bytes (<!-- metric:u32_compressed_add_witness_max -->13<!-- /metric:u32_compressed_add_witness_max --> max) | <!-- metric:u32_compressed_add_stack -->11<!-- /metric:u32_compressed_add_stack --> items |
@@ -52,13 +52,15 @@ as less-than-or-equal.
 | `u32_or(0, 1, 3)` (table excluded) | <!-- metric:u32_or -->326<!-- /metric:u32_or --> bytes | 0 bytes | <!-- metric:u32_or_stack -->272<!-- /metric:u32_or_stack --> items, including table |
 | `u32_notequal()` | <!-- metric:u32_notequal -->19<!-- /metric:u32_notequal --> bytes | 0 bytes | <!-- metric:u32_notequal_stack -->9<!-- /metric:u32_notequal_stack --> items |
 | `u32_compressed_equal()` | <!-- metric:u32_compressed_equal -->37<!-- /metric:u32_compressed_equal --> bytes | <!-- metric:u32_compressed_equal_witness -->11<!-- /metric:u32_compressed_equal_witness --> bytes | <!-- metric:u32_compressed_equal_stack -->5<!-- /metric:u32_compressed_equal_stack --> items |
-| `u32_conditional_select()` | <!-- metric:u32_conditional_select -->9<!-- /metric:u32_conditional_select --> bytes | <!-- metric:u32_conditional_select_witness_min -->10<!-- /metric:u32_conditional_select_witness_min -->–<!-- metric:u32_conditional_select_witness_max -->19<!-- /metric:u32_conditional_select_witness_max --> bytes | <!-- metric:u32_conditional_select_stack -->9<!-- /metric:u32_conditional_select_stack --> items |
+| `u32_conditional_select()` | <!-- metric:u32_conditional_select -->9<!-- /metric:u32_conditional_select --> bytes | <!-- metric:u32_conditional_select_witness_min -->10<!-- /metric:u32_conditional_select_witness_min -->–<!-- metric:u32_conditional_select_witness_max -->30<!-- /metric:u32_conditional_select_witness_max --> bytes | <!-- metric:u32_conditional_select_stack -->9<!-- /metric:u32_conditional_select_stack --> items |
 | `u32_iszero()` | <!-- metric:u32_iszero -->4<!-- /metric:u32_iszero --> bytes | <!-- metric:u32_iszero_witness -->5<!-- /metric:u32_iszero_witness --> bytes | <!-- metric:u32_iszero_stack -->4<!-- /metric:u32_iszero_stack --> items |
 | `u8_push_xor_table()` | <!-- metric:u8_logic_table_push -->236<!-- /metric:u8_logic_table_push --> bytes | 0 bytes | 256 table items |
 | `u8_drop_xor_table()` | <!-- metric:u8_logic_table_drop -->128<!-- /metric:u8_logic_table_drop --> bytes | 0 bytes | consumes 256 table items |
 | `u32_uncompress_canonical()` | <!-- metric:u32_uncompress_canonical -->431<!-- /metric:u32_uncompress_canonical --> bytes | <!-- metric:u32_uncompress_canonical_witness -->7<!-- /metric:u32_uncompress_canonical_witness --> bytes, 1 data item | <!-- metric:u32_uncompress_canonical_stack -->7<!-- /metric:u32_uncompress_canonical_stack --> items |
 | `u8_extract_hbit_checked(4)` | <!-- metric:u8_extract_hbit_checked -->73<!-- /metric:u8_extract_hbit_checked --> bytes | <!-- metric:u8_extract_hbit_checked_witness -->4<!-- /metric:u8_extract_hbit_checked_witness --> bytes, 1 data item | <!-- metric:u8_extract_hbit_checked_stack -->5<!-- /metric:u8_extract_hbit_checked_stack --> items |
 | `verify_canonical_byte()` | <!-- metric:u32_canonical_byte -->12<!-- /metric:u32_canonical_byte --> bytes | <!-- metric:u32_canonical_byte_witness -->4<!-- /metric:u32_canonical_byte_witness --> bytes, 1 data item | <!-- metric:u32_canonical_byte_stack -->4<!-- /metric:u32_canonical_byte_stack --> items |
+| `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
+| `u32_to_le_bits()` | <!-- metric:u32_le_bits -->514<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
 
 `u32_compressed_add()` is a checked wire adapter: it accepts two canonical
 compressed u32 ScriptNums, expands them through the existing byte carry chain,
@@ -80,16 +82,14 @@ widths are rejected before expansion.
 The same representative byte baseline has
 <!-- metric:u32_add_drop_witness -->20<!-- /metric:u32_add_drop_witness --> serialized witness bytes and a
 <!-- metric:u32_add_drop_byte_stack -->10<!-- /metric:u32_add_drop_byte_stack --> item strict peak.
-| `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
-| `u32_to_le_bits()` | <!-- metric:u32_le_bits -->520<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
 
 The conditional-negation fragment contains <!-- metric:u32_conditional_negate_opcodes -->52<!-- /metric:u32_conditional_negate_opcodes --> static non-push opcodes under the repository's compilation policy. The local tapscript executor does not expose a useful dynamic opcode counter for this fragment.
 
-Operand witness serialization is deliberately excluded: callers may construct
+Rows with zero witness bytes exclude operand serialization: callers may construct
 words inside the locking script or supply four witness items per word. No
 operation-specific hint is needed. The conditional selector uses one condition
 item plus two four-byte words, for nine witness items when all inputs come from
-the witness. The logic table can be shared by any number of XOR, AND, and OR
+the witness. Its maximum canonical witness uses a four-byte ScriptNum condition and eight two-byte ScriptNum limbs. The logic table can be shared by any number of XOR, AND, and OR
 operations in one script.
 
 The canonical compressed-u32 row uses the maximum five-byte witness item for
@@ -139,21 +139,26 @@ four-byte `u32_equal()` witness. The maximum sentinel witness is 13 bytes.
 The 37-byte fragment is a deliberate trade: it reduces witness item count and
 width while costing 19 more locking bytes than `u32_equal()`. The measured
 snapshot records a <!-- metric:u32_compressed_equal_witness_max -->13<!-- /metric:u32_compressed_equal_witness_max -->-byte maximum witness and a <!-- metric:u32_equal_witness -->17<!-- /metric:u32_equal_witness -->-byte, <!-- metric:u32_equal_stack -->9<!-- /metric:u32_equal_stack -->-item byte baseline.
+
 `u32_compressed_lessthan()` accepts two canonical compressed u32 ScriptNums
 with the same `... a b -> ... (a < b)` contract as `u32_lessthan()`. It
 validates hostile encodings, maps the signed compressed domain to a sign bit
 and a legal 31-bit magnitude, and compares those values without expanding
-four byte limbs. The representative witness is two items and <!-- metric:u32_compressed_lessthan_witness -->11<!-- /metric:u32_compressed_lessthan_witness --> serialized bytes versus <!-- metric:u32_lessthan_witness -->17<!-- /metric:u32_lessthan_witness --> bytes for the byte baseline. The sentinel-boundary maximum is <!-- metric:u32_compressed_lessthan_witness_max -->8<!-- /metric:u32_compressed_lessthan_witness_max --> bytes. The fragment costs 124 locking bytes and peaks at <!-- metric:u32_compressed_lessthan_stack -->6<!-- /metric:u32_compressed_lessthan_stack --> items, so it is a witness-shape tradeoff rather than a general byte win.
+four byte limbs. The representative witness is two items and <!-- metric:u32_compressed_lessthan_witness -->11<!-- /metric:u32_compressed_lessthan_witness --> serialized bytes versus <!-- metric:u32_lessthan_witness -->17<!-- /metric:u32_lessthan_witness --> bytes for the byte baseline. The maximum canonical witness is <!-- metric:u32_compressed_lessthan_witness_max -->13<!-- /metric:u32_compressed_lessthan_witness_max --> bytes. The fragment costs 124 locking bytes and peaks at <!-- metric:u32_compressed_lessthan_stack -->6<!-- /metric:u32_compressed_lessthan_stack --> items, so it is a witness-shape tradeoff rather than a general byte win.
+
 ## Bit conversion
 
 `u32_to_le_bits()` consumes one u32 word and returns 32 numeric bit items. The
 least-significant byte is on top of the input word; its bit zero is on top of
 the output, followed by bits one through seven and then the next byte. Each
-byte is range-checked numerically against `0..=255`. The 520-byte fragment has
-<!-- metric:u32_le_bits_opcodes -->370<!-- /metric:u32_le_bits_opcodes --> static non-push opcodes and a 35-item local peak with four one-byte witness
+byte is range-checked numerically against `0..=255`. The 514-byte fragment has
+<!-- metric:u32_le_bits_opcodes -->338<!-- /metric:u32_le_bits_opcodes --> static non-push opcodes and a 35-item local peak with four one-byte witness
 items; it does not establish byte-unique ScriptNum encodings.
 This is a byte-input adapter rather than a replacement for the smaller
 nibble-input table when a caller already owns canonical u4 values.
+
+## Conditional and zero predicates
+
 `u32_conditional_negate()` consumes a condition above one word and leaves the
 word unchanged for zero, or returns its modulo-`2^32` negation for any nonzero
 condition. It normalizes the condition before `OP_IF`, so non-minimal boolean
@@ -164,3 +169,5 @@ byte-limb contract and does not itself range-check the four word limbs.
 `u32_push(0) + u32_equal()` baseline under the same policy compilation. The
 zero predicate contains <!-- metric:u32_iszero_opcodes -->4<!-- /metric:u32_iszero_opcodes -->
 static non-push opcodes; the baseline measures <!-- metric:u32_iszero_equal_baseline -->21<!-- /metric:u32_iszero_equal_baseline --> bytes.
+
+The zero-word fixture uses 5 serialized witness bytes; the maximum canonical byte-word witness is <!-- metric:u32_iszero_witness_max -->13<!-- /metric:u32_iszero_witness_max --> bytes. The little-endian bit fixture uses four `0x42` limbs (9 bytes), with a maximum canonical witness of <!-- metric:u32_le_bits_witness_max -->13<!-- /metric:u32_le_bits_witness_max --> bytes. These focused metrics use strict local tapscript execution; deployment remains `unclassified`.

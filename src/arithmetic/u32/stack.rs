@@ -372,14 +372,13 @@ mod tests {
             assert!(!result.success, "accepted malformed byte: {result}");
         }
     }
-    use crate::support::execution::{execute_script_with_inputs_strict, run};
+    use crate::support::execution::execute_script_with_inputs_strict;
 
     fn compressed_scriptnum(value: u32) -> Vec<u8> {
         let mut bytes = [0u8; 8];
         let length = bitcoin::script::write_scriptint(&mut bytes, i64::from(value as i32));
         bytes[..length].to_vec()
     }
-
 
     #[test]
     fn test_u32_compressed_equal_boundaries() {

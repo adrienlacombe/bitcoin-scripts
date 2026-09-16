@@ -26,6 +26,13 @@ class ConfigurationEvidenceTests(unittest.TestCase):
     def best(self, *filters):
         return json.loads(self.query("best", RECORD, "script_bytes", *filters, "--json"))
 
+    def test_static_opcodes_are_not_reported_as_execution_counts(self):
+        static = json.loads(self.query("best", "arithmetic/u32", "static_non_push_opcodes", "--json"))
+        bits = next(row for row in static if row["configuration"] == "u32-le-bits")
+        self.assertEqual(bits["value"], 338)
+        dynamic = json.loads(self.query("best", "arithmetic/u32", "executed_opcodes", "--json"))
+        self.assertNotIn("u32-le-bits", {row["configuration"] for row in dynamic})
+
     def test_policy_query_returns_only_the_validated_configuration(self):
         rows = self.best("--execution", "policy-validated")
         self.assertEqual([row["configuration"] for row in rows], [CORE_CONFIG])

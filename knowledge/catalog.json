@@ -1,6 +1,6 @@
 {
   "schema_version": 1.1,
-  "as_of": "2026-09-11",
+  "as_of": "2026-09-16",
   "cost_model": "knowledge/cost-model.md",
   "records": [
     {
@@ -247,7 +247,7 @@
       "status": "active",
       "evidence": "locally-reproduced",
       "execution": "unclassified",
-      "as_of": "2026-09-11",
+      "as_of": "2026-09-16",
       "knowledge_page": "knowledge/primitives/u4.md",
       "implementation": "src/arithmetic/u4/mod.rs",
       "documentation": "src/arithmetic/u4/README.md",
@@ -319,8 +319,8 @@
           },
           "includes": "fragment-only: two nibble range checks and arithmetic packing of high | low into one byte; representative witness has two data items; excludes terminal predicate and transaction context",
           "script_bytes": 20,
-          "witness_bytes": 4,
-          "witness_bytes_max": 4,
+          "witness_bytes": 5,
+          "witness_bytes_max": 5,
           "max_stack_items": 5,
           "executed_opcodes": null,
           "validation_weight": null,
@@ -328,7 +328,8 @@
           "per_use_script_bytes": 20,
           "metric_keys": [
             "u4_pair_to_u8_checked",
-            "u4_pair_to_u8_checked_stack"
+            "u4_pair_to_u8_checked_stack",
+            "u4_pair_to_u8_checked_witness"
           ]
         },
         {
@@ -386,12 +387,12 @@
             "data_items": 16,
             "hint_items": 0
           },
-          "includes": "fragment-with-memory: checked 61-item nibble-to-bit table, restoration of 64 bits, static bit-plane permutation, and output restoration; representative witness size records 16 hostile nibble data items; excludes terminal predicate, unrelated live state, and transaction context",
+          "includes": "fragment-with-memory: checked 61-item nibble-to-bit table, restoration of 64 bits, static bit-plane permutation, and output restoration; representative witness size records 16 hostile nibble data items; excludes terminal predicate, unrelated live state, and transaction context; static non-push opcode count is 573, dynamic count is unavailable",
           "script_bytes": 776,
           "witness_bytes": 33,
           "witness_bytes_max": 33,
           "max_stack_items": 125,
-          "executed_opcodes": 573,
+          "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 61,
           "per_use_script_bytes": null,
@@ -399,7 +400,8 @@
             "u4_bit_planes_batch16",
             "u4_bit_planes_batch16_stack",
             "u4_bit_planes_batch16_opcodes"
-          ]
+          ],
+          "static_non_push_opcodes": 573
         },
         {
           "id": "nibble-bit-reverse-batch32-checked",
@@ -411,12 +413,12 @@
             "data_items": 32,
             "hint_items": 0
           },
-          "includes": "fragment-with-memory: 16-item bit-reversal table setup, 32 checked lookups, table cleanup, and output restoration; representative witness size records 32 hostile nibble data items; excludes terminal predicate, unrelated live state, and transaction context",
+          "includes": "fragment-with-memory: 16-item bit-reversal table setup, 32 checked lookups, table cleanup, and output restoration; representative witness size records 32 hostile nibble data items; excludes terminal predicate, unrelated live state, and transaction context; static non-push opcode count is 232, dynamic count is unavailable",
           "script_bytes": 344,
           "witness_bytes": 65,
           "witness_bytes_max": 65,
           "max_stack_items": 51,
-          "executed_opcodes": 232,
+          "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 16,
           "per_use_script_bytes": 8,
@@ -424,7 +426,8 @@
             "u4_bit_reverse_batch32",
             "u4_bit_reverse_batch32_stack",
             "u4_bit_reverse_batch32_opcodes"
-          ]
+          ],
+          "static_non_push_opcodes": 232
         },
         {
           "id": "nibble-to-le-bits-batch32-checked",
@@ -437,12 +440,12 @@
             "complete_witness_items": 32,
             "hint_items": 0
           },
-          "includes": "fragment-with-memory: 61-item mirrored staggered-table setup, 32 checked queries, table cleanup, and restoration of all 128 output bits to the main stack; witness_bytes reports 32 canonical 0x0f input items; excludes terminal predicate, unrelated live state, and transaction context",
+          "includes": "fragment-with-memory: 61-item mirrored staggered-table setup, 32 checked queries, table cleanup, and restoration of all 128 output bits to the main stack; witness_bytes reports 32 canonical 0x0f input items; excludes terminal predicate, unrelated live state, and transaction context; static non-push opcode count is 735, dynamic count is unavailable",
           "script_bytes": 924,
-          "witness_bytes": 64,
-          "witness_bytes_max": 64,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
           "max_stack_items": 189,
-          "executed_opcodes": 735,
+          "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 61,
           "per_use_script_bytes": 26,
@@ -452,7 +455,8 @@
             "u4_bits_le_checked_batch32_witness",
             "u4_bits_le_checked_batch32_stack",
             "u4_bits_le_checked_batch32_opcodes"
-          ]
+          ],
+          "static_non_push_opcodes": 735
         }
       ],
       "limitations": [
@@ -540,7 +544,7 @@
       "status": "active",
       "evidence": "locally-reproduced",
       "execution": "unclassified",
-      "as_of": "2026-09-11",
+      "as_of": "2026-09-16",
       "knowledge_page": "knowledge/primitives/u32.md",
       "implementation": "src/arithmetic/u32/mod.rs",
       "documentation": "src/arithmetic/u32/README.md",
@@ -588,10 +592,10 @@
             "condition": "numeric truthiness normalized with OP_0NOTEQUAL",
             "word_width_bytes": 4
           },
-          "includes": "fragment-only: condition normalization, whole-word branch selection, and restoration of the selected byte sequence; excludes input pushes, output check, unrelated live state, and transaction context",
+          "includes": "fragment-only: condition normalization, whole-word branch selection, and restoration of the selected byte sequence; excludes input pushes, output check, unrelated live state, and transaction context; witness maximum assumes canonical byte limbs and, where present, an at-most-four-byte ScriptNum condition",
           "script_bytes": 9,
           "witness_bytes": 10,
-          "witness_bytes_max": 19,
+          "witness_bytes_max": 30,
           "max_stack_items": 9,
           "executed_opcodes": null,
           "validation_weight": null,
@@ -699,21 +703,23 @@
             "byte_range_check": true,
             "bit_order": "least-significant bit of the least-significant byte on top"
           },
-          "includes": "fragment-only: four numeric byte range checks and bit extraction; excludes witness serialization and terminal predicate",
-          "script_bytes": 520,
+          "includes": "fragment-only: four numeric byte range checks and bit extraction; reports the 9-byte four-0x42 fixture and 13-byte maximum canonical byte-word witness; excludes input pushes and terminal predicate; static non-push opcode count is 338, dynamic count is unavailable",
+          "script_bytes": 514,
           "witness_bytes": 9,
-          "witness_bytes_max": 9,
+          "witness_bytes_max": 13,
           "max_stack_items": 35,
-          "executed_opcodes": 370,
+          "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
-          "per_use_script_bytes": 520,
+          "per_use_script_bytes": 514,
           "metric_keys": [
             "u32_le_bits",
             "u32_le_bits_witness",
             "u32_le_bits_stack",
-            "u32_le_bits_opcodes"
-          ]
+            "u32_le_bits_opcodes",
+            "u32_le_bits_witness_max"
+          ],
+          "static_non_push_opcodes": 338
         },
         {
           "id": "conditional-negate",
@@ -722,12 +728,12 @@
             "condition": "nonzero means negate",
             "word_representation": "four byte limbs"
           },
-          "includes": "fragment-only: condition normalization, branch, zero-word construction, and modulo-2^32 subtraction; excludes word pushes and output check",
+          "includes": "fragment-only: condition normalization, branch, zero-word construction, and modulo-2^32 subtraction; excludes word pushes and output check; static non-push opcode count is 52, dynamic count is unavailable",
           "script_bytes": 83,
           "witness_bytes": 0,
           "witness_bytes_max": 0,
           "max_stack_items": 9,
-          "executed_opcodes": 52,
+          "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
           "per_use_script_bytes": 83,
@@ -735,7 +741,8 @@
             "u32_conditional_negate",
             "u32_conditional_negate_stack",
             "u32_conditional_negate_opcodes"
-          ]
+          ],
+          "static_non_push_opcodes": 52
         },
         {
           "id": "iszero",
@@ -744,12 +751,12 @@
             "representation": "four big-endian byte limbs",
             "predicate": "all four limbs numerically zero"
           },
-          "includes": "fragment-only: four per-limb zero tests and boolean fold; excludes input pushes and output check",
+          "includes": "fragment-only: four per-limb zero tests and boolean fold; excludes input pushes and output check; static non-push opcode count is 4, dynamic count is unavailable; witness maximum assumes canonical byte limbs and, where present, an at-most-four-byte ScriptNum condition",
           "script_bytes": 4,
           "witness_bytes": 5,
-          "witness_bytes_max": 5,
+          "witness_bytes_max": 13,
           "max_stack_items": 4,
-          "executed_opcodes": 4,
+          "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
           "per_use_script_bytes": 4,
@@ -758,8 +765,10 @@
             "u32_iszero",
             "u32_iszero_witness",
             "u32_iszero_stack",
-            "u32_iszero_opcodes"
-          ]
+            "u32_iszero_opcodes",
+            "u32_iszero_witness_max"
+          ],
+          "static_non_push_opcodes": 4
         }
       ],
       "limitations": [
@@ -2199,12 +2208,12 @@
             "opening_bytes": 32,
             "checkpoint_bytes": 20
           },
-          "includes": "fragment-only: first hash path, explicit intermediate checkpoint equality, second hash path seeded by the retained digest, and final equality; witness includes the serialized seven selector bits and one 32-byte opening",
+          "includes": "fragment-only: first hash path, explicit intermediate checkpoint equality, second hash path seeded by the retained digest, and final equality; witness includes the serialized seven selector bits and one 32-byte opening; static non-push opcode count is 68, dynamic count is unavailable",
           "script_bytes": 110,
           "witness_bytes": 45,
           "witness_bytes_max": 45,
           "max_stack_items": 10,
-          "executed_opcodes": 68,
+          "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
           "per_use_script_bytes": 110,
@@ -2213,7 +2222,8 @@
             "hash_path_chain_4_3_witness",
             "hash_path_chain_4_3_stack",
             "hash_path_chain_4_3_opcodes"
-          ]
+          ],
+          "static_non_push_opcodes": 68
         }
       ],
       "limitations": [
@@ -7593,7 +7603,7 @@
           "includes": "fragment-with-memory: two canonical-wire checks, sign/magnitude normalization, unsigned comparison, and cross-sign correction; excludes input pushes, terminal predicate, transaction framing, and unrelated live state",
           "script_bytes": 124,
           "witness_bytes": 11,
-          "witness_bytes_max": 8,
+          "witness_bytes_max": 13,
           "max_stack_items": 6,
           "executed_opcodes": null,
           "validation_weight": 0,

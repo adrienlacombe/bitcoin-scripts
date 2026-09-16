@@ -59,6 +59,7 @@ NUMERIC_CONFIGURATION_FIELDS = {
     "witness_bytes_max",
     "max_stack_items",
     "executed_opcodes",
+    "static_non_push_opcodes",
     "validation_weight",
     "setup_script_bytes",
     "per_use_script_bytes",
@@ -282,7 +283,7 @@ def validate() -> list[str]:
         local_config_ids: set[str] = set()
         for config in record["configurations"]:
             config_location = f"{record_id}#{config.get('id', '?')}"
-            required = {"id", "label", "parameters", "includes", "metric_keys"} | NUMERIC_CONFIGURATION_FIELDS
+            required = {"id", "label", "parameters", "includes", "metric_keys"} | (NUMERIC_CONFIGURATION_FIELDS - {"static_non_push_opcodes"})
             missing_config = required - set(config)
             if missing_config:
                 errors.append(f"{config_location}: missing fields {sorted(missing_config)}")
@@ -300,7 +301,7 @@ def validate() -> list[str]:
             if not config["includes"].startswith(BOUNDARIES):
                 errors.append(f"{config_location}: includes must start with a cost-model boundary")
             for field in NUMERIC_CONFIGURATION_FIELDS:
-                value = config[field]
+                value = config.get(field)
                 if value is not None and (not isinstance(value, (int, float)) or value < 0):
                     errors.append(f"{config_location}: {field} must be nonnegative or null")
             for metric_key in config["metric_keys"]:
@@ -310,7 +311,7 @@ def validate() -> list[str]:
                 numeric_values = {
                     value
                     for field in NUMERIC_CONFIGURATION_FIELDS
-                    if isinstance((value := config[field]), (int, float))
+                    if isinstance((value := config.get(field)), (int, float))
                 }
                 if metric_values[metric_key] not in numeric_values:
                     errors.append(

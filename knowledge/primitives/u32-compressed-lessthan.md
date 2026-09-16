@@ -29,9 +29,9 @@ The fragment-with-memory boundary includes both canonical-wire checks,
 sign/magnitude normalization, comparison, and sign correction. It excludes
 input pushes, terminal predicates, and transaction framing.
 
-| Construction | Script bytes | Representative witness | Sentinel-boundary witness | Data items | Peak items | Static non-push opcodes |
+| Construction | Script bytes | Representative witness | Maximum canonical witness | Data items | Peak items | Static non-push opcodes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Compressed ScriptNum unsigned less-than | 124 | 11 bytes | 8 bytes | 2 | 6 | 72 |
+| Compressed ScriptNum unsigned less-than | 124 | 11 bytes | 13 bytes | 2 | 6 | 72 |
 | Four-byte `u32_lessthan()` baseline | 38 | 17 bytes | not measured | 8 | 9 | 32 |
 
 The compressed form saves six representative witness bytes and six entry
