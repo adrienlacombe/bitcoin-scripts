@@ -18,6 +18,8 @@ they do not use BN254 or any other field modulus.
 - `u32_or(a, b, stack_size)`, like XOR and AND, takes distinct word offsets.
   `stack_size` is one plus the number of u32 words above the shared byte-logic
   table. With exactly two working words, the usual value is `3`.
+- `popcount::u32_popcount()` consumes one four-byte word, range-checks every
+  byte, and returns its set-bit count in `0..=32`.
 - Stack helpers use whole-word offsets. Rotation helpers additionally take a
   rotation count. There are no implicit parameter defaults.
 - `u32_uncompress_canonical()` consumes one minimally encoded signed ScriptNum
@@ -69,6 +71,7 @@ widths are rejected before expansion.
 The same representative byte baseline has
 <!-- metric:u32_add_drop_witness -->20<!-- /metric:u32_add_drop_witness --> serialized witness bytes and a
 <!-- metric:u32_add_drop_byte_stack -->10<!-- /metric:u32_add_drop_byte_stack --> item strict peak.
+| `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
 
 Operand witness serialization is deliberately excluded: callers may construct
 words inside the locking script or supply four witness items per word. No
@@ -78,12 +81,20 @@ of XOR, AND, and OR operations in one script.
 The canonical compressed-u32 row uses the maximum five-byte witness item for
 `-2^31`. It is a raw-encoding boundary: `u32_uncompress()` remains available
 for callers that intentionally accept ScriptNum aliases.
+The popcount table is separate from the Boolean XOR table. Its representative
+32-bit all-ones witness uses four data items and serializes to 13 bytes; the
+strict combined peak is 262 items. The table is generated once per fragment
+and removed before the single numeric result is returned.
 
 ## Security
 
 There is no independent cryptographic security parameter. Arithmetic is exact
 only for byte limbs in `0..=255`; callers accepting adversarial witness values
 must enforce limb range and canonical Script-number encoding where required.
+
+`u32_popcount` performs the byte range checks itself because unchecked values
+would address outside the popcount table. Its output is a numeric ScriptNum,
+not a four-byte word or a terminal predicate.
 
 ## Script compatibility and standardness
 
