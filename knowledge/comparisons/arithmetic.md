@@ -7,6 +7,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | --- | --- | ---: | --- |
 | Small constant product | ScriptNum × 13 | 10 | Four-byte ScriptNum domain |
 | Canonical ScriptNum boundary | `scriptint::verify_canonical()` | 5 | 4-item peak; rejects raw aliases and oversized items |
+| Conditional u32 sign routing | `u32_conditional_negate()` | 83 | 9-item peak; condition normalized before branch |
 | Small-field add | M31 u31 add | 18 | Canonical field input |
 | Small-field variable multiply | M31 u31 multiply | 1,370 | Witness quotient relation |
 | Canonical checked byte boundary | `verify_canonical_byte()` | 12 | 4-item peak; 4-byte witness; rejects noncanonical ScriptNums |
