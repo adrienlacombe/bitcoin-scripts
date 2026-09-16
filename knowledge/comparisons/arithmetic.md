@@ -24,6 +24,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | 32 checked nibbles to LSB bits | `u4_nibbles_to_lsb(32)` | 440 | 50-item peak; one output bit per input |
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |
+| 32 checked nibble bit reversals | u4 16-item reversal table | 344 | 51-item peak; 65-byte witness |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide multiply | U254 multiply | 111,466 | Above optimizer cutoff; unoptimized |
 | Ed25519 ordinary-domain multiply | 51 biased centered radix-32 digits, 13 signed tables | <!-- metric:ed25519_field_mul -->9893<!-- /metric:ed25519_field_mul --> | 245-byte/51-item incremental hint; certified operands; 523-item strict peak |
