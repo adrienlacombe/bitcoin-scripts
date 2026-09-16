@@ -1454,3 +1454,14 @@ maximum `0x80000000` sentinel witness is 13 bytes. This is useful when live
 stack items or witness width dominate, but it is dominated for locking-script
 bytes and is not a general byte win. Evidence is `locally-reproduced`;
 deployment is `unclassified`.
+## NR-053: Compressed u32 ordering trades locking bytes for witness shape
+
+`u32_compressed_lessthan()` performs total unsigned ordering directly over two
+canonical compressed u32 ScriptNums. Against the existing byte-oriented
+`u32_lessthan()` fragment it costs 124 instead of 38 locking bytes, but reduces
+the representative witness from eight data items and 17 serialized bytes to
+two items and 11 bytes. The sentinel-boundary witness is 8 bytes and the
+measured peak is 6 rather than 9 items. This is useful when witness shape or
+live stack items dominate, but it is dominated for locking-script bytes and
+is not a general byte win. Evidence is `locally-reproduced`; deployment is
+`unclassified`.
