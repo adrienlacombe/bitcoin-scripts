@@ -15,6 +15,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Checked u4 nibble pair to byte | `u4_pair_to_u8(true)` | 20 | 5-item peak; 2 data items; 4-byte witness |
 | Checked u8 byte to nibble pair | `u8_to_u4_pair(true)` | 62 | 4-item peak; 4-byte witness; two nibble outputs |
 | Checked u8 high-bit extraction | `u8_extract_hbit_checked(4)` | 73 | 5-item peak; 4-byte witness; rejects non-byte ScriptNums |
+| Canonical checked nibble boundary | `verify_canonical_nibble()` | 10 | 4-item peak; 3-byte witness; rejects noncanonical ScriptNums |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide multiply | U254 multiply | 111,466 | Above optimizer cutoff; unoptimized |
 | Ed25519 ordinary-domain multiply | 51 biased centered radix-32 digits, 13 signed tables | <!-- metric:ed25519_field_mul -->9893<!-- /metric:ed25519_field_mul --> | 245-byte/51-item incremental hint; certified operands; 523-item strict peak |
