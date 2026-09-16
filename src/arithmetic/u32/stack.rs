@@ -63,6 +63,35 @@ pub fn u32_notequal() -> Script {
     }
 }
 
+fn certify_compressed_word() -> Script {
+    script! {
+        OP_DUP
+        OP_SIZE
+        5
+        OP_EQUAL
+        OP_IF
+            -2147483648
+            OP_EQUALVERIFY
+        OP_ELSE
+            OP_DUP
+            0
+            OP_ADD
+            OP_EQUALVERIFY
+        OP_ENDIF
+    }
+}
+
+/// Compares two canonical compressed u32 ScriptNums for equality.
+pub fn u32_compressed_equal() -> Script {
+    script! {
+        { certify_compressed_word() }
+        OP_TOALTSTACK
+        { certify_compressed_word() }
+        OP_FROMALTSTACK
+        OP_EQUAL
+    }
+}
+
 pub fn u32_toaltstack() -> Script {
     script! {
         OP_TOALTSTACK
@@ -286,6 +315,55 @@ mod tests {
                 vec![encoded],
             );
             assert!(!result.success, "accepted malformed byte: {result}");
+        }
+    }
+    use crate::support::execution::{execute_script_with_inputs_strict, run};
+
+    fn compressed_scriptnum(value: u32) -> Vec<u8> {
+        let mut bytes = [0u8; 8];
+        let length = bitcoin::script::write_scriptint(&mut bytes, i64::from(value as i32));
+        bytes[..length].to_vec()
+    }
+
+
+    #[test]
+    fn test_u32_compressed_equal_boundaries() {
+        for &(a, b) in &[
+            (0, 0),
+            (0, 1),
+            (0x7fff_ffff, 0x7fff_ffff),
+            (0x8000_0000, 0x8000_0000),
+            (u32::MAX, u32::MAX),
+            (u32::MAX, 0),
+        ] {
+            let result = execute_script_with_inputs_strict(
+                script! {
+                    { u32_compressed_equal() }
+                    { (a == b) as u32 }
+                    OP_EQUAL
+                },
+                vec![compressed_scriptnum(b), compressed_scriptnum(a)],
+            );
+            assert!(
+                result.success,
+                "compressed equality failed for {a:08x} == {b:08x}: {result}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_u32_compressed_equal_rejects_noncanonical_inputs() {
+        for inputs in [
+            vec![vec![1, 0], compressed_scriptnum(1)],
+            vec![vec![0, 0, 0, 0x80], compressed_scriptnum(0)],
+            vec![vec![1, 0, 0, 0, 0], compressed_scriptnum(0)],
+        ] {
+            let result =
+                execute_script_with_inputs_strict(script! { { u32_compressed_equal() } }, inputs);
+            assert!(
+                result.error.is_some(),
+                "accepted malformed compressed input: {result}"
+            );
         }
     }
 }

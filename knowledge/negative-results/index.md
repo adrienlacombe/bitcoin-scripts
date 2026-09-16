@@ -1444,3 +1444,13 @@ saves nine witness bytes and six entry items, but adds 938 locking bytes and is
 dominated whenever script size or combined local cost is primary. It remains a
 locally reproduced option for protocols whose binding constraint is witness
 width; this is not a universal lower-bound claim.
+## NR-052: Compressed u32 equality trades locking bytes for witness shape
+
+`u32_compressed_equal()` compares two canonical compressed u32 ScriptNums
+directly. Against the existing four-byte `u32_equal()` fragment it costs 37
+instead of 18 locking bytes, but reduces the representative witness from
+eight data items and 17 serialized bytes to two items and 11 bytes. The
+maximum `0x80000000` sentinel witness is 13 bytes. This is useful when live
+stack items or witness width dominate, but it is dominated for locking-script
+bytes and is not a general byte win. Evidence is `locally-reproduced`;
+deployment is `unclassified`.

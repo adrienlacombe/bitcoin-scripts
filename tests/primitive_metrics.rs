@@ -4087,6 +4087,7 @@ fn metrics() -> Vec<Metric> {
     ]
     .into_iter()
     .chain(u32_compressed_add_metrics())
+    .chain(u32_compressed_equal_metrics())
     .chain(prince_metrics())
     .chain(winternitz_metrics())
     .chain(winternitz_sha256_metrics())
@@ -4671,4 +4672,57 @@ fn u32_compressed_add_metrics() -> Vec<Metric> {
 #[test]
 fn u32_compressed_add_metrics_are_current() {
     check_readme_metrics(u32_compressed_add_metrics());
+}
+
+fn u32_compressed_equal_metrics() -> Vec<Metric> {
+    const VALUE: u32 = 0x0102_0304;
+    let compressed = u32::stack::u32_compressed_equal();
+    let byte_baseline = u32::stack::u32_equal();
+    let compressed_witness = vec![compressed_u32_witness(VALUE), compressed_u32_witness(VALUE)];
+    let byte_witness = byte_u32_witness(VALUE)
+        .into_iter()
+        .chain(byte_u32_witness(VALUE))
+        .collect::<Vec<_>>();
+    let compressed_stack = max_stack_items_strict(compressed.clone(), compressed_witness.clone());
+    let byte_stack = max_stack_items_strict(byte_baseline.clone(), byte_witness.clone());
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_equal",
+            value: script_len(compressed.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_equal_witness",
+            value: witness_size(&compressed_witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_equal_witness_max",
+            value: witness_size(&[
+                compressed_u32_witness(0x8000_0000),
+                compressed_u32_witness(0x8000_0000),
+            ]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_equal_stack",
+            value: compressed_stack,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_equal_witness",
+            value: witness_size(&byte_witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_equal_stack",
+            value: byte_stack,
+        },
+    ]
+}
+
+#[test]
+fn u32_compressed_equal_metrics_are_current() {
+    check_readme_metrics(u32_compressed_equal_metrics());
 }

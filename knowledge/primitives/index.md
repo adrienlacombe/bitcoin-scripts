@@ -12,6 +12,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Signed radix-32 window decoder](signed-radix32-decoder.md)
 - [u32 word arithmetic](u32.md)
 - [Compressed total-domain u32 addition](u32-compressed-add.md)
+- [Compressed total-domain u32 equality](u32-compressed-equal.md)
 - [u31 prime-field arithmetic](u31.md)
 - [Native secp256k1 base-field arithmetic](secp256k1-field.md)
 - [Ed25519 base-field multiplication](ed25519-field.md)
