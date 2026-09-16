@@ -10,7 +10,7 @@ use bitcoin::consensus::encode::serialize;
 use bitcoin::{script::Instruction, Witness};
 use bitcoin_lab::arithmetic::rns::prime::carry::bound;
 use bitcoin_lab::{
-    arithmetic::{bigint::U254, rns, scriptint, u31, u32, u4},
+    arithmetic::{bigint::U254, rns, scriptint, signed_window, u31, u32, u4},
     ciphers::{aes, prince},
     commitments::{
         four_way_hash_path_integer_commitment, four_way_hash_path_integer_witness,
@@ -4094,6 +4094,7 @@ fn metrics() -> Vec<Metric> {
     .chain(winternitz_overview_metrics())
     .chain(winternitz20_metrics())
     .chain(winternitz20_composition_metrics())
+    .chain(signed_window_metrics())
     .collect()
 }
 
@@ -4495,4 +4496,93 @@ fn u32_canonical_byte_metrics_are_current() {
             value: stack,
         },
     ]);
+}
+
+fn signed_window_branch_digit_to_altstack() -> bitcoin_script::Script {
+    script! {
+        OP_DUP OP_DUP 0 OP_ADD OP_EQUALVERIFY
+        OP_DUP 0 OP_LESSTHAN
+        OP_SWAP OP_ABS OP_SWAP OP_TOALTSTACK
+        for bit in (0..5).rev() {
+            OP_DUP { 1i64 << bit } OP_GREATERTHANOREQUAL
+            OP_IF
+                { 1i64 << bit } OP_SUB OP_1
+            OP_ELSE
+                OP_0
+            OP_ENDIF
+            OP_TOALTSTACK
+        }
+        OP_DROP
+    }
+}
+
+fn signed_window_metrics() -> Vec<Metric> {
+    const BATCH: u32 = 32;
+    let inputs = vec![scriptnum(31); BATCH as usize];
+    let table_batch = script! {
+        { signed_window::digits_to_altstack(BATCH, true) }
+        for _ in 0..6 * BATCH { OP_FROMALTSTACK OP_DROP }
+    };
+    let branch_batch = script! {
+        for _ in 0..BATCH { { signed_window_branch_digit_to_altstack() } }
+        for _ in 0..6 * BATCH { OP_FROMALTSTACK OP_DROP }
+    };
+    vec![
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_table_push",
+            value: script_len(signed_window::push_table()),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_table_drop",
+            value: script_len(signed_window::drop_table()),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_table_batch32",
+            value: script_len(table_batch.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_table_batch32_stack",
+            value: max_stack_items_strict(
+                script! { { table_batch.clone() } OP_TRUE },
+                inputs.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_table_batch32_opcodes",
+            value: static_non_push_opcodes(table_batch),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_table_batch32_witness",
+            value: witness_size(&inputs),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_branch_batch32",
+            value: script_len(branch_batch.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_branch_batch32_stack",
+            value: max_stack_items_strict(
+                script! { { branch_batch.clone() } OP_TRUE },
+                inputs.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/signed_window/README.md",
+            key: "signed_window_branch_batch32_opcodes",
+            value: static_non_push_opcodes(branch_batch),
+        },
+    ]
+}
+
+#[test]
+fn signed_window_metrics_are_current() {
+    check_readme_metrics(signed_window_metrics());
 }
