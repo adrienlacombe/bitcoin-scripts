@@ -1651,6 +1651,43 @@
       "stack_contract": "Little-endian limb sequence, with the least-significant limb nearest the top as documented by stack helpers.",
       "configurations": [
         {
+          "id": "u254-add-nocarry",
+          "label": "U254 carry-free addition",
+          "parameters": {
+            "bits": 254,
+            "limb_bits": 29,
+            "limbs": 9,
+            "operands": 2,
+            "carry_precondition": "each corresponding limb sum is strictly below its radix"
+          },
+          "evidence": "locally-reproduced",
+          "execution_context": "strict bitcoin-scriptexec tapscript with combined main-plus-alt stack limit enabled",
+          "execution_class": "unclassified",
+          "compile_policy": "CompileOptions::ALL, unoptimized input below 32768-byte cutoff",
+          "complete_entry_data_items": 18,
+          "all_input_data_items_coexist_at_entry": true,
+          "auxiliary_hint_items_per_invocation": 0,
+          "witness_fixture": "two zero-valued U254 vectors, eighteen empty ScriptNum items",
+          "witness_serialization_boundary": "complete eighteen-item operand vector: one count byte plus eighteen empty-item length bytes",
+          "terminal_predicate_included": false,
+          "includes": "fragment-only: consumes two canonical nine-limb operand vectors, checks every per-limb sum below its radix, and returns the exact nine-limb sum; excludes input pushes, output comparison, terminal predicates, and transaction context; witness bytes describe the separate complete eighteen-item entry-data boundary",
+          "script_bytes": 142,
+          "witness_bytes": 19,
+          "witness_bytes_max": 19,
+          "max_stack_items": 19,
+          "executed_opcodes": 97,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 142,
+          "metric_keys": [
+            "u254_add_nocarry",
+            "u254_add_nocarry_witness",
+            "u254_add_nocarry_hints",
+            "u254_add_nocarry_stack",
+            "u254_add_nocarry_opcodes"
+          ]
+        },
+        {
           "id": "u254-mul",
           "label": "U254 full multiplication",
           "parameters": {
