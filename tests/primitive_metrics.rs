@@ -32,7 +32,7 @@ use bitcoin_lab::{
         m31::{qm31::QM31, u31::M31},
         secp256k1::{bigint9 as secp256k1, rns as composable},
     },
-    hashes::{blake3, ripemd160, sha1, sha256, shake256},
+    hashes::{blake3, hash160, ripemd160, sha1, sha256, shake256},
     signatures::{
         hors, lamport, pointlocks, schnorr,
         winternitz::{
@@ -3691,6 +3691,30 @@ fn metrics() -> Vec<Metric> {
             value: script_len(sha256::sha2_u4::sha256(32)),
         },
         Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_32",
+            value: script_len(hash160::hash160(32)),
+        },
+        Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_witness_32",
+            value: witness_size(&vec![vec![0x42]; 32]),
+        },
+        Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_stack_32",
+            value: max_stack_items_strict(
+                script! {
+                    { hash160::hash160(32) }
+                    for _ in 0..20 {
+                        OP_DROP
+                    }
+                    OP_TRUE
+                },
+                vec![vec![0x42]; 32],
+            ),
+        },
+        Metric {
             readme: "src/hashes/shake256/README.md",
             key: "shake256_32_1024",
             value: script_len(shake256::shake256(32)),
@@ -5077,6 +5101,34 @@ fn u4_bit_reverse_metrics_are_current() {
             readme: "src/arithmetic/u4/README.md",
             key: "u4_bit_reverse_batch32_opcodes",
             value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
+#[test]
+fn hash160_metrics_are_current() {
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_32",
+            value: script_len(hash160::hash160(32)),
+        },
+        Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_witness_32",
+            value: witness_size(&vec![vec![0x42]; 32]),
+        },
+        Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_stack_32",
+            value: max_stack_items_strict(
+                script! {
+                    { hash160::hash160(32) }
+                    for _ in 0..20 { OP_DROP }
+                    OP_TRUE
+                },
+                vec![vec![0x42]; 32],
+            ),
         },
     ]);
 }
