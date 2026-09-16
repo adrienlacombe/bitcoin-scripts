@@ -19,6 +19,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Canonical checked nibble boundary | `verify_canonical_nibble()` | 10 | 4-item peak; 3-byte witness; rejects noncanonical ScriptNums |
 | 32 checked signed radix-32 digits to sign/magnitude bits | signed-window staggered table | 1,866 | 348-item peak; wins bytes only after 8–16 digit crossover |
 | Compressed total-domain u32 addition | two-item compressed wire | 1,016 | 11-byte representative witness; byte baseline is 78 bytes and 20-byte witness |
+| Fixed-width u4 ordering | `lexicographic_le(128)` | 7,500 | 256 data items; 4,354 non-push opcodes |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide multiply | U254 multiply | 111,466 | Above optimizer cutoff; unoptimized |
 | Ed25519 ordinary-domain multiply | 51 biased centered radix-32 digits, 13 signed tables | <!-- metric:ed25519_field_mul -->9893<!-- /metric:ed25519_field_mul --> | 245-byte/51-item incremental hint; certified operands; 523-item strict peak |
