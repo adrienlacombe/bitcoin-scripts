@@ -31,6 +31,7 @@ each input with the same output-restoration boundary.
 | Unchecked table batch, 32 nibbles | <!-- metric:u4_bits_unchecked_batch32 -->764<!-- /metric:u4_bits_unchecked_batch32 --> bytes | 189 items | not recorded |
 | Existing branch splitter, 32 four-bit limbs | <!-- metric:u4_bits_branch_batch32 -->1374<!-- /metric:u4_bits_branch_batch32 --> bytes | <!-- metric:u4_bits_branch_batch32_stack -->130<!-- /metric:u4_bits_branch_batch32_stack --> items | not recorded |
 | Checked high/low nibble pair to one byte | <!-- metric:u4_pair_to_u8_checked -->20<!-- /metric:u4_pair_to_u8_checked --> bytes | 4 bytes, 2 data items | <!-- metric:u4_pair_to_u8_checked_stack -->5<!-- /metric:u4_pair_to_u8_checked_stack --> items |
+| Checked byte to high/low nibble pair | <!-- metric:u8_to_u4_pair_checked -->62<!-- /metric:u8_to_u4_pair_checked --> bytes | <!-- metric:u8_to_u4_pair_checked_witness -->4<!-- /metric:u8_to_u4_pair_checked_witness --> bytes, 1 data item | <!-- metric:u8_to_u4_pair_checked_stack -->4<!-- /metric:u8_to_u4_pair_checked_stack --> items |
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -43,6 +44,10 @@ previously certified nibbles.
 state to byte-oriented state. It consumes `high | low` and returns
 `16*high + low`; checked mode enforces both nibble ranges, while unchecked mode
 requires that invariant from the caller.
+`u8_to_u4_pair(check_inputs)` is the inverse bridge from byte-oriented state
+to high/low nibble state. Checked mode enforces `0..=255`; its four-threshold
+schedule preserves unrelated altstack state. Unchecked mode requires the byte
+invariant from the caller.
 
 ## Security
 
