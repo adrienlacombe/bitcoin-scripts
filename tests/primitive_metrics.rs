@@ -4316,3 +4316,33 @@ fn u31_checked_bits_metrics_are_current() {
         },
     ]);
 }
+
+#[test]
+fn scriptint_canonical_metrics_are_current() {
+    let fragment = scriptint::verify_canonical();
+    let witness = vec![scriptnum(2_147_483_647)];
+    let stack = max_stack_items(
+        script! {
+            { fragment.clone() }
+            OP_DROP OP_TRUE
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/scriptint/README.md",
+            key: "scriptint_verify_canonical",
+            value: script_len(fragment),
+        },
+        Metric {
+            readme: "src/arithmetic/scriptint/README.md",
+            key: "scriptint_verify_canonical_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/scriptint/README.md",
+            key: "scriptint_verify_canonical_stack",
+            value: stack,
+        },
+    ]);
+}
