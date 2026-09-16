@@ -12,6 +12,8 @@ these operations, but this module contains no hash-specific round logic.
   `1..=3` bit counts unless their function documents otherwise.
 - `bits::u4_nibbles_to_be_bits[_toaltstack](nibble_count, check_inputs)` takes
   an explicit batch size in `1..=234` and has no default for input checking.
+- `parity::u4_nibbles_to_parity(nibble_count)` takes a checked batch size in
+  `1..=982`.
 
 ## Script metrics
 
@@ -34,6 +36,9 @@ each input with the same output-restoration boundary.
 | Checked byte to high/low nibble pair | <!-- metric:u8_to_u4_pair_checked -->62<!-- /metric:u8_to_u4_pair_checked --> bytes | <!-- metric:u8_to_u4_pair_checked_witness -->4<!-- /metric:u8_to_u4_pair_checked_witness --> bytes, 1 data item | <!-- metric:u8_to_u4_pair_checked_stack -->4<!-- /metric:u8_to_u4_pair_checked_stack --> items |
 | `verify_canonical_nibble()` | <!-- metric:u4_canonical_nibble -->10<!-- /metric:u4_canonical_nibble --> bytes | <!-- metric:u4_canonical_nibble_witness -->3<!-- /metric:u4_canonical_nibble_witness --> bytes, 1 data item | <!-- metric:u4_canonical_nibble_stack -->4<!-- /metric:u4_canonical_nibble_stack --> items |
 | `lexicographic_le(128)` | <!-- metric:u4_lexicographic_le_128 -->7500<!-- /metric:u4_lexicographic_le_128 --> bytes | <!-- metric:u4_lexicographic_le_128_stack -->259<!-- /metric:u4_lexicographic_le_128_stack --> items | <!-- metric:u4_lexicographic_le_128_opcodes -->4354<!-- /metric:u4_lexicographic_le_128_opcodes --> |
+| Checked parity batch, 32 nibbles | <!-- metric:u4_parity_batch32 -->440<!-- /metric:u4_parity_batch32 --> bytes | <!-- metric:u4_parity_batch32_stack -->50<!-- /metric:u4_parity_batch32_stack --> items | <!-- metric:u4_parity_batch32_opcodes -->328<!-- /metric:u4_parity_batch32_opcodes --> |
+
+<!-- metric:u4_parity_batch32_witness -->65<!-- /metric:u4_parity_batch32_witness --> serialized witness bytes for the representative parity batch.
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -50,6 +55,10 @@ requires that invariant from the caller.
 to high/low nibble state. Checked mode enforces `0..=255`; its four-threshold
 schedule preserves unrelated altstack state. Unchecked mode requires the byte
 invariant from the caller.
+The parity table has 16 items. A checked 32-nibble batch is measured at 440
+bytes and 50 combined stack items, with no hints and 65 witness bytes across
+32 data items. It returns one numeric bit per nibble and is smaller than
+expanding each nibble to four bits when only parity is needed.
 
 ## Security
 
@@ -66,6 +75,8 @@ by itself prove a byte-unique ScriptNum encoding.
 compares the first differing nibble, consumes both vectors, and returns one
 truth value. For the representative 128-nibble vectors, the complete witness
 is <!-- metric:u4_lexicographic_le_128_witness -->259<!-- /metric:u4_lexicographic_le_128_witness --> bytes across <!-- metric:u4_lexicographic_le_128_witness_items -->256<!-- /metric:u4_lexicographic_le_128_witness_items --> data items and <!-- metric:u4_lexicographic_le_128_hints -->0<!-- /metric:u4_lexicographic_le_128_hints --> hint items; all data items coexist at entry. Numeric range validation does not make non-minimal raw ScriptNum encodings byte-unique under consensus.
+Parity uses the same numeric range proof before its `OP_PICK` lookup. Its
+output is a ScriptNum bit, not a raw byte or a terminal truth value.
 
 ## Script compatibility and standardness
 
@@ -100,13 +111,20 @@ The standalone batch peak is `4*n + 61` combined main/alt-stack items. The
 generator rejects `n > 234`, but callers must reduce the batch further for any
 unrelated live state.
 
+For `u4_nibbles_to_parity(n)`, the same input ordering is consumed and replaced
+one-for-one by parity bits. The standalone peak is `n + 18` during range checks;
+the generator rejects `n > 982`, and callers must reduce the batch for unrelated
+live state.
+
 ## Operational notes
 
 `stack*.rs` contains adapters for `bitcoin-script-stack`; `add.rs`, `logic.rs`,
 `rotate.rs`, and `shift.rs` remain generic. `bits.rs` exhaustively tests every
 nibble in checked and unchecked mode, rejects malformed numeric inputs in
 checked mode, verifies multi-input ordering, and executes the maximum
-standalone batch under the strict local stack limit.
+standalone batch under the strict local stack limit. `parity.rs` exhaustively
+checks the 16-value lookup domain, rejects malformed inputs and invalid batch
+sizes, and measures a representative strict batch.
 
 The four-equal-index query is derived from the combined nibble-table sketch in
 [`coins/bitcoin-scripts`](https://github.com/coins/bitcoin-scripts/blob/8f442e4bf8a744dd9bf69b2937bdebcaed5cae77/split-into-bits.md).

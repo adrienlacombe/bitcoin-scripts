@@ -11,6 +11,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [u4 digit arithmetic](u4.md)
 - [Signed radix-32 window decoder](signed-radix32-decoder.md)
 - [Fixed-width u4 lexicographic comparison](u4-lexicographic.md)
+- [Checked u4 parity projection](u4-parity.md)
 - [u32 word arithmetic](u32.md)
 - [Compressed total-domain u32 addition](u32-compressed-add.md)
 - [Compressed total-domain u32 equality](u32-compressed-equal.md)
