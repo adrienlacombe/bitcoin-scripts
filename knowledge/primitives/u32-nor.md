@@ -21,7 +21,7 @@ ScriptNum checks, terminal predicates, clean-stack handling, and transaction
 validation where required.
 
 The representative 0x01234567/0x89abcdef boundary is recorded as 346
-locking-script bytes with a 273-item combined peak. The metric test
+locking-script bytes with a 272-item combined peak. The metric test
 `u32_nor_metrics_are_current` checks the final script and static non-push count;
 the latter is not an executed-opcode measurement.
 
