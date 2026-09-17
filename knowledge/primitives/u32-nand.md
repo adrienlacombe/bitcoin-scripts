@@ -22,7 +22,7 @@ result to the altstack. This makes the additional work four small complements
 and avoids a separate bytewise NOT pass.
 
 The representative 0x01234567/0x89abcdef boundary is currently recorded as
-190 locking-script bytes with a 273-item combined peak. The script metric and
+190 locking-script bytes with a 272-item combined peak. The script metric and
 static non-push count are checked by
 `u32_nand_metrics_are_current`; the static count is not an executed-opcode
 measurement.
