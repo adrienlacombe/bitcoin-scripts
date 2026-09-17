@@ -25,10 +25,10 @@ pub fn u4_nibbles_to_xor(nibble_count: u32) -> Script {
             OP_DUP OP_16 OP_LESSTHAN OP_VERIFY
             OP_TOALTSTACK
         }
+        { u4_push_full_xor_table() }
         for _ in 0..nibble_count {
             OP_FROMALTSTACK
         }
-        { u4_push_full_xor_table() }
         for _ in 1..nibble_count {
             OP_SWAP
             for _ in 0..4 {
