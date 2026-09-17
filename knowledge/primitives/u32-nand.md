@@ -9,8 +9,8 @@ u32 words using the repository's shared 256-item Boolean table.
   by the first offset.
 - **Hints:** none. The representative boundary has eight data limbs and zero
   auxiliary hints; witness serialization is excluded from the fragment row.
-- **Evidence:** `inspected` pending the focused CI reproduction of the metric
-  fixture. Correctness tests cover boundary/pattern words, seeded random words,
+- **Evidence:** `locally-reproduced` by focused CI. Correctness tests cover
+  boundary/pattern words, seeded random words,
   invalid numeric byte limbs, and preserved main/alt-stack state.
 - **Execution class:** `unclassified`. The local helper uses a tapscript
   context; this fragment has not been differentially validated against Bitcoin

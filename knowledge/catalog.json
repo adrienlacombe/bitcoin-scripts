@@ -853,7 +853,7 @@
       "class": "arithmetic/word",
       "summary": "Bitwise NAND of two byte-oriented u32 words using the shared Boolean lookup table and fused per-byte complements.",
       "status": "experimental",
-      "evidence": "inspected",
+      "evidence": "locally-reproduced",
       "execution": "unclassified",
       "as_of": "2026-09-17",
       "knowledge_page": "knowledge/primitives/u32-nand.md",
