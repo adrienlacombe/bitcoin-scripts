@@ -587,7 +587,7 @@
             "u4_exact_sum_batch32_stack",
             "u4_exact_sum_batch32_opcodes"
           ],
-          "static_non_push_opcodes": 338
+          "static_non_push_opcodes": 334
         }
       ],
       "limitations": [
