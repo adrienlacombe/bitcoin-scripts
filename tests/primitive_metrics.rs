@@ -4912,6 +4912,57 @@ fn u4_parity_metrics_are_current() {
     ]);
 }
 
+/// This isolated fixture measures one checked public-constant u4 product.
+#[test]
+fn u4_mul_constant_mod16_metrics_are_current() {
+    let table = u4::mul_constant::u4_push_mul_constant_table(10);
+    let fragment = u4::mul_constant::u4_mul_constant_mod16();
+    let witness = vec![scriptnum(5)];
+    let peak = max_stack_items_strict(
+        script! {
+            OP_TOALTSTACK
+            { table.clone() }
+            OP_FROMALTSTACK
+            { fragment.clone() }
+            OP_TOALTSTACK
+            { u4::mul_constant::u4_drop_mul_constant_table() }
+            OP_FROMALTSTACK
+            OP_DROP
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), 1);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mul_constant_mod16",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mul_constant_mod16_table",
+            value: script_len(table),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mul_constant_mod16_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mul_constant_mod16_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mul_constant_mod16_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
 /// This isolated fixture measures only the checked u32 population count.
 #[test]
 fn u32_popcount_metrics_are_current() {
