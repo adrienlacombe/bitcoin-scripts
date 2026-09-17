@@ -42,9 +42,11 @@ pub fn u32_nand(a: u32, b: u32, stack_size: u32) -> Script {
 mod tests {
     use super::*;
     use crate::arithmetic::test_helpers::{run_with_witness, word_witness};
-    use crate::arithmetic::u32::stack::{u32_drop, u32_equal, u32_fromaltstack, u32_toaltstack};
+    use crate::arithmetic::u32::stack::{
+        u32_drop, u32_equal, u32_equalverify, u32_fromaltstack, u32_push, u32_toaltstack,
+    };
     use crate::arithmetic::u32::xor::{u8_drop_xor_table, u8_push_xor_table};
-    use crate::support::execution::execute_raw_script_with_inputs_strict;
+    use crate::support::execution::{execute_raw_script_with_inputs_strict, execute_script};
     use rand::{rngs::StdRng, Rng, SeedableRng};
 
     fn nand_script() -> Vec<u8> {
@@ -114,9 +116,11 @@ mod tests {
 
     #[test]
     fn preserves_surrounding_main_and_alt_stack_items() {
-        let script = script! {
+        let result = execute_script(script! {
             OP_9 OP_TOALTSTACK
             7
+            { u32_push(0x1234_5678) }
+            { u32_push(0xdead_beef) }
             { u32_toaltstack() }
             { u32_toaltstack() }
             { u8_push_xor_table() }
@@ -127,17 +131,12 @@ mod tests {
             { u32_drop() }
             { u8_drop_xor_table() }
             { u32_fromaltstack() }
-            OP_EQUALVERIFY
-            OP_FROMALTSTACK
-            9 OP_EQUAL
-        }
-        .compile_with_policy()
-        .to_bytes();
-        run_with_witness(
-            &script,
-            word_witness(!(0x1234_5678 & 0xdead_beef))
-                .chain(word_witness(0x1234_5678))
-                .chain(word_witness(0xdead_beef)),
-        );
+            { u32_push(!(0x1234_5678 & 0xdead_beef)) }
+            { u32_equalverify() }
+            7 OP_EQUALVERIFY
+            OP_FROMALTSTACK 9 OP_EQUALVERIFY
+            OP_TRUE
+        });
+        assert!(result.success, "NAND changed surrounding state: {result}");
     }
 }
