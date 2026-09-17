@@ -576,7 +576,7 @@
           "script_bytes": 489,
           "witness_bytes": 65,
           "witness_bytes_max": 65,
-          "max_stack_items": 34,
+          "max_stack_items": 35,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
