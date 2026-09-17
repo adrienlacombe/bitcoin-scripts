@@ -471,6 +471,75 @@
       ]
     },
     {
+      "id": "arithmetic/u4-power-of-two",
+      "name": "Checked u4 nonzero-power-of-two predicate",
+      "class": "arithmetic/word",
+      "summary": "Range-checked batch predicate identifying the four nonzero power-of-two values in the u4 domain.",
+      "status": "active",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u4-power-of-two.md",
+      "implementation": "src/arithmetic/u4/power_of_two.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "src/arithmetic/u4/power_of_two.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "batch-lookup",
+        "digit-arithmetic",
+        "lookup-table",
+        "selector-validation"
+      ],
+      "security": "Every hostile input is range-checked before OP_PICK; the predicate identifies the numeric u4 domain values 1, 2, 4, and 8 but does not prove byte-unique ScriptNum encoding, a terminal predicate, or cryptographic security.",
+      "stack_contract": "Consumes preserved | nibble[0] ... nibble[n-1] and returns preserved | power[0] ... power[n-1], with the last item on top. The standalone batch keeps a 16-item lookup table resident.",
+      "configurations": [
+        {
+          "id": "checked-batch32",
+          "label": "u4_nibbles_to_power_of_two(32)",
+          "parameters": {
+            "nibble_count": 32,
+            "table_items": 16,
+            "input_check": true,
+            "data_items": 32,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: generated 16-item power-of-two table, 32 range-checked queries, table cleanup, and output restoration; excludes input pushes, witness serialization from the script, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 440,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 50,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_power_of_two_batch32",
+            "u4_power_of_two_batch32_witness",
+            "u4_power_of_two_batch32_stack",
+            "u4_power_of_two_batch32_opcodes"
+          ],
+          "static_non_push_opcodes": 328
+        }
+      ],
+      "limitations": [
+        "Numeric predicate rejects zero even though zero is itself a power of two only by some conventions",
+        "Lookup table and outputs consume combined stack capacity",
+        "Static non-push opcode count is not an executed-opcode measurement",
+        "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
+    },
+    {
       "id": "arithmetic/u4-parity",
       "name": "Checked u4 parity projection",
       "class": "arithmetic/word",

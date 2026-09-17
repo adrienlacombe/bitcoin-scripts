@@ -6,6 +6,7 @@ pub mod compare;
 pub mod logic;
 pub mod lsb;
 pub mod parity;
+pub mod power_of_two;
 pub mod rotate;
 pub mod shift;
 pub mod stack;
