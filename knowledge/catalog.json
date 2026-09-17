@@ -809,14 +809,14 @@
           "label": "Variable XNOR of two u32 words",
           "parameters": {"word_count": 2, "table_items": 256, "hint_items_per_invocation": 0, "complete_input_items": 8},
           "includes": "fragment-only: word routing, four table-backed XNOR byte operations, and output routing; excludes table setup and cleanup, input pushes, terminal predicate, and transaction context",
-          "script_bytes": 0,
+          "script_bytes": 222,
           "witness_bytes": 0,
           "witness_bytes_max": 0,
           "max_stack_items": 0,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
-          "per_use_script_bytes": 0,
+          "per_use_script_bytes": 222,
           "metric_keys": ["u32_xnor", "u32_xnor_stack", "u32_xnor_opcodes"],
           "static_non_push_opcodes": 0
         }
