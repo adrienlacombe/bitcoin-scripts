@@ -2973,13 +2973,16 @@
       "status": "active",
       "evidence": "differentially-validated",
       "execution": "unclassified",
-      "as_of": "2026-09-01",
+      "as_of": "2026-09-17",
       "knowledge_page": "knowledge/primitives/aes128-u4.md",
       "implementation": "src/ciphers/aes/mod.rs",
       "documentation": "src/ciphers/aes/README.md",
       "tests": [
         "ciphers::aes::tests::reference_vectors",
-        "ciphers::aes::tests::script_vectors_and_metrics"
+        "ciphers::aes::tests::script_vectors_and_metrics",
+        "ciphers::aes::tests::shift_rows_reorders_state_and_preserves_stacks",
+        "ciphers::aes::tests::shift_rows_preserves_malformed_items_for_caller_validation",
+        "primitive_metrics::aes128_shift_rows_metrics_are_current"
       ],
       "references": [
         "fips-197",
@@ -3014,11 +3017,39 @@
             "aes128_witness_max",
             "aes128_stack"
           ]
+        },
+        {
+          "id": "shift-rows",
+          "label": "AES-128 ShiftRows state permutation",
+          "parameters": {
+            "state_nibbles": 32,
+            "input_order": "byte 0 high nibble on top",
+            "data_items": 32,
+            "hint_items": 0,
+            "range_check": false
+          },
+          "includes": "fragment-only: stack permutation for the AES ShiftRows mapping; preserves raw item encodings and excludes input pushes, output checks, lookup memory, transaction context, and nibble validation",
+          "script_bytes": 117,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 33,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "aes128_shift_rows",
+            "aes128_shift_rows_witness",
+            "aes128_shift_rows_stack",
+            "aes128_shift_rows_opcodes"
+          ],
+          "static_non_push_opcodes": 88
         }
       ],
       "limitations": [
         "908-item measured peak",
-        "Embedded-key construction only"
+        "Embedded-key construction only",
+        "ShiftRows does not validate nibble range or canonical ScriptNum encoding"
       ],
       "open_problems": [
         "OP-002",

@@ -1975,6 +1975,12 @@ fn metrics() -> Vec<Metric> {
         }
         OP_1
     };
+    let aes_shift_rows = aes::aes128_shift_rows();
+    let aes_shift_rows_stack_script = script! {
+        { aes_shift_rows.clone() }
+        for _ in 0..32 { OP_DROP }
+        OP_1
+    };
     let bn254_fq_a = ark_bn254::Fq::from(0x1234_5678u64);
     let bn254_fq_b = ark_bn254::Fq::from(0x8765_4321u64);
     let bn254_fq2_a = ark_bn254::Fq2 {
@@ -3937,6 +3943,26 @@ fn metrics() -> Vec<Metric> {
             value: max_stack_items(aes_stack_script, vec![Vec::new(); 32]),
         },
         Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows",
+            value: script_len(aes_shift_rows.clone()),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows_witness",
+            value: witness_size(&vec![scriptnum(7); 32]),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows_stack",
+            value: max_stack_items_strict(aes_shift_rows_stack_script, vec![scriptnum(7); 32]),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows_opcodes",
+            value: static_non_push_opcodes(aes_shift_rows),
+        },
+        Metric {
             readme: "src/fields/bn254/bigint29/README.md",
             key: "fq_add",
             value: script_len(bn254_fq_add),
@@ -4114,6 +4140,42 @@ fn metrics() -> Vec<Metric> {
 #[ignore = "expensive full-repository metric regeneration; run explicitly with --ignored"]
 fn readme_metrics_are_current() {
     check_readme_metrics(metrics());
+}
+
+#[test]
+fn aes128_shift_rows_metrics_are_current() {
+    let fragment = aes::aes128_shift_rows();
+    let witness = vec![scriptnum(7); 32];
+    let stack = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..32 { OP_DROP }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows_stack",
+            value: stack,
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_shift_rows_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
 }
 
 /// Exercise every Winternitz profile without the ignored repository-wide suite.
