@@ -20,9 +20,8 @@ pub fn u4_nibbles_to_bytes(nibble_count: u32) -> Script {
 
     script! {
         for pair in (0..nibble_count / 2).rev() {
-            let depth = nibble_count - 1 - pair * 2;
-            { depth } OP_PICK
-            { depth } OP_PICK
+            { nibble_count - 1 - pair * 2 } OP_PICK
+            { nibble_count - 1 - pair * 2 } OP_PICK
             { u4_pair_to_u8(true) }
             OP_TOALTSTACK
         }
