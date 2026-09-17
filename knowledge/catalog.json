@@ -897,7 +897,7 @@
           "setup_script_bytes": null,
           "per_use_script_bytes": 346,
           "hint_items": 0,
-          "static_non_push_opcodes": 0,
+          "static_non_push_opcodes": 250,
           "metric_keys": [
             "u32_nor",
             "u32_nor_stack",
