@@ -292,7 +292,24 @@ HASH160, 128 for SHA-256) or make the two security profiles interchangeable.
 
 ### Terminal verification of unchanged 20-byte messages
 
-The current smaller construction is
+The current smallest measured fragment-plus-signature construction is
+[mixed-stage constant-sum Winternitz](../primitives/winternitz-constant-sum-mixed20.md).
+It uses 45 alternating SHA256/RIPEMD160 chains, 33 openings, twelve implicit
+endpoints, three fixed slots, and fifteen equal-sum pair relations. Its exact
+union of 32,768 distinct composition classes contains more than `2^160` words.
+
+| Mixed-stage constant-sum profile | Script bytes | Attained maximum signer witness | Maximum combined bytes | Entry items / hints | Combined peak |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Staged isolation check | 1,490 | 844 | **2,334** | 66 / 0 | 111 |
+| Entry isolation check | 1,491 | 844 | **2,335** | 66 / 0 | 111 |
+
+These are `locally-reproduced`, `research-unlimited` metrics at the same
+terminal boundary as the table below. Strict local executions are
+`unclassified`; no Core consensus or policy validation is claimed. The
+candidate was found heuristically and exactly rechecked, so the result improves
+the frontier without proving a global constant-sum or Script optimum.
+
+The previous smaller construction was
 [constant-composition Winternitz](../primitives/winternitz-constant-composition20.md).
 It assigns 49 independent keys to a radix-25 digit multiset with counts
 `[1 × 15, 2 × 7, 3 × 2, 14]`. Fixed digit slots replace per-chain digit

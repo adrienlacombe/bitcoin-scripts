@@ -392,6 +392,13 @@ is 119; the composable 2,498-byte alternative peaks at 120. Both have zero
 auxiliary hints. These `locally-reproduced`, `research-unlimited` results
 supersede the earlier 3,624-byte combined frontier for terminal verification.
 
+The [mixed-stage constant-sum implementation](primitives/winternitz-constant-sum-mixed20.md)
+now improves the same boundary to 1,491 + 844 = 2,335 bytes with an entry
+guard, or 2,334 bytes with its staged guard. It exactly validates a structured
+union of 32,768 composition classes, but its parameter search remains heuristic.
+The large gap between that union and the full constant-sum level leaves both a
+smaller verifier and a more complete optimum certificate open.
+
 **Further acceptance criteria:** validate the shrinking-pool invariant and
 all selector boundaries against pinned Core, extending the exact upper-bound
 fixture already repaired locally and checked against Core; review the
