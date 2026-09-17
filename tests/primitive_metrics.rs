@@ -4951,6 +4951,43 @@ fn u32_popcount_metrics_are_current() {
     ]);
 }
 
+/// This isolated fixture measures only the shared-table u32 NOR adapter.
+#[test]
+fn u32_nor_metrics_are_current() {
+    let fragment = u32::nor::u32_nor(0, 1, 3);
+    let peak = max_stack_items_strict(
+        script! {
+            { u32::xor::u8_push_xor_table() }
+            { u32::stack::u32_push(0x0123_4567) }
+            { u32::stack::u32_push(0x89ab_cdef) }
+            { fragment.clone() }
+            { u32::stack::u32_drop() }
+            { u32::stack::u32_drop() }
+            { u32::xor::u8_drop_xor_table() }
+            OP_TRUE
+        },
+        vec![],
+    );
+
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_nor",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_nor_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_nor_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
 /// This isolated fixture measures only the checked u4 LSB projection.
 #[test]
 fn u4_lsb_metrics_are_current() {

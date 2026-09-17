@@ -2,6 +2,7 @@ pub mod add;
 pub mod and;
 pub mod bits;
 pub mod cmp;
+pub mod nor;
 pub mod or;
 pub mod popcount;
 pub mod rotate;

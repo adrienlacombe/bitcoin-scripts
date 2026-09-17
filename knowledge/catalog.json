@@ -848,6 +848,76 @@
       ]
     },
     {
+      "id": "arithmetic/u32-nor",
+      "name": "Fused u32 NOR",
+      "class": "arithmetic/word",
+      "summary": "Bitwise NOR of two byte-oriented u32 words using the shared Boolean lookup table and fused per-byte complements.",
+      "status": "experimental",
+      "evidence": "inspected",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u32-nor.md",
+      "implementation": "src/arithmetic/u32/nor.rs",
+      "documentation": "src/arithmetic/u32/README.md",
+      "tests": [
+        "arithmetic::u32::nor::tests::nor_matches_host_boundaries_and_patterns",
+        "arithmetic::u32::nor::tests::rejects_out_of_range_byte_witnesses",
+        "arithmetic::u32::nor::tests::preserves_surrounding_main_and_alt_stack_items",
+        "primitive_metrics::u32_nor_metrics_are_current"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "lookup-table",
+        "fused-composition",
+        "stack-scheduling"
+      ],
+      "security": "Numeric byte limbs must be in 0..=255 before table indexing; canonical ScriptNum encoding and terminal predicates remain caller obligations.",
+      "stack_contract": "... table | left[0..3] | right[0..3] -> ... table | preserved-left[0..3] | nor[0..3], with the table below the working words",
+      "configurations": [
+        {
+          "id": "shared-table-two-words",
+          "label": "u32_nor(0, 1, 3)",
+          "parameters": {
+            "byte_count": 4,
+            "table_items": 256,
+            "data_items": 8,
+            "hint_items": 0,
+            "stack_size": 3
+          },
+          "includes": "fragment-only: word zipping, four shared-table OR queries, four fused 255-minus-result complements, and output restoration; excludes table setup/cleanup, input pushes, terminal predicate, and transaction context",
+          "script_bytes": 204,
+          "witness_bytes": 0,
+          "witness_bytes_max": 0,
+          "max_stack_items": 273,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": 204,
+          "hint_items": 0,
+          "static_non_push_opcodes": 0,
+          "metric_keys": [
+            "u32_nor",
+            "u32_nor_stack",
+            "u32_nor_opcodes"
+          ]
+        }
+      ],
+      "limitations": [
+        "Requires a resident 256-item Boolean table",
+        "Numeric range checks and canonical ScriptNum checks are caller obligations",
+        "Static non-push count is not an executed-opcode measurement",
+        "Not differentially validated against Bitcoin Core"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
+    },
+    {
       "id": "arithmetic/u31",
       "name": "u31 prime-field arithmetic",
       "class": "arithmetic/field",
