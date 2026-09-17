@@ -26,6 +26,8 @@ they do not use BN254 or any other field modulus.
   byte, and returns its set-bit count in `0..=32`.
 - `u32_conditional_select()` consumes `condition | when_true | when_false`,
   normalizes the condition with `OP_0NOTEQUAL`, and returns one complete word.
+- `byte_parity::u32_byte_parity()` consumes one four-byte word and returns one
+  numeric parity bit per byte, with the least-significant byte's bit on top.
 - Stack helpers use whole-word offsets. Rotation helpers additionally take a
   rotation count. There are no implicit parameter defaults.
 - `u32_uncompress_canonical()` consumes one minimally encoded signed ScriptNum
@@ -60,6 +62,7 @@ as less-than-or-equal.
 | `u8_extract_hbit_checked(4)` | <!-- metric:u8_extract_hbit_checked -->73<!-- /metric:u8_extract_hbit_checked --> bytes | <!-- metric:u8_extract_hbit_checked_witness -->4<!-- /metric:u8_extract_hbit_checked_witness --> bytes, 1 data item | <!-- metric:u8_extract_hbit_checked_stack -->5<!-- /metric:u8_extract_hbit_checked_stack --> items |
 | `verify_canonical_byte()` | <!-- metric:u32_canonical_byte -->12<!-- /metric:u32_canonical_byte --> bytes | <!-- metric:u32_canonical_byte_witness -->4<!-- /metric:u32_canonical_byte_witness --> bytes, 1 data item | <!-- metric:u32_canonical_byte_stack -->4<!-- /metric:u32_canonical_byte_stack --> items |
 | `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
+| `u32_byte_parity()` | <!-- metric:u32_byte_parity -->452<!-- /metric:u32_byte_parity --> bytes | <!-- metric:u32_byte_parity_witness -->13<!-- /metric:u32_byte_parity_witness --> bytes, 4 data items | <!-- metric:u32_byte_parity_stack -->262<!-- /metric:u32_byte_parity_stack --> items; <!-- metric:u32_byte_parity_opcodes -->168<!-- /metric:u32_byte_parity_opcodes --> static non-push opcodes |
 | `u32_to_le_bits()` | <!-- metric:u32_le_bits -->514<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
 
 `u32_compressed_add()` is a checked wire adapter: it accepts two canonical
@@ -111,6 +114,10 @@ The conditional selector normalizes any numeric truthy/falsy condition before
 `u32_popcount` performs the byte range checks itself because unchecked values
 would address outside the popcount table. Its output is a numeric ScriptNum,
 not a four-byte word or a terminal predicate.
+
+`u32_byte_parity` uses the same 256-entry byte table but returns the four
+per-byte parity bits instead of summing them. It is useful when downstream
+logic needs byte-local parity and would otherwise expand or rescan the word.
 
 ## Script compatibility and standardness
 
