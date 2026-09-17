@@ -2,6 +2,7 @@ pub mod add;
 pub mod bit_planes;
 pub mod bit_reverse;
 pub mod bits;
+pub mod centered;
 pub mod compare;
 pub mod logic;
 pub mod lsb;
