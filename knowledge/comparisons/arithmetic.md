@@ -22,6 +22,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Compressed total-domain u32 addition | two-item compressed wire | 1,016 | 11-byte representative witness; byte baseline is 78 bytes and 20-byte witness |
 | Fixed-width u4 ordering | `lexicographic_le(128)` | 7,500 | 256 data items; 4,354 non-push opcodes |
 | 32 checked nibbles to parity bits | `u4_nibbles_to_parity(32)` | 440 | 50-item peak; one output bit per input |
+| 32 checked nibbles cyclically rotated left | `u4_nibbles_rotate_left(32)` | 432 | 64-item peak; no hints; stack permutation |
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | 32 checked nibbles to LSB bits | `u4_nibbles_to_lsb(32)` | 440 | 50-item peak; one output bit per input |
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |
