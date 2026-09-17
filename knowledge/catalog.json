@@ -507,7 +507,7 @@
           "setup_script_bytes": null,
           "per_use_script_bytes": 740,
           "metric_keys": ["u4_xor_reduce_batch16", "u4_xor_reduce_batch16_witness", "u4_xor_reduce_batch16_stack", "u4_xor_reduce_batch16_opcodes"],
-          "static_non_push_opcodes": 470
+          "static_non_push_opcodes": 438
         }
       ],
       "limitations": ["The 256-item table makes this unsuitable as a standalone legacy P2SH/P2WSH fragment", "Parity is cheaper when one bit per input is sufficient", "Static opcode count is not a dynamic execution measurement", "Bitcoin Core consensus and relay-policy validation remain open"],
