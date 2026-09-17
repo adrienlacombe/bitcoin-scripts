@@ -471,6 +471,49 @@
       ]
     },
     {
+      "id": "arithmetic/u4-xor-reduction",
+      "name": "Checked u4 XOR reduction",
+      "class": "arithmetic/word",
+      "summary": "Range-checks a batch of canonical u4 limbs and reduces it to one nibble with the full XOR table.",
+      "status": "experimental",
+      "evidence": "inspected",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u4-xor-reduction.md",
+      "implementation": "src/arithmetic/u4/xor_reduce.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "arithmetic::u4::xor_reduce::tests::reduces_boundaries_and_patterns",
+        "arithmetic::u4::xor_reduce::tests::rejects_out_of_range_nibbles",
+        "arithmetic::u4::xor_reduce::tests::preserves_surrounding_main_and_alt_stack_items",
+        "primitive_metrics::u4_xor_reduce_metrics_are_current"
+      ],
+      "references": ["bitcoin-script-locked", "bitcoin-scriptexec-locked"],
+      "techniques": ["batch-lookup", "range-check", "stack-scheduling"],
+      "security": "No independent cryptographic claim. Every input is range-checked before it indexes the full XOR table.",
+      "stack_contract": "Consumes a nonempty batch of canonical u4 limbs and returns their XOR as one nibble. The 256-item table is removed before return and unrelated caller state is preserved.",
+      "configurations": [
+        {
+          "id": "batch16",
+          "label": "Checked 16-nibble XOR reduction",
+          "parameters": {"nibble_count": 16, "table_items": 256, "data_items": 16, "hint_items_per_invocation": 0, "complete_input_items": 16},
+          "includes": "fragment-with-memory: range checks, full XOR table, pairwise reduction, cleanup, and output routing; excludes input pushes, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 726,
+          "witness_bytes": 33,
+          "witness_bytes_max": 33,
+          "max_stack_items": 273,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": 726,
+          "metric_keys": ["u4_xor_reduce_batch16", "u4_xor_reduce_batch16_witness", "u4_xor_reduce_batch16_stack", "u4_xor_reduce_batch16_opcodes"],
+          "static_non_push_opcodes": 470
+        }
+      ],
+      "limitations": ["The 256-item table makes this unsuitable as a standalone legacy P2SH/P2WSH fragment", "Parity is cheaper when one bit per input is sufficient", "Static opcode count is not a dynamic execution measurement", "Bitcoin Core consensus and relay-policy validation remain open"],
+      "open_problems": ["OP-001", "OP-002", "OP-003"]
+    },
+    {
       "id": "arithmetic/u4-parity",
       "name": "Checked u4 parity projection",
       "class": "arithmetic/word",
