@@ -587,7 +587,7 @@
             "u4_nondecreasing_batch32_stack",
             "u4_nondecreasing_batch32_opcodes"
           ],
-          "static_non_push_opcodes": 460
+          "static_non_push_opcodes": 391
         }
       ],
       "limitations": [
