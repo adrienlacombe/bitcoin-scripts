@@ -4870,6 +4870,48 @@ fn u4_lexicographic_metrics_are_current() {
     ]);
 }
 
+/// This isolated fixture measures only the checked u4 bit-transition projection.
+#[test]
+fn u4_bit_transitions_metrics_are_current() {
+    const NIBBLE_COUNT: u32 = 32;
+    let fragment = u4::bit_transitions::u4_nibbles_to_bit_transitions(NIBBLE_COUNT);
+    let witness = vec![scriptnum(15); NIBBLE_COUNT as usize];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..NIBBLE_COUNT {
+                OP_DROP
+            }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), NIBBLE_COUNT as usize);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bit_transitions_batch32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bit_transitions_batch32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bit_transitions_batch32_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_bit_transitions_batch32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
 /// This isolated fixture measures only the checked u4 parity projection.
 #[test]
 fn u4_parity_metrics_are_current() {

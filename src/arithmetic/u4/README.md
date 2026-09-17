@@ -18,6 +18,8 @@ these operations, but this module contains no hash-specific round logic.
   checked nibble decomposition and transposes batches up to 234 nibbles.
 - `bit_reverse::u4_nibbles_to_bit_reverse(nibble_count)` checks and reverses
   each nibble in a shared 16-item lookup table.
+- `bit_transitions::u4_nibbles_to_bit_transitions(nibble_count)` maps checked
+  nibbles to the number of changes across their three internal bit boundaries.
 - `bits::u4_nibbles_to_be_bits[_toaltstack](nibble_count, check_inputs)` and
   `bits::u4_nibbles_to_le_bits[_toaltstack](nibble_count, check_inputs)` take
   an explicit batch size in `1..=234` and have no default for input checking.
@@ -46,11 +48,14 @@ each input with the same output-restoration boundary.
 | `verify_canonical_nibble()` | <!-- metric:u4_canonical_nibble -->10<!-- /metric:u4_canonical_nibble --> bytes | <!-- metric:u4_canonical_nibble_stack -->4<!-- /metric:u4_canonical_nibble_stack --> items | not recorded |
 | `lexicographic_le(128)` | <!-- metric:u4_lexicographic_le_128 -->7500<!-- /metric:u4_lexicographic_le_128 --> bytes | <!-- metric:u4_lexicographic_le_128_stack -->259<!-- /metric:u4_lexicographic_le_128_stack --> items | <!-- metric:u4_lexicographic_le_128_opcodes -->4354<!-- /metric:u4_lexicographic_le_128_opcodes --> |
 | Checked parity batch, 32 nibbles | <!-- metric:u4_parity_batch32 -->440<!-- /metric:u4_parity_batch32 --> bytes | <!-- metric:u4_parity_batch32_stack -->50<!-- /metric:u4_parity_batch32_stack --> items | <!-- metric:u4_parity_batch32_opcodes -->328<!-- /metric:u4_parity_batch32_opcodes --> |
+| Checked bit-transition batch, 32 nibbles | <!-- metric:u4_bit_transitions_batch32 -->440<!-- /metric:u4_bit_transitions_batch32 --> bytes | <!-- metric:u4_bit_transitions_batch32_stack -->50<!-- /metric:u4_bit_transitions_batch32_stack --> items | <!-- metric:u4_bit_transitions_batch32_opcodes -->328<!-- /metric:u4_bit_transitions_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked 16-nibble bit-plane transpose | <!-- metric:u4_bit_planes_batch16 -->776<!-- /metric:u4_bit_planes_batch16 --> bytes | <!-- metric:u4_bit_planes_batch16_stack -->125<!-- /metric:u4_bit_planes_batch16_stack --> items | <!-- metric:u4_bit_planes_batch16_opcodes -->573<!-- /metric:u4_bit_planes_batch16_opcodes --> |
 | Checked 32-nibble bit reversal | <!-- metric:u4_bit_reverse_batch32 -->344<!-- /metric:u4_bit_reverse_batch32 --> bytes | <!-- metric:u4_bit_reverse_batch32_stack -->51<!-- /metric:u4_bit_reverse_batch32_stack --> items | <!-- metric:u4_bit_reverse_batch32_opcodes -->232<!-- /metric:u4_bit_reverse_batch32_opcodes --> |
 
 <!-- metric:u4_parity_batch32_witness -->65<!-- /metric:u4_parity_batch32_witness --> serialized witness bytes for the representative parity batch.
+
+<!-- metric:u4_bit_transitions_batch32_witness -->65<!-- /metric:u4_bit_transitions_batch32_witness --> serialized witness bytes for the representative bit-transition batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -73,6 +78,10 @@ The parity table has 16 items. A checked 32-nibble batch is measured at 440
 bytes and 50 combined stack items, with no hints and 65 witness bytes across
 32 data items. It returns one numeric bit per nibble and is smaller than
 expanding each nibble to four bits when only parity is needed.
+The bit-transition table maps each nibble to the number of changes between
+adjacent bits in its four-bit representation, a value in `0..=3`. It preserves
+one output item per input and exposes local binary edge density without
+expanding the nibble into four stack items.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -104,6 +113,8 @@ truth value. For the representative 128-nibble vectors, the complete witness
 is <!-- metric:u4_lexicographic_le_128_witness -->259<!-- /metric:u4_lexicographic_le_128_witness --> bytes across <!-- metric:u4_lexicographic_le_128_witness_items -->256<!-- /metric:u4_lexicographic_le_128_witness_items --> data items and <!-- metric:u4_lexicographic_le_128_hints -->0<!-- /metric:u4_lexicographic_le_128_hints --> hint items; all data items coexist at entry. Numeric range validation does not make non-minimal raw ScriptNum encodings byte-unique under consensus.
 Parity uses the same numeric range proof before its `OP_PICK` lookup. Its
 output is a ScriptNum bit, not a raw byte or a terminal truth value.
+Bit-transition output is a ScriptNum count in `0..=3`, not an inter-nibble
+transition predicate or a terminal predicate.
 
 ## Script compatibility and standardness
 
@@ -151,6 +162,10 @@ For `u4_nibbles_to_parity(n)`, the same input ordering is consumed and replaced
 one-for-one by parity bits. The standalone peak is `n + 18` during range checks;
 the generator rejects `n > 982`, and callers must reduce the batch for unrelated
 live state.
+For `u4_nibbles_to_bit_transitions(n)`, the same input ordering is consumed and
+replaced one-for-one by internal bit-transition counts. The standalone peak is
+`n + 18` during range checks; the generator rejects `n > 982`, and callers must
+reduce the batch for unrelated live state.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
@@ -168,9 +183,9 @@ batches and batches above 981.
 `rotate.rs`, and `shift.rs` remain generic. `bits.rs` exhaustively tests every
 nibble in checked and unchecked mode, rejects malformed numeric inputs in
 checked mode, verifies multi-input ordering, and executes the maximum
-standalone batch under the strict local stack limit. `parity.rs` exhaustively
-checks the 16-value lookup domain, rejects malformed inputs and invalid batch
-sizes, and measures a representative strict batch.
+standalone batch under the strict local stack limit. `bit_transitions.rs` and
+`parity.rs` exhaustively check the 16-value lookup domain, reject malformed
+inputs and invalid batch sizes, and measure representative strict batches.
 
 The four-equal-index query is derived from the combined nibble-table sketch in
 [`coins/bitcoin-scripts`](https://github.com/coins/bitcoin-scripts/blob/8f442e4bf8a744dd9bf69b2937bdebcaed5cae77/split-into-bits.md).
