@@ -24,7 +24,7 @@ which returns 16 bits rather than one four-bit aggregate.
 
 | Construction | Locking script | Witness | Data items | Hint items | Peak | Static non-push opcodes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| XOR reduction, 16 nibbles | 726 | 33 bytes | 16 | 0 | 273 | 470 |
+| XOR reduction, 16 nibbles | 740 | 33 bytes | 16 | 0 | 273 | 470 |
 | Parity projection, 32 nibbles | 440 | 65 bytes | 32 | 0 | 50 | 328 |
 
 The XOR reduction is an output-cardinality adapter, not a general byte-cost
@@ -33,7 +33,7 @@ primitive is useful when downstream logic consumes one nibble checksum.
 
 ## Evidence and execution class
 
-The implementation and metrics are currently `inspected`; CI is the
+The implementation and metrics are currently `locally-reproduced`; CI is the
 executable reproduction gate. Deployment is `unclassified`. The full table
 contributes 256 live items, and the 16-input fixture has a 273-item combined
 main-plus-alt-stack peak. The batch limit reserves two temporary items under
