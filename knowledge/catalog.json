@@ -7653,6 +7653,76 @@
       ]
     },
     {
+      "id": "arithmetic/u32-compressed-lessthan-constant",
+      "name": "Checked compressed u32 less-than with embedded threshold",
+      "class": "arithmetic/word",
+      "summary": "One-item canonical compressed-u32 ordering boundary with a public generation-time threshold.",
+      "status": "experimental",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u32-compressed-lessthan-constant.md",
+      "implementation": "src/arithmetic/u32/cmp.rs",
+      "documentation": "src/arithmetic/u32/README.md",
+      "tests": [
+        "arithmetic::u32::cmp::tests::test_u32_compressed_lessthan_constant_boundaries",
+        "arithmetic::u32::cmp::tests::test_u32_compressed_lessthan_constant_rejects_malformed_input",
+        "arithmetic::u32::cmp::tests::test_u32_compressed_lessthan_constant_preserves_surrounding_state",
+        "primitive_metrics::u32_compressed_lessthan_constant_metrics_are_current"
+      ],
+      "references": [
+        "bip-342",
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "compact-wire",
+        "canonical-encoding",
+        "constant-embedding",
+        "sign-magnitude-normalization"
+      ],
+      "security": "The hostile input passes the exact canonical compressed-u32 checks before comparison; the threshold is public ScriptNum data and no terminal predicate is supplied.",
+      "stack_contract": "Consumes one canonical compressed u32 input and returns `(input < embedded_threshold)` while preserving unrelated lower main-stack and alt-stack state.",
+      "configurations": [
+        {
+          "id": "representative-input-01020304-threshold-89abcdef",
+          "label": "u32_compressed_lessthan_constant(0x89abcdef)",
+          "parameters": {
+            "input": "0x01020304",
+            "threshold": "0x89abcdef",
+            "hint_items_per_invocation": 0,
+            "complete_input_items": 1
+          },
+          "includes": "fragment-only: canonical compressed input check, signed-domain normalization, embedded threshold push, unsigned comparison, and cross-sign correction; excludes input push, terminal predicate, transaction framing, and unrelated live state",
+          "script_bytes": 127,
+          "witness_bytes": 6,
+          "witness_bytes_max": 7,
+          "max_stack_items": 6,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 127,
+          "metric_keys": [
+            "u32_compressed_lessthan_constant",
+            "u32_compressed_lessthan_constant_witness",
+            "u32_compressed_lessthan_constant_witness_max",
+            "u32_compressed_lessthan_constant_stack",
+            "u32_compressed_lessthan_constant_opcodes"
+          ],
+          "static_non_push_opcodes": 71
+        }
+      ],
+      "limitations": [
+        "Dominated by the generic comparator when the threshold is already on the stack",
+        "Static non-push opcode count is not a dynamic execution measurement",
+        "Bitcoin Core, complete-transaction, relay-policy, and canonical witness-policy validation remain open"
+      ],
+      "open_problems": [
+        "OP-002",
+        "OP-003"
+      ]
+    },
+    {
       "id": "hash/shake256-prefix",
       "name": "SHAKE256 byte-lane output prefix",
       "class": "hash/xof",
