@@ -38,10 +38,9 @@ the fragment in tapscript context with the combined 1,000-item stack limit.
 
 | Configuration | Query script | Table setup | Witness | Data items | Hints | Peak | Static non-push opcodes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `u4_square_mod16()` | pending | pending | 3 bytes | 1 | 0 | pending | pending |
+| `u4_square_mod16()` | 6 | 16 | 3 bytes | 1 | 0 | 20 | 4 |
 
-The result is currently `inspected`; the metric fixture and focused CI run are
-the reproduction boundary for upgrading it to `locally-reproduced`.
+The result is `locally-reproduced` by the focused metric fixture and CI run.
 
 ## Comparison and limitations
 
