@@ -29,12 +29,14 @@ pub fn u4_nibbles_to_xor(nibble_count: u32) -> Script {
         for _ in 0..nibble_count {
             OP_FROMALTSTACK
         }
-        for _ in 1..nibble_count {
+        for reduction in 1..nibble_count {
             OP_SWAP
             for _ in 0..4 {
                 OP_DUP OP_ADD
             }
             OP_SWAP OP_ADD
+            { nibble_count - reduction }
+            OP_ADD
             OP_PICK
         }
         OP_TOALTSTACK
