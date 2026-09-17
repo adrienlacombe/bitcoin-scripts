@@ -18,7 +18,7 @@ Check the initial witness before any cleanup and the combined live depth after
 every instruction: an immediate drop cannot repair a prior overflow. The
 [resource regression suite](../../tests/execution_limits.rs) exercises these
 cases after the shared helper repair documented in
-[NR-043](../negative-results/index.md#nr-043-upstream-stack-limit-enforcement-misses-entry-and-data-pushes).
+[NR-056](../negative-results/index.md#nr-043-upstream-stack-limit-enforcement-misses-entry-and-data-pushes).
 The helper's explicit stack-limit flag is local execution evidence, not a
 complete consensus-validation result.
 
@@ -57,3 +57,14 @@ surrounding prefix but requires the caller to validate nibble encodings/ranges,
 budget that live prefix, consume every ciphertext output and add authorization
 where the protocol requires it. The three Core-validated complete spends do
 not transfer their deployment class to a differently composed leaf.
+
+## Binary hash-path checkpoints
+
+The [optional-SHA256 hash path](../primitives/hash-path-integer.md) finishes
+each bit with RIPEMD-160, so nested paths equal the joined bit path. Checkpoints
+fit in one 20-byte item but do not encode round boundaries. Independently bind
+the initial preimage (NR-056), fix widths and ordering, and retain normalized
+branch bits for downstream authentication. A path has zero hints and `n+1`
+input data items; a retained path peaks at `n+2` combined items before unrelated
+protocol state. This bound does not include a surrounding pinning/signature
+wrapper (OP-020).

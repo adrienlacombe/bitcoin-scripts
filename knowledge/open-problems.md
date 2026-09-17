@@ -825,3 +825,14 @@ window schedule uses the decoder with an explicit output contract, measures
 all surrounding state and terminal checks under the strict 1,000-item limit,
 and either beats the branch schedule for the same scalar objective or records
 the composed layout as dominated.
+
+## OP-020 — Bound-start hash paths and Binohash composition
+
+The optional-SHA256 binary path has a deterministic first-bit substitution
+when its starting preimage is free (NR-056). **Complete when:** a complete
+wrapper independently binds the start, rejects the known substituted opening,
+uses normalized retained bits in any Lamport binding, and is checked against a
+pinned Bitcoin Core revision in each claimed script context. Report pinning,
+signature and binding costs, complete witness items (including zero or explicit
+hint counts), combined stack peak, static legacy opcodes and policy results.
+State the remaining cryptographic assumptions separately from execution tests.

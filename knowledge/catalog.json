@@ -2105,8 +2105,8 @@
       "execution": "research-unlimited",
       "as_of": "2026-09-01",
       "knowledge_page": "knowledge/primitives/four-way-hash-path-integer.md",
-      "implementation": "src/commitments/four_way_hash_path.rs",
-      "documentation": "src/commitments/README.md",
+      "implementation": "src/commitments/four_way_hash_path/mod.rs",
+      "documentation": "src/commitments/four_way_hash_path/README.md",
       "tests": [
         "commitments::four_way_hash_path::tests"
       ],
@@ -2156,25 +2156,26 @@
       "id": "commitment/hash-path-integer",
       "name": "Mixed-hash integer path",
       "class": "commitment/integer",
-      "summary": "Authenticates a bit path with SHA-256/RIPEMD-160 branches, exposes a 20-byte digest that can seed an ordered later path, and can reconstruct a 1\u201331-bit integer.",
+      "summary": "Verifies an optional-SHA256/mandatory-RIPEMD160 bit path from an independently bound starting state, retains normalized bits, and can reconstruct a 1\u201331-bit integer.",
       "status": "experimental",
       "evidence": "locally-reproduced",
       "execution": "research-unlimited",
-      "as_of": "2026-09-11",
+      "as_of": "2026-09-16",
       "knowledge_page": "knowledge/primitives/hash-path-integer.md",
-      "implementation": "src/commitments/hash_path.rs",
-      "documentation": "src/commitments/README.md",
+      "implementation": "src/commitments/hash_path/mod.rs",
+      "documentation": "src/commitments/hash_path/README.md",
       "tests": [
         "commitments::hash_path::tests"
       ],
       "references": [
-        "bip-342"
+        "bip-342",
+        "bitcoin-core-v29-hashes"
       ],
       "techniques": [
         "mixed-hash-path",
         "nested-hash-state"
       ],
-      "security": "Hiding depends on min-entropy in the unrevealed preimage and bits; a nested path starting from a public checkpoint needs high-entropy bits. Final RIPEMD-160 limits generic collision resistance to 80 bits.",
+      "security": "Starting preimage must be independently bound: (x, 1) and (SHA256(x), 0) otherwise open the same state. Hiding depends on opening entropy; mixed-hash binding remains experimental, with at most 80-bit generic collision resistance.",
       "stack_contract": "... bitN-1 ... bit0 preimage -> ... value",
       "configurations": [
         {
@@ -2184,15 +2185,15 @@
             "bit_width": 31,
             "preimage_bytes": 32
           },
-          "includes": "fragment-only: verifier and integer reconstruction; witness includes serialized bits and preimage",
-          "script_bytes": 520,
+          "includes": "fragment-only: verifier and integer reconstruction; excludes initial-state pinning and terminal predicate; witness includes 31 selector data items and one preimage, zero hints",
+          "script_bytes": 457,
           "witness_bytes": 78,
           "witness_bytes_max": 78,
-          "max_stack_items": 34,
+          "max_stack_items": 33,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
-          "per_use_script_bytes": 520,
+          "per_use_script_bytes": 457,
           "metric_keys": [
             "hash_path_integer_31",
             "hash_path_integer_witness_31",
@@ -2208,34 +2209,36 @@
             "opening_bytes": 32,
             "checkpoint_bytes": 20
           },
-          "includes": "fragment-only: first hash path, explicit intermediate checkpoint equality, second hash path seeded by the retained digest, and final equality; witness includes the serialized seven selector bits and one 32-byte opening; static non-push opcode count is 68, dynamic count is unavailable",
-          "script_bytes": 110,
+          "includes": "fragment-only: first hash path, explicit intermediate checkpoint equality, second hash path seeded by the retained digest, and final equality; witness includes the serialized seven selector bits and one 32-byte opening; static non-push opcode count is 38, dynamic count is unavailable; excludes independent initial-state binding; zero hint items",
+          "script_bytes": 80,
           "witness_bytes": 45,
           "witness_bytes_max": 45,
-          "max_stack_items": 10,
+          "max_stack_items": 8,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
-          "per_use_script_bytes": 110,
+          "per_use_script_bytes": 80,
           "metric_keys": [
             "hash_path_chain_4_3",
             "hash_path_chain_4_3_witness",
             "hash_path_chain_4_3_stack",
             "hash_path_chain_4_3_opcodes"
           ],
-          "static_non_push_opcodes": 68
+          "static_non_push_opcodes": 38
         }
       ],
       "limitations": [
-        "Mixed-hash security assumption",
+        "Free starting preimages do not bind the first bit (NR-056); independent preimage binding is required",
         "Integer reconstruction limited to 31 bits",
         "Nested paths are append-like hash-state composition, not byte concatenation; protocols must pin checkpoints, ordering, widths, and round boundaries",
         "Joint-randomness protocols still require an unbiased combiner plus grinding, replay, and selective-abort defenses",
-        "Witness-input tests disable the stack limit; Bitcoin Core consensus and policy validation not performed"
+        "Witness-input tests disable the stack limit; Bitcoin Core consensus and policy validation not performed",
+        "Digests differ from the former branch construction; nested paths equal joined paths without boundary domain separation"
       ],
       "open_problems": [
         "OP-002",
-        "OP-003"
+        "OP-003",
+        "OP-020"
       ]
     },
     {
@@ -2248,8 +2251,8 @@
       "execution": "unclassified",
       "as_of": "2026-09-01",
       "knowledge_page": "knowledge/primitives/preimage-length.md",
-      "implementation": "src/commitments/preimage_length.rs",
-      "documentation": "src/commitments/README.md",
+      "implementation": "src/commitments/preimage_length/mod.rs",
+      "documentation": "src/commitments/preimage_length/README.md",
       "tests": [
         "commitments::preimage_length::tests"
       ],

@@ -94,3 +94,8 @@ Its key-pool verifier, parameter search and Script measurements are local result
 neither that counting reference nor the constant-sum WOTS+ paper proves this
 custom unkeyed signature. Independent host vectors are in
 [`constant_composition/tests/vectors.py`](../../src/signatures/winternitz/constant_composition/tests/vectors.py).
+
+The binary hash-path optimization also inspects `bitcoin-core-v29-hashes`
+(Bitcoin Core v29.0 interpreter.cpp) for CastToBool, static opcode counting and
+MINIMALIF. Executable local results use rust-bitcoin-scriptexec revision
+`702544c9a045ac4fc14846da6da6559e2b7cd9d1`, not Bitcoin Core execution.

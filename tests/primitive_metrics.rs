@@ -1432,6 +1432,87 @@ fn winternitz20_metrics() -> Vec<Metric> {
     rows
 }
 
+fn commitment_metrics() -> Vec<Metric> {
+    let hash_path_preimage = vec![0x42; 32];
+    let hash_path_value = 0x1234_5678;
+    let hash_path_commitment =
+        hash_path_integer_commitment(&hash_path_preimage, hash_path_value, 31);
+    let hash_path_witness = hash_path_integer_witness(&hash_path_preimage, hash_path_value, 31);
+
+    let four_way_hash_path_commitment =
+        four_way_hash_path_integer_commitment(&hash_path_preimage, hash_path_value, 31);
+    let four_way_hash_path_witness =
+        four_way_hash_path_integer_witness(&hash_path_preimage, hash_path_value, 31);
+
+    let length_preimage = vec![0x24; 32];
+    let length_commitment = preimage_length_commitment(&length_preimage);
+
+    vec![
+        Metric {
+            readme: "src/commitments/hash_path/README.md",
+            key: "hash_path_integer_31",
+            value: script_len(verify_hash_path_to_integer(31, hash_path_commitment)),
+        },
+        Metric {
+            readme: "src/commitments/hash_path/README.md",
+            key: "hash_path_integer_witness_31",
+            value: witness_size(&hash_path_witness),
+        },
+        Metric {
+            readme: "src/commitments/hash_path/README.md",
+            key: "hash_path_integer_stack_31",
+            value: max_stack_items(
+                verify_hash_path_to_integer(31, hash_path_commitment),
+                hash_path_witness,
+            ),
+        },
+        Metric {
+            readme: "src/commitments/four_way_hash_path/README.md",
+            key: "four_way_hash_path_integer_31",
+            value: script_len(verify_four_way_hash_path_to_integer(
+                31,
+                four_way_hash_path_commitment,
+            )),
+        },
+        Metric {
+            readme: "src/commitments/four_way_hash_path/README.md",
+            key: "four_way_hash_path_integer_witness_31",
+            value: witness_size(&four_way_hash_path_witness),
+        },
+        Metric {
+            readme: "src/commitments/four_way_hash_path/README.md",
+            key: "four_way_hash_path_integer_stack_31",
+            value: max_stack_items(
+                verify_four_way_hash_path_to_integer(31, four_way_hash_path_commitment),
+                four_way_hash_path_witness,
+            ),
+        },
+        Metric {
+            readme: "src/commitments/preimage_length/README.md",
+            key: "preimage_length_default",
+            value: script_len(verify_preimage_length(length_commitment)),
+        },
+        Metric {
+            readme: "src/commitments/preimage_length/README.md",
+            key: "preimage_length_witness_min",
+            value: witness_size(&[vec![0; 16]]),
+        },
+        Metric {
+            readme: "src/commitments/preimage_length/README.md",
+            key: "preimage_length_witness_max",
+            value: witness_size(&[vec![0; 520]]),
+        },
+        Metric {
+            readme: "src/commitments/preimage_length/README.md",
+            key: "preimage_length_stack",
+            value: max_stack_items(
+                verify_preimage_length(length_commitment),
+                vec![length_preimage],
+            ),
+        },
+    ]
+}
+
 fn metrics() -> Vec<Metric> {
     let blake3_message: [u8; 64] = std::array::from_fn(|index| index as u8);
     let blake3_expected = *::blake3::hash(&blake3_message).as_bytes();
@@ -1939,20 +2020,6 @@ fn metrics() -> Vec<Metric> {
     let three_check_signature = pointlocks::three_check::sign(pointlock_secret).unwrap();
     let three_check_point_lock = pointlocks::three_check::point_lock(pointlock_public).unwrap();
     assert_eq!(three_check_signature.to_vec().len(), 60);
-
-    let hash_path_preimage = vec![0x42; 32];
-    let hash_path_value = 0x1234_5678;
-    let hash_path_commitment =
-        hash_path_integer_commitment(&hash_path_preimage, hash_path_value, 31);
-    let hash_path_witness = hash_path_integer_witness(&hash_path_preimage, hash_path_value, 31);
-
-    let four_way_hash_path_commitment =
-        four_way_hash_path_integer_commitment(&hash_path_preimage, hash_path_value, 31);
-    let four_way_hash_path_witness =
-        four_way_hash_path_integer_witness(&hash_path_preimage, hash_path_value, 31);
-
-    let length_preimage = vec![0x24; 32];
-    let length_commitment = preimage_length_commitment(&length_preimage);
 
     let division_witness = vec![scriptnum(14), scriptnum(119)];
     const U4_BITS_BATCH: u32 = 32;
@@ -3785,68 +3852,6 @@ fn metrics() -> Vec<Metric> {
             value: witness_size(&vec![scriptnum(15); 64]),
         },
         Metric {
-            readme: "src/commitments/README.md",
-            key: "hash_path_integer_31",
-            value: script_len(verify_hash_path_to_integer(31, hash_path_commitment)),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "hash_path_integer_witness_31",
-            value: witness_size(&hash_path_witness),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "hash_path_integer_stack_31",
-            value: max_stack_items(
-                verify_hash_path_to_integer(31, hash_path_commitment),
-                hash_path_witness,
-            ),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "four_way_hash_path_integer_31",
-            value: script_len(verify_four_way_hash_path_to_integer(
-                31,
-                four_way_hash_path_commitment,
-            )),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "four_way_hash_path_integer_witness_31",
-            value: witness_size(&four_way_hash_path_witness),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "four_way_hash_path_integer_stack_31",
-            value: max_stack_items(
-                verify_four_way_hash_path_to_integer(31, four_way_hash_path_commitment),
-                four_way_hash_path_witness,
-            ),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "preimage_length_default",
-            value: script_len(verify_preimage_length(length_commitment)),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "preimage_length_witness_min",
-            value: witness_size(&[vec![0; 16]]),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "preimage_length_witness_max",
-            value: witness_size(&[vec![0; 520]]),
-        },
-        Metric {
-            readme: "src/commitments/README.md",
-            key: "preimage_length_stack",
-            value: max_stack_items(
-                verify_preimage_length(length_commitment),
-                vec![length_preimage],
-            ),
-        },
-        Metric {
             readme: "src/signatures/lamport/README.md",
             key: "lamport_lock",
             value: script_len(lamport::lamport_2bit_commit(h0, h1, h2, h3)),
@@ -4088,6 +4093,7 @@ fn metrics() -> Vec<Metric> {
         },
     ]
     .into_iter()
+    .chain(commitment_metrics())
     .chain(prince_metrics())
     .chain(winternitz_metrics())
     .chain(winternitz_sha256_metrics())
@@ -5082,22 +5088,22 @@ fn hash_path_chain_metrics() -> Vec<Metric> {
 
     vec![
         Metric {
-            readme: "src/commitments/README.md",
+            readme: "src/commitments/hash_path/README.md",
             key: "hash_path_chain_4_3",
             value: script_len(hash_path_chain_script.clone()),
         },
         Metric {
-            readme: "src/commitments/README.md",
+            readme: "src/commitments/hash_path/README.md",
             key: "hash_path_chain_4_3_witness",
             value: witness_size(&hash_path_chain_witness),
         },
         Metric {
-            readme: "src/commitments/README.md",
+            readme: "src/commitments/hash_path/README.md",
             key: "hash_path_chain_4_3_stack",
             value: max_stack_items(hash_path_chain_script.clone(), hash_path_chain_witness),
         },
         Metric {
-            readme: "src/commitments/README.md",
+            readme: "src/commitments/hash_path/README.md",
             key: "hash_path_chain_4_3_opcodes",
             value: static_non_push_opcodes(hash_path_chain_script),
         },
@@ -5350,4 +5356,9 @@ fn u32_iszero_metrics() -> Vec<Metric> {
 #[test]
 fn u32_iszero_metrics_are_current() {
     check_readme_metrics(u32_iszero_metrics());
+}
+
+#[test]
+fn commitment_metrics_are_current() {
+    check_readme_metrics(commitment_metrics());
 }

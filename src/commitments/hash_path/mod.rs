@@ -2,8 +2,11 @@
 //!
 //! The 20-byte output of one path can be used as the preimage of another. This
 //! gives protocols an ordered, append-like hash-state composition even though
-//! Bitcoin Script cannot concatenate arbitrary byte strings. It is nesting,
-//! not literal concatenation: every nested call adds its own final RIPEMD-160.
+//! Bitcoin Script cannot concatenate arbitrary byte strings. Each step ends in
+//! RIPEMD-160; nesting equals processing the joined bit path.
+//!
+//! WARNING: the starting preimage must be independently bound. Otherwise
+//! `(x, true)` and `(SHA256(x), false)` open the same digest (NR-056).
 
 use bitcoin::hashes::{ripemd160, sha256, Hash};
 
@@ -16,20 +19,20 @@ pub const MAX_INTEGER_BITS: usize = 31;
 /// Compute the hash-path commitment for `bits`, starting from `preimage`.
 ///
 /// Bits are processed in slice order; the integer helper supplies them
-/// least-significant first. A false bit applies SHA-256 and a true bit applies
-/// RIPEMD-160. A final RIPEMD-160 maps both branch output sizes to the 20-byte
-/// commitment. That fixed-size result may seed a later path, as in
-/// `hash_path_commitment(&alice_commitment, bob_bits)`.
+/// least-significant first. A false bit applies RIPEMD-160; a true bit applies
+/// RIPEMD160(SHA256(state)). No terminal hash is added. This changes commitments
+/// produced by the former SHA256/RIPEMD160 branch construction.
+/// Panics for an empty path, matching the script generator.
 pub fn hash_path_commitment(preimage: &[u8], bits: &[bool]) -> [u8; 20] {
+    assert!(!bits.is_empty(), "bit_width must be non-zero");
     let mut state = preimage.to_vec();
     for bit in bits {
-        state = if *bit {
-            ripemd160::Hash::hash(&state).to_byte_array().to_vec()
-        } else {
-            sha256::Hash::hash(&state).to_byte_array().to_vec()
-        };
+        if *bit {
+            state = sha256::Hash::hash(&state).to_byte_array().to_vec();
+        }
+        state = ripemd160::Hash::hash(&state).to_byte_array().to_vec();
     }
-    ripemd160::Hash::hash(&state).to_byte_array()
+    state.try_into().expect("every step produces 20 bytes")
 }
 
 /// Compute a commitment to the low `bit_width` bits of `value`.
@@ -79,7 +82,8 @@ fn assert_integer_width(bit_width: usize) {
 /// Stack before (top first): `preimage, bit0, ..., bitN-1`.
 /// Stack after: `commitment`.
 ///
-/// Each bit is required to use the unique Script encodings `[]` or `[1]`.
+/// Selectors follow OP_IF truthiness. Tapscript requires `[]` or `[1]`;
+/// legacy accepts noncanonical selectors. Retained bits are always normalized.
 pub fn hash_path_script(bit_width: usize) -> Script {
     assert!(bit_width > 0, "bit_width must be non-zero");
     hash_path_script_inner(bit_width, false)
@@ -90,21 +94,17 @@ fn hash_path_script_inner(bit_width: usize, save_bits: bool) -> Script {
         for _ in 0..bit_width {
             OP_SWAP
 
-            // Enforce exactly [] or [1], including under legacy rules where
-            // OP_IF itself accepts other truthy/falsy encodings.
-            OP_DUP OP_SIZE OP_EQUALVERIFY
-
-            if save_bits {
-                OP_DUP OP_TOALTSTACK
-            }
-
             OP_IF
-                OP_RIPEMD160
-            OP_ELSE
                 OP_SHA256
+                if save_bits { OP_1 }
+            if save_bits {
+                OP_ELSE
+                OP_0
+            }
             OP_ENDIF
+            if save_bits { OP_TOALTSTACK }
+            OP_RIPEMD160
         }
-        OP_RIPEMD160
     }
 }
 
@@ -146,7 +146,8 @@ pub fn verify_hash_path_chain(
 /// Verify a generic hash path and save its bits on the altstack.
 ///
 /// Leaves true on the main stack. After verification, bit `N-1` is on top of
-/// the altstack and bit zero is deepest.
+/// the altstack and bit zero is deepest. These are canonical branch results,
+/// never copies of untrusted selector bytes. Use these bits for later binding.
 pub fn verify_hash_path_to_altstack(bit_width: usize, commitment: [u8; 20]) -> Script {
     assert!(bit_width > 0, "bit_width must be non-zero");
     script! {
@@ -182,6 +183,204 @@ pub fn verify_hash_path_to_integer(bit_width: usize, commitment: [u8; 20]) -> Sc
 mod tests {
     use super::*;
     use crate::support::{execution::execute_script_with_inputs, script::script};
+
+    use crate::support::script::ScriptCompilation;
+    use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate};
+
+    fn legacy_success(script: Script, witness: Vec<Vec<u8>>) -> bool {
+        let mut exec = Exec::new(
+            ExecCtx::Legacy,
+            Options {
+                verify_minimal_if: false,
+                ..Default::default()
+            },
+            TxTemplate {
+                tx: bitcoin::Transaction {
+                    version: bitcoin::transaction::Version::TWO,
+                    lock_time: bitcoin::absolute::LockTime::ZERO,
+                    input: vec![],
+                    output: vec![],
+                },
+                prevouts: vec![],
+                input_idx: 0,
+                taproot_annex_scriptleaf: None,
+            },
+            script.compile_with_policy(),
+            witness,
+        )
+        .unwrap();
+        while exec.exec_next().is_ok() {}
+        exec.result().unwrap().success
+    }
+
+    fn counted_ops(script: Script) -> usize {
+        script
+            .compile_with_policy()
+            .instructions()
+            .map(|i| match i.unwrap() {
+                bitcoin::script::Instruction::Op(op) if op.to_u8() > 0x60 => 1,
+                _ => 0,
+            })
+            .sum()
+    }
+
+    #[test]
+    fn static_opcode_costs() {
+        for n in [1, 8, 28, 31, 39] {
+            assert_eq!(counted_ops(hash_path_script(n)), 5 * n);
+            assert_eq!(counted_ops(hash_path_script_inner(n, true)), 7 * n);
+        }
+    }
+
+    #[test]
+    fn exhaustive_eight_bit_paths_and_retained_order() {
+        for value in 0..256 {
+            let bits = integer_bits(value, 8);
+            let preimage = b"deterministic hash-path test";
+            let commitment = hash_path_commitment(preimage, &bits);
+            let witness = hash_path_integer_witness(preimage, value, 8);
+            assert!(legacy_success(
+                verify_hash_path(8, commitment),
+                witness.clone()
+            ));
+            assert!(legacy_success(
+                script! {
+                    { verify_hash_path_to_altstack(8, commitment) }
+                    for bit in bits.iter().rev() {
+                        OP_FROMALTSTACK { if *bit { 1 } else { 0 } } OP_EQUALVERIFY
+                    }
+                },
+                witness.clone()
+            ));
+            assert!(
+                execute_script_with_inputs(
+                    script! {
+                        { verify_hash_path_to_integer(8, commitment) }
+                        { value } OP_EQUAL
+                    },
+                    witness
+                )
+                .success
+            );
+        }
+    }
+
+    #[test]
+    fn noncanonical_legacy_selectors_are_normalized_but_tapscript_rejects() {
+        for (selector, bit) in [
+            (vec![0], false),
+            (vec![0x80], false),
+            (vec![0, 0x80], false),
+            (vec![2], true),
+            (vec![0x81], true),
+            (vec![1, 0], true),
+            (vec![0, 1], true),
+        ] {
+            let preimage = vec![0x42; 32];
+            let commitment = hash_path_commitment(&preimage, &[bit]);
+            let witness = vec![selector, preimage];
+            assert!(legacy_success(
+                verify_hash_path(1, commitment),
+                witness.clone()
+            ));
+            let script = script! {
+                { verify_hash_path_to_altstack(1, commitment) }
+                OP_FROMALTSTACK { if bit { 1 } else { 0 } } OP_EQUALVERIFY
+            };
+            assert!(legacy_success(script.clone(), witness.clone()));
+            assert!(!execute_script_with_inputs(script, witness.clone()).success);
+            assert!(legacy_success(
+                script! {
+                    { verify_hash_path_to_integer(1, commitment) }
+                    { if bit { 1 } else { 0 } } OP_EQUAL
+                },
+                witness
+            ));
+        }
+    }
+
+    #[test]
+    fn unbound_preimage_allows_first_bit_substitution() {
+        let preimage = [0x42; 32];
+        let substitute = sha256::Hash::hash(&preimage).to_byte_array();
+        let commitment = hash_path_integer_commitment(&preimage, 43, 8);
+        assert_eq!(commitment, hash_path_integer_commitment(&substitute, 42, 8));
+        for (opening, value) in [(&preimage, 43), (&substitute, 42)] {
+            assert!(legacy_success(
+                script! {
+                    { verify_hash_path_to_integer(8, commitment) } { value } OP_EQUAL
+                },
+                hash_path_integer_witness(opening, value, 8)
+            ));
+        }
+    }
+
+    #[test]
+    fn hash_function_and_composition_contract() {
+        let x = b"nonce";
+        assert_eq!(
+            hash_path_commitment(x, &[false]),
+            ripemd160::Hash::hash(x).to_byte_array()
+        );
+        assert_eq!(
+            hash_path_commitment(x, &[true]),
+            ripemd160::Hash::hash(sha256::Hash::hash(x).as_byte_array()).to_byte_array()
+        );
+        let a = [true, false];
+        let b = [false, true];
+        assert_eq!(
+            hash_path_commitment(&hash_path_commitment(x, &a), &b),
+            hash_path_commitment(x, &[true, false, false, true])
+        );
+    }
+
+    #[test]
+    fn malformed_openings_and_integer_boundaries() {
+        for value in [0, 0x7fff_ffff] {
+            let commitment = hash_path_integer_commitment(b"", value, 31);
+            let witness = hash_path_integer_witness(b"", value, 31);
+            assert!(
+                execute_script_with_inputs(
+                    script! {
+                        { verify_hash_path_to_integer(31, commitment) } { value } OP_EQUAL
+                    },
+                    witness
+                )
+                .success
+            );
+        }
+        let commitment = hash_path_integer_commitment(b"nonce", 0, 1);
+        assert!(
+            !execute_script_with_inputs(verify_hash_path(1, commitment), vec![b"nonce".to_vec()])
+                .success
+        );
+        let oversized = vec![42; 521];
+        let commitment = hash_path_integer_commitment(&oversized, 0, 1);
+        assert!(
+            !crate::support::execution::execute_script(script! {
+                OP_0 { oversized } { verify_hash_path(1, commitment) }
+            })
+            .success
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "bit_width must be non-zero")]
+    fn empty_host_path_is_rejected() {
+        hash_path_commitment(b"", &[]);
+    }
+
+    #[test]
+    #[should_panic(expected = "bit_width must be non-zero")]
+    fn empty_script_path_is_rejected() {
+        hash_path_script(0);
+    }
+
+    #[test]
+    #[should_panic(expected = "value does not fit")]
+    fn oversized_integer_is_rejected() {
+        hash_path_integer_witness(b"", 2, 1);
+    }
 
     #[test]
     fn verifies_and_returns_integers() {
