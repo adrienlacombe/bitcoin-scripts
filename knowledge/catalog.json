@@ -574,14 +574,14 @@
             "hint_items": 0
           },
           "includes": "fragment-only: 16 checked high/low pair conversions, altstack output staging, input cleanup, and output restoration; excludes input pushes, witness serialization from the script, terminal predicate, unrelated live state, and transaction context",
-          "script_bytes": 448,
+          "script_bytes": 442,
           "witness_bytes": 65,
           "witness_bytes_max": 65,
           "max_stack_items": 50,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
-          "per_use_script_bytes": 448,
+          "per_use_script_bytes": 442,
           "metric_keys": [
             "u4_pack_batch32",
             "u4_pack_batch32_witness",
