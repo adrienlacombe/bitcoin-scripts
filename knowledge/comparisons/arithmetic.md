@@ -23,6 +23,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Fixed-width u4 ordering | `lexicographic_le(128)` | 7,500 | 256 data items; 4,354 non-push opcodes |
 | 32 checked nibbles to parity bits | `u4_nibbles_to_parity(32)` | 440 | 50-item peak; one output bit per input |
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
+| Fused u32 NAND | `u32_nand(0, 1, 3)` | 192 | 273-item peak; shared 256-item Boolean table |
 | 32 checked nibbles to LSB bits | `u4_nibbles_to_lsb(32)` | 440 | 50-item peak; one output bit per input |
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |
 | 32 checked nibble bit reversals | u4 16-item reversal table | 344 | 51-item peak; 65-byte witness |
