@@ -8,6 +8,7 @@ pub mod lsb;
 pub mod parity;
 pub mod rotate;
 pub mod shift;
+pub mod square;
 pub mod stack;
 pub mod stack_add;
 pub mod stack_logic;
