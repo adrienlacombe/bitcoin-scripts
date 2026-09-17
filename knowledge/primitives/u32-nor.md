@@ -9,8 +9,8 @@ u32 words using the shared 256-item Boolean table.
   by the first offset.
 - **Hints:** none; the fragment consumes eight data limbs and no auxiliary
   hints.
-- **Evidence:** `inspected` pending focused CI reproduction of its metric
-  fixture. Tests cover boundaries, seeded random words, invalid numeric byte
+- **Evidence:** `locally-reproduced` by focused CI. Tests cover boundaries,
+  seeded random words, invalid numeric byte
   limbs, and surrounding main/alt-stack state.
 - **Execution class:** `unclassified`; the local helper uses tapscript context
   and no Bitcoin Core differential validation has been performed.
