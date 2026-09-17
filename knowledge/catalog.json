@@ -818,7 +818,7 @@
           "setup_script_bytes": null,
           "per_use_script_bytes": 222,
           "metric_keys": ["u32_xnor", "u32_xnor_stack", "u32_xnor_opcodes"],
-          "static_non_push_opcodes": 0
+          "static_non_push_opcodes": 182
         }
       ],
       "limitations": ["Requires the shared 256-item XOR table", "Static opcode count is not a dynamic execution measurement", "Bitcoin Core consensus and relay-policy validation remain open"],

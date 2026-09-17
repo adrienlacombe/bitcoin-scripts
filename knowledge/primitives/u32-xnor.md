@@ -24,7 +24,7 @@ per byte while preserving the same 256-item shared table.
 
 | Construction | Locking script | Witness | Hint items | Peak | Static non-push opcodes |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Fused XNOR, two u32 words | 222 | 0 bytes | 0 | 272 | 0 |
+| Fused XNOR, two u32 words | 222 | 0 bytes | 0 | 272 | 182 |
 
 The metric row is refreshed by the focused primitive-metrics test in CI. The
 table is shared with XOR, AND, and OR adapters; no per-invocation hints are
