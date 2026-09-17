@@ -888,14 +888,14 @@
             "stack_size": 3
           },
           "includes": "fragment-only: word zipping, four shared-table AND queries, four fused 255-minus-result complements, and output restoration; excludes table setup/cleanup, input pushes, terminal predicate, and transaction context",
-          "script_bytes": 192,
+          "script_bytes": 190,
           "witness_bytes": 0,
           "witness_bytes_max": 0,
           "max_stack_items": 273,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
-          "per_use_script_bytes": 192,
+          "per_use_script_bytes": 190,
           "hint_items": 0,
           "static_non_push_opcodes": 0,
           "metric_keys": [
