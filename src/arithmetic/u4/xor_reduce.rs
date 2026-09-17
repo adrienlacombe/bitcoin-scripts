@@ -35,7 +35,7 @@ pub fn u4_nibbles_to_xor(nibble_count: u32) -> Script {
                 OP_DUP OP_ADD
             }
             OP_SWAP OP_ADD
-            { nibble_count - reduction }
+            { nibble_count - reduction - 1 }
             OP_ADD
             OP_PICK
         }
