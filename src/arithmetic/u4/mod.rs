@@ -7,6 +7,7 @@ pub mod centered;
 pub mod compare;
 pub mod interleave;
 pub mod gray;
+pub mod leading_zeros;
 pub mod logic;
 pub mod lsb;
 pub mod mul_constant;

@@ -34,6 +34,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Compressed total-domain u32 addition | two-item compressed wire | 1,016 | 11-byte representative witness; byte baseline is 78 bytes and 20-byte witness |
 | Fixed-width u4 ordering | `lexicographic_le(128)` | 7,500 | 256 data items; 4,354 non-push opcodes |
 | Fixed-width u4 ordering with embedded right vector | `lexicographic_le_constant(128)` | <!-- metric:u4_lexicographic_le_constant_128 -->0<!-- /metric:u4_lexicographic_le_constant_128 --> | <!-- metric:u4_lexicographic_le_constant_128_witness_items -->0<!-- /metric:u4_lexicographic_le_constant_128_witness_items --> witness data items; <!-- metric:u4_lexicographic_le_constant_128_stack -->0<!-- /metric:u4_lexicographic_le_constant_128_stack -->-item peak; embedded vector |
+| 32 checked nibbles to leading-zero counts | `u4_nibbles_to_leading_zeros(32)` | 440 | 50-item peak; one output count per input |
 | 32 checked nibbles to parity bits | `u4_nibbles_to_parity(32)` | 440 | 50-item peak; one output bit per input |
 | 16 checked nibbles to one XOR nibble | `u4_nibbles_to_xor(16)` | 740 | 273-item peak; 256-item full XOR table |
 | Variable u32 XNOR | `u32_xnor(0, 1, 3)` | 222 | 272-item peak; 182 static non-push opcodes; shared 256-item XOR table |

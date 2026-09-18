@@ -11,6 +11,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [u4 digit arithmetic](u4.md)
 - [Signed radix-32 window decoder](signed-radix32-decoder.md)
 - [Fixed-width u4 lexicographic comparison](u4-lexicographic.md)
+- [Checked u4 leading-zero projection](u4-leading-zeros.md)
 - [Checked u4 parity projection](u4-parity.md)
 - [Checked u4 triplet-to-u12 packing](u4-triplet.md)
 - [Checked u4 quad-to-u16 packing](u4-quad.md)
