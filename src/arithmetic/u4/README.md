@@ -58,6 +58,8 @@ these operations, but this module contains no hash-specific round logic.
   16-item table for its square modulo 16.
 - `centered::u4_nibbles_to_centered(nibble_count)` maps checked nibbles to
   centered signed digits in `-8..=7`.
+- `bit_transitions::u4_nibbles_to_bit_transitions(nibble_count)` maps checked
+  nibbles to the number of changes across their three internal bit boundaries.
 - `bits::u4_nibbles_to_be_bits[_toaltstack](nibble_count, check_inputs)` and
   `bits::u4_nibbles_to_le_bits[_toaltstack](nibble_count, check_inputs)` take
   an explicit batch size in `1..=234` and have no default for input checking.
@@ -114,6 +116,7 @@ each input with the same output-restoration boundary.
 | Checked centered-signed batch, 32 nibbles | <!-- metric:u4_centered_batch32 -->447<!-- /metric:u4_centered_batch32 --> bytes | <!-- metric:u4_centered_batch32_stack -->50<!-- /metric:u4_centered_batch32_stack --> items | <!-- metric:u4_centered_batch32_opcodes -->328<!-- /metric:u4_centered_batch32_opcodes --> |
 | Checked reflected-domain batch, 32 nibbles | <!-- metric:u4_mirror_batch32 -->440<!-- /metric:u4_mirror_batch32 --> bytes | <!-- metric:u4_mirror_batch32_stack -->50<!-- /metric:u4_mirror_batch32_stack --> items | <!-- metric:u4_mirror_batch32_opcodes -->328<!-- /metric:u4_mirror_batch32_opcodes --> |
 | Checked leading-zero batch, 32 nibbles | <!-- metric:u4_leading_zeros_batch32 -->440<!-- /metric:u4_leading_zeros_batch32 --> bytes | <!-- metric:u4_leading_zeros_batch32_stack -->50<!-- /metric:u4_leading_zeros_batch32_stack --> items | <!-- metric:u4_leading_zeros_batch32_opcodes -->328<!-- /metric:u4_leading_zeros_batch32_opcodes --> |
+| Checked bit-transition batch, 32 nibbles | <!-- metric:u4_bit_transitions_batch32 -->440<!-- /metric:u4_bit_transitions_batch32 --> bytes | <!-- metric:u4_bit_transitions_batch32_stack -->50<!-- /metric:u4_bit_transitions_batch32_stack --> items | <!-- metric:u4_bit_transitions_batch32_opcodes -->328<!-- /metric:u4_bit_transitions_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -154,6 +157,8 @@ The square row measures only the checked reusable query; its generated
 <!-- metric:u4_mirror_batch32_witness -->65<!-- /metric:u4_mirror_batch32_witness --> serialized witness bytes for the representative reflected-domain batch.
 
 <!-- metric:u4_leading_zeros_batch32_witness -->65<!-- /metric:u4_leading_zeros_batch32_witness --> serialized witness bytes for the representative leading-zero batch.
+
+<!-- metric:u4_bit_transitions_batch32_witness -->65<!-- /metric:u4_bit_transitions_batch32_witness --> serialized witness bytes for the representative bit-transition batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -285,6 +290,11 @@ relation is invariant under that complement symmetry.
 The leading-zero table maps zero to four and the nonzero values to the number
 of zero bits before their highest set bit. It preserves one output item per
 input and exposes a compact magnitude class for nibble-oriented encodings.
+
+The bit-transition table maps each nibble to the number of changes between
+adjacent bits in its four-bit representation, a value in `0..=3`. It preserves
+one output item per input and exposes local binary edge density without
+expanding the nibble into four stack items.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -363,6 +373,9 @@ forgets the complement-orientation bit and is not reversible by itself.
 
 Leading-zero output is a numeric ScriptNum in `0..=4`, not a raw bitstring or a
 terminal predicate.
+
+Bit-transition output is a ScriptNum count in `0..=3`, not an inter-nibble
+transition predicate or a terminal predicate.
 
 ## Script compatibility and standardness
 
@@ -460,6 +473,11 @@ For `u4_nibbles_to_leading_zeros(n)`, the same input ordering is consumed and
 replaced one-for-one by four-bit leading-zero counts. The standalone peak is
 `n + 18` during range checks; the generator rejects `n > 982`, and callers must
 reduce the batch for unrelated live state.
+
+For `u4_nibbles_to_bit_transitions(n)`, the same input ordering is consumed and
+replaced one-for-one by internal bit-transition counts. The standalone peak is
+`n + 18` during range checks; the generator rejects `n > 982`, and callers must
+reduce the batch for unrelated live state.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
@@ -482,7 +500,7 @@ batches and batches above 981.
 `rotate.rs`, and `shift.rs` remain generic. `bits.rs` exhaustively tests every
 nibble in checked and unchecked mode, rejects malformed numeric inputs in
 checked mode, verifies multi-input ordering, and executes the maximum
-standalone batch under the strict local stack limit. `parity.rs`, `one_hot.rs`, `centered.rs`, `mirror.rs`, `leading_zeros.rs`
+standalone batch under the strict local stack limit. `parity.rs`, `one_hot.rs`, `centered.rs`, `mirror.rs`, `leading_zeros.rs`, `bit_transitions.rs`
 exhaustively check the 16-value lookup domain, reject malformed
 inputs and invalid batch sizes, and measure representative strict batches.
 

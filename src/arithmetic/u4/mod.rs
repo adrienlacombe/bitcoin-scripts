@@ -2,6 +2,7 @@ pub mod add;
 pub mod adjacent_delta;
 pub mod bit_planes;
 pub mod bit_reverse;
+pub mod bit_transitions;
 pub mod bits;
 pub mod centered;
 pub mod compare;
