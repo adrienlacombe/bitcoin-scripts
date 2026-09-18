@@ -901,6 +901,14 @@ and consuming its 64 nibbles before a constant-word compressor instead gives a
 match ordinary host BLAKE3. The invalid 63,766-byte number is not a composable
 optimization result.
 
+An isolated 2026-09-16 generator probe also removed the temporary
+park/restore around table cleanup, leaving the 337-item prefix above the 330
+table items. Generation stopped at the stack tracker assertion that a tracked
+variable must be topmost before `TablesVars::drop` can remove it. This is a
+generator boundary, not a Script execution result, and does not establish a
+lower bound for a hand-written `OP_ROLL` linker; the existing park/restore is
+still required by the current tracked-variable API.
+
 The optimized G29 `[s]B` fragment and the key-specialized hash total 3,946,610
 raw bytes before transcript routing, digest use, `R` binding, the `[h]A` side,
 or a terminal predicate. They cannot merely be concatenated under the stack

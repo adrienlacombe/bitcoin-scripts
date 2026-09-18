@@ -813,11 +813,13 @@ and all 94 exact scalar relations without serializing q; the G29 q-free probe
 does the same for its 44 pairs and 88 relations. None has been validated by
 executing a complete leaf or by Bitcoin Core.
 
-For the historical hinted baseline, one remaining byte experiment is to leave the BLAKE3 backend's 330 lookup-table
-items below `prefix | digest` instead of moving the 337-item prefix during hash
-cleanup. The challenge schedule appears to have enough stack room to carry
-them and the endpoint could drop them, but this has not been generated or
-executed. **Accept when:** an exact linker variant preserves all routing and
+For the historical hinted baseline, one remaining byte experiment is to leave
+the BLAKE3 backend's 330 lookup-table items below `prefix | digest` instead of
+moving the 337-item prefix during hash cleanup. An isolated 2026-09-16 probe
+removed the park/restore around cleanup, but generation stopped at the tracked
+stack-variable topmost assertion before a Script was serialized. That only
+establishes a current generator/API boundary; a hand-written linker remains
+unexplored. **Accept when:** an exact linker variant preserves all routing and
 clean-stack semantics, stays below 1,000 combined items in a strict schedule,
 matches the standard BLAKE3 digest in a focused execution, and reports a
 policy-produced leaf smaller than the 3,828,057-byte projection with the same 792 entry items
