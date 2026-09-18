@@ -67,6 +67,8 @@ they do not use BN254 or any other field modulus.
   direct byte-aligned logical right shift.
 - `u32_lshift8_checked()` validates four canonical byte limbs before the
   direct byte-aligned logical left shift.
+- `u32_rrot16_checked()` validates four canonical byte limbs before applying
+  the existing one-opcode sixteen-bit rotation.
 
 ## Script metrics
 
@@ -112,6 +114,7 @@ as less-than-or-equal.
 | `u32_lshift8_checked()` | <!-- metric:u32_lshift8_checked -->56<!-- /metric:u32_lshift8_checked --> bytes | <!-- metric:u32_lshift8_checked_witness -->9<!-- /metric:u32_lshift8_checked_witness --> bytes (<!-- metric:u32_lshift8_checked_witness_max -->13<!-- /metric:u32_lshift8_checked_witness_max --> max), 4 data items, 0 hints | <!-- metric:u32_lshift8_checked_stack -->7<!-- /metric:u32_lshift8_checked_stack --> items; <!-- metric:u32_lshift8_checked_opcodes -->35<!-- /metric:u32_lshift8_checked_opcodes --> static non-push opcodes |
 | `u32_rrot7_checked()` | <!-- metric:u32_rrot7_checked -->130<!-- /metric:u32_rrot7_checked --> bytes | <!-- metric:u32_rrot7_checked_witness -->9<!-- /metric:u32_rrot7_checked_witness --> bytes (<!-- metric:u32_rrot7_checked_witness_max -->13<!-- /metric:u32_rrot7_checked_witness_max --> max), 4 data items | <!-- metric:u32_rrot7_checked_stack -->8<!-- /metric:u32_rrot7_checked_stack --> items; <!-- metric:u32_rrot7_checked_opcodes -->87<!-- /metric:u32_rrot7_checked_opcodes --> static non-push opcodes |
 | `u32_rrot8_checked()` | <!-- metric:u32_rrot8_checked -->57<!-- /metric:u32_rrot8_checked --> bytes | <!-- metric:u32_rrot8_checked_witness -->9<!-- /metric:u32_rrot8_checked_witness --> bytes (<!-- metric:u32_rrot8_checked_witness_max -->13<!-- /metric:u32_rrot8_checked_witness_max --> max), 4 data items | <!-- metric:u32_rrot8_checked_stack -->7<!-- /metric:u32_rrot8_checked_stack --> items; <!-- metric:u32_rrot8_checked_opcodes -->36<!-- /metric:u32_rrot8_checked_opcodes --> static non-push opcodes |
+| `u32_rrot16_checked()` | <!-- metric:u32_rrot16_checked -->55<!-- /metric:u32_rrot16_checked --> bytes | <!-- metric:u32_rrot16_checked_witness -->9<!-- /metric:u32_rrot16_checked_witness --> bytes (<!-- metric:u32_rrot16_checked_witness_max -->13<!-- /metric:u32_rrot16_checked_witness_max --> max), 4 data items | <!-- metric:u32_rrot16_checked_stack -->7<!-- /metric:u32_rrot16_checked_stack --> items; <!-- metric:u32_rrot16_checked_opcodes -->35<!-- /metric:u32_rrot16_checked_opcodes --> static non-push opcodes |
 | `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
 | `u32_byte_popcounts()` | <!-- metric:u32_byte_popcounts -->452<!-- /metric:u32_byte_popcounts --> bytes | <!-- metric:u32_byte_popcounts_witness -->13<!-- /metric:u32_byte_popcounts_witness --> bytes | <!-- metric:u32_byte_popcounts_stack -->262<!-- /metric:u32_byte_popcounts_stack --> items; <!-- metric:u32_byte_popcounts_opcodes -->168<!-- /metric:u32_byte_popcounts_opcodes --> static non-push opcodes |
 | `u32_byte_parity()` | <!-- metric:u32_byte_parity -->452<!-- /metric:u32_byte_parity --> bytes | <!-- metric:u32_byte_parity_witness -->13<!-- /metric:u32_byte_parity_witness --> bytes, 4 data items | <!-- metric:u32_byte_parity_stack -->262<!-- /metric:u32_byte_parity_stack --> items; <!-- metric:u32_byte_parity_opcodes -->168<!-- /metric:u32_byte_parity_opcodes --> static non-push opcodes |
@@ -212,6 +215,17 @@ auxiliary hints and remains a fragment rather than a complete locking script.
 `u32_byte_parity` uses the same 256-entry byte table but returns the four
 per-byte parity bits instead of summing them. It is useful when downstream
 logic needs byte-local parity and would otherwise expand or rescan the word.
+
+`u32_rrot16_checked()` is a narrow hostile-witness boundary for the existing
+one-opcode sixteen-bit byte permutation. It rejects noncanonical ScriptNum
+aliases before moving the four bytes through the alt stack, then leaves the
+same four-byte word representation as `u32_rrot16()`. The representative
+fixture uses four data items and no hints; its strict local tapscript result is
+<!-- metric:u32_rrot16_checked -->55<!-- /metric:u32_rrot16_checked --> locking bytes,
+<!-- metric:u32_rrot16_checked_stack -->7<!-- /metric:u32_rrot16_checked_stack --> stack items,
+and <!-- metric:u32_rrot16_checked_opcodes -->35<!-- /metric:u32_rrot16_checked_opcodes --> static non-push opcodes.
+This is locally reproduced and unclassified; it is not a consensus or relay
+policy claim.
 
 ## Script compatibility and standardness
 
