@@ -33,6 +33,5 @@ pub mod zero;
 pub mod sum;
 pub mod xor_reduce;
 pub mod zero_bitmask;
-pub mod sum;
 pub mod vector_rotate;
 pub mod trailing_zeros;
