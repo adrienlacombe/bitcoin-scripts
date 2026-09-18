@@ -7,6 +7,7 @@ pub mod logic;
 pub mod lsb;
 pub mod mul_constant;
 pub mod parity;
+pub mod popcount;
 pub mod rotate;
 pub mod shift;
 pub mod square;

@@ -14,6 +14,8 @@ these operations, but this module contains no hash-specific round logic.
   `1..=982`.
 - `xor_reduce::u4_nibbles_to_xor(nibble_count)` takes a checked batch size in
   `1..=742` and reduces the batch to one nibble with the full XOR table.
+- `popcount::u4_nibbles_to_popcount(nibble_count)` takes a checked batch size
+  in `1..=982` and returns one Hamming weight in `0..=4` per input nibble.
 - `lsb::u4_nibbles_to_lsb(nibble_count)` takes a checked batch size in
   `1..=982` and returns one bit per input nibble.
 - `sum::u4_nibbles_to_sum_mod16(nibble_count)` takes a checked batch size in
@@ -64,6 +66,7 @@ each input with the same output-restoration boundary.
 | Checked XOR reduction, 16 nibbles | <!-- metric:u4_xor_reduce_batch16 -->740<!-- /metric:u4_xor_reduce_batch16 --> bytes | <!-- metric:u4_xor_reduce_batch16_stack -->273<!-- /metric:u4_xor_reduce_batch16_stack --> items | <!-- metric:u4_xor_reduce_batch16_opcodes -->438<!-- /metric:u4_xor_reduce_batch16_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
+| Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
 | Checked 16-nibble bit-plane transpose | <!-- metric:u4_bit_planes_batch16 -->776<!-- /metric:u4_bit_planes_batch16 --> bytes | <!-- metric:u4_bit_planes_batch16_stack -->125<!-- /metric:u4_bit_planes_batch16_stack --> items | <!-- metric:u4_bit_planes_batch16_opcodes -->573<!-- /metric:u4_bit_planes_batch16_opcodes --> |
 | Checked 32-nibble bit reversal | <!-- metric:u4_bit_reverse_batch32 -->344<!-- /metric:u4_bit_reverse_batch32 --> bytes | <!-- metric:u4_bit_reverse_batch32_stack -->51<!-- /metric:u4_bit_reverse_batch32_stack --> items | <!-- metric:u4_bit_reverse_batch32_opcodes -->232<!-- /metric:u4_bit_reverse_batch32_opcodes --> |
 | Checked modulo-16 sum, 32 nibbles | <!-- metric:u4_sum_mod16_batch32 -->592<!-- /metric:u4_sum_mod16_batch32 --> bytes | <!-- metric:u4_sum_mod16_batch32_stack -->66<!-- /metric:u4_sum_mod16_batch32_stack --> items | <!-- metric:u4_sum_mod16_batch32_opcodes -->400<!-- /metric:u4_sum_mod16_batch32_opcodes --> |
@@ -77,6 +80,8 @@ the generated 16-item table setup is <!-- metric:u4_mul_constant_mod16_table -->
 The square row measures only the checked reusable query; its generated
 16-item table setup is <!-- metric:u4_square_mod16_table -->16<!-- /metric:u4_square_mod16_table --> bytes and can be shared across square queries. The representative witness is
 <!-- metric:u4_square_mod16_witness -->3<!-- /metric:u4_square_mod16_witness --> serialized bytes for one input item and has zero incremental hint items.
+
+<!-- metric:u4_popcount_batch32_witness -->65<!-- /metric:u4_popcount_batch32_witness --> serialized witness bytes for the representative checked popcount batch.
 
 <!-- metric:u4_parity_batch32_witness -->65<!-- /metric:u4_parity_batch32_witness --> serialized witness bytes for the representative parity batch.
 
@@ -129,6 +134,12 @@ The XOR reduction keeps a 256-item full table while folding a checked batch to
 one nibble. Its representative 16-nibble boundary is measured at 740 bytes,
 273 combined items, and 33 witness bytes across 16 data items; it is a compact
 checksum output, not a byte-cost replacement for the per-item projections.
+
+The popcount table also has 16 items. Its checked 32-nibble batch returns one
+numeric weight in `0..=4` per input, avoiding four-bit expansion when a caller
+needs Hamming weights rather than individual planes. The representative batch
+is 440 bytes with a 50-item peak and 65 serialized witness bytes, versus 924
+bytes and 189 items for the checked bit-plane expansion.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
