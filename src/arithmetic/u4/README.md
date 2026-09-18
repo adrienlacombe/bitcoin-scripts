@@ -52,6 +52,8 @@ these operations, but this module contains no hash-specific round logic.
   reusable 16-item table generated for a public compile-time constant.
 - `square::u4_square_mod16()` checks one u4 input and queries a reusable
   16-item table for its square modulo 16.
+- `centered::u4_nibbles_to_centered(nibble_count)` maps checked nibbles to
+  centered signed digits in `-8..=7`.
 - `bits::u4_nibbles_to_be_bits[_toaltstack](nibble_count, check_inputs)` and
   `bits::u4_nibbles_to_le_bits[_toaltstack](nibble_count, check_inputs)` take
   an explicit batch size in `1..=234` and have no default for input checking.
@@ -105,6 +107,7 @@ each input with the same output-restoration boundary.
 | Checked 32-wide vector interleave | <!-- metric:u4_interleave_batch32 -->954<!-- /metric:u4_interleave_batch32 --> bytes | <!-- metric:u4_interleave_batch32_stack -->128<!-- /metric:u4_interleave_batch32_stack --> items | <!-- metric:u4_interleave_batch32_opcodes -->608<!-- /metric:u4_interleave_batch32_opcodes --> |
 | Checked reflected-Gray batch, 32 nibbles | <!-- metric:u4_gray_batch32 -->440<!-- /metric:u4_gray_batch32 --> bytes | <!-- metric:u4_gray_batch32_stack -->50<!-- /metric:u4_gray_batch32_stack --> items | <!-- metric:u4_gray_batch32_opcodes -->328<!-- /metric:u4_gray_batch32_opcodes --> |
 | Checked one-hot batch, 32 nibbles | <!-- metric:u4_one_hot_batch32 -->461<!-- /metric:u4_one_hot_batch32 --> bytes | <!-- metric:u4_one_hot_batch32_stack -->50<!-- /metric:u4_one_hot_batch32_stack --> items | <!-- metric:u4_one_hot_batch32_opcodes -->328<!-- /metric:u4_one_hot_batch32_opcodes --> |
+| Checked centered-signed batch, 32 nibbles | <!-- metric:u4_centered_batch32 -->447<!-- /metric:u4_centered_batch32 --> bytes | <!-- metric:u4_centered_batch32_stack -->50<!-- /metric:u4_centered_batch32_stack --> items | <!-- metric:u4_centered_batch32_opcodes -->328<!-- /metric:u4_centered_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -139,6 +142,8 @@ The square row measures only the checked reusable query; its generated
 <!-- metric:u4_gray_batch32_witness -->65<!-- /metric:u4_gray_batch32_witness --> serialized witness bytes for the representative Gray-code batch.
 
 <!-- metric:u4_one_hot_batch32_witness -->65<!-- /metric:u4_one_hot_batch32_witness --> serialized witness bytes for the representative one-hot batch.
+
+<!-- metric:u4_centered_batch32_witness -->65<!-- /metric:u4_centered_batch32_witness --> serialized witness bytes for the representative centered-signed batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -258,6 +263,10 @@ The one-hot table maps nibble `x` to the numeric mask `1 << x`. A checked
 32-nibble batch keeps one output per input but uses larger ScriptNum literals
 for high selectors; it is intended for selector/category masks, not compact
 bit serialization.
+
+The centered-signed table maps `x` to `x` for `0..=7` and to `x - 16` for
+`8..=15`, producing a balanced digit in `-8..=7` without changing the one-item
+per-input stack shape.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -327,6 +336,9 @@ encoding.
 
 One-hot output is a numeric ScriptNum mask in `1..=32768`, not a raw fixed-width
 bitstring or a terminal predicate.
+
+Centered output is a signed ScriptNum in `-8..=7`, not a canonical unsigned
+nibble or a terminal predicate.
 
 ## Script compatibility and standardness
 
@@ -409,6 +421,11 @@ For `u4_nibbles_to_one_hot(n)`, the same input ordering is consumed and
 replaced one-for-one by `1 << nibble` selector masks. The standalone peak is
 `n + 18` during range checks; the generator rejects `n > 982`, and callers must
 reduce the batch for unrelated live state.
+
+For `u4_nibbles_to_centered(n)`, the same input ordering is consumed and
+replaced one-for-one by centered signed digits. The standalone peak is `n + 18`
+during range checks; the generator rejects `n > 982`, and callers must reduce
+the batch for unrelated live state.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
@@ -431,8 +448,8 @@ batches and batches above 981.
 `rotate.rs`, and `shift.rs` remain generic. `bits.rs` exhaustively tests every
 nibble in checked and unchecked mode, rejects malformed numeric inputs in
 checked mode, verifies multi-input ordering, and executes the maximum
-standalone batch under the strict local stack limit. `parity.rs` and
-`one_hot.rs` exhaustively check the 16-value lookup domain, reject malformed
+standalone batch under the strict local stack limit. `parity.rs`,
+`one_hot.rs`, and `centered.rs` exhaustively check the 16-value lookup domain, reject malformed
 inputs and invalid batch sizes, and measure representative strict batches.
 
 The four-equal-index query is derived from the combined nibble-table sketch in
