@@ -56,6 +56,8 @@ they do not use BN254 or any other field modulus.
   normalizes the condition with `OP_0NOTEQUAL`, and returns one complete word.
 - `byte_parity::u32_byte_parity()` consumes one four-byte word and returns one
   numeric parity bit per byte, with the least-significant byte's bit on top.
+- `zero::u32_iszero()` consumes one four-byte word, range-checks every byte,
+  and returns one numeric Boolean.
 - Stack helpers use whole-word offsets. Rotation helpers additionally take a
   rotation count. There are no implicit parameter defaults.
 - `u32_rrot8_checked()` validates four canonical byte limbs before the
@@ -126,6 +128,7 @@ as less-than-or-equal.
 | `u32_to_le_bits()` | <!-- metric:u32_le_bits -->514<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
 | `u32_to_bit_planes()` | <!-- metric:u32_bit_planes -->877<!-- /metric:u32_bit_planes --> bytes | <!-- metric:u32_bit_planes_witness -->9<!-- /metric:u32_bit_planes_witness --> bytes (<!-- metric:u32_bit_planes_witness_max -->13<!-- /metric:u32_bit_planes_witness_max --> max) | <!-- metric:u32_bit_planes_stack -->45<!-- /metric:u32_bit_planes_stack --> items; <!-- metric:u32_bit_planes_opcodes -->628<!-- /metric:u32_bit_planes_opcodes --> static non-push opcodes |
 | `u32_to_le_bits_canonical()` | <!-- metric:u32_le_bits_canonical -->562<!-- /metric:u32_le_bits_canonical --> bytes | <!-- metric:u32_le_bits_canonical_witness -->9<!-- /metric:u32_le_bits_canonical_witness --> bytes (<!-- metric:u32_le_bits_canonical_witness_max -->13<!-- /metric:u32_le_bits_canonical_witness_max --> max) | <!-- metric:u32_le_bits_canonical_stack -->35<!-- /metric:u32_le_bits_canonical_stack --> items; <!-- metric:u32_le_bits_canonical_opcodes -->366<!-- /metric:u32_le_bits_canonical_opcodes --> static non-push opcodes |
+| `u32_iszero()` | <!-- metric:u32_zero -->53<!-- /metric:u32_zero --> bytes | <!-- metric:u32_zero_witness -->13<!-- /metric:u32_zero_witness --> bytes | <!-- metric:u32_zero_stack -->6<!-- /metric:u32_zero_stack --> items; <!-- metric:u32_zero_opcodes -->37<!-- /metric:u32_zero_opcodes --> static non-push opcodes |
 
 `u32_compressed_add()` is a checked wire adapter: it accepts two canonical
 compressed u32 ScriptNums, expands them through the existing byte carry chain,
@@ -236,6 +239,10 @@ fixture uses four data items and no hints; its strict local tapscript result is
 and <!-- metric:u32_rrot16_checked_opcodes -->35<!-- /metric:u32_rrot16_checked_opcodes --> static non-push opcodes.
 This is locally reproduced and unclassified; it is not a consensus or relay
 policy claim.
+
+`u32_iszero` performs the byte range checks itself, then combines the four
+byte-wise zero predicates without a lookup table. It returns a numeric Boolean
+and does not provide a clean-stack or terminal-script wrapper.
 
 ## Script compatibility and standardness
 

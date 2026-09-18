@@ -8265,3 +8265,42 @@ fn sha2_u4_shared_lookup_metrics() -> Vec<Metric> {
 fn sha2_u4_shared_lookup_metrics_are_current() {
     check_readme_metrics(sha2_u4_shared_lookup_metrics());
 }
+
+/// This isolated fixture measures only the checked u32 zero predicate.
+#[test]
+fn u32_zero_metrics_are_current() {
+    let fragment = u32::zero::u32_iszero();
+    let witness = vec![scriptnum(255); 4];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            OP_DROP
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), 4);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
