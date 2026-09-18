@@ -4430,8 +4430,18 @@ fn blake3_short_truncated_128_metrics_are_current() {
         { blake3::blake3_verify_output_prefix_script(expected[..16].try_into().unwrap()) }
     };
     let full = blake3::blake3_short_compute_script(32);
-    assert_eq!(script_len(full) - script_len(compute.clone()), 429);
+    assert_eq!(script_len(full.clone()) - script_len(compute.clone()), 429);
     check_readme_metrics(vec![
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_32",
+            value: script_len(full.clone()),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_opcodes_short_32",
+            value: static_non_push_opcodes(full),
+        },
         Metric {
             readme: "src/hashes/blake3/README.md",
             key: "blake3_short_truncated_128_32",
