@@ -113,6 +113,7 @@ as less-than-or-equal.
 | `u32_byte_parity()` | <!-- metric:u32_byte_parity -->452<!-- /metric:u32_byte_parity --> bytes | <!-- metric:u32_byte_parity_witness -->13<!-- /metric:u32_byte_parity_witness --> bytes, 4 data items | <!-- metric:u32_byte_parity_stack -->262<!-- /metric:u32_byte_parity_stack --> items; <!-- metric:u32_byte_parity_opcodes -->168<!-- /metric:u32_byte_parity_opcodes --> static non-push opcodes |
 | `u32_to_le_bits()` | <!-- metric:u32_le_bits -->514<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
 | `u32_to_bit_planes()` | <!-- metric:u32_bit_planes -->877<!-- /metric:u32_bit_planes --> bytes | <!-- metric:u32_bit_planes_witness -->9<!-- /metric:u32_bit_planes_witness --> bytes (<!-- metric:u32_bit_planes_witness_max -->13<!-- /metric:u32_bit_planes_witness_max --> max) | <!-- metric:u32_bit_planes_stack -->45<!-- /metric:u32_bit_planes_stack --> items; <!-- metric:u32_bit_planes_opcodes -->628<!-- /metric:u32_bit_planes_opcodes --> static non-push opcodes |
+| `u32_to_le_bits_canonical()` | <!-- metric:u32_le_bits_canonical -->562<!-- /metric:u32_le_bits_canonical --> bytes | <!-- metric:u32_le_bits_canonical_witness -->9<!-- /metric:u32_le_bits_canonical_witness --> bytes (<!-- metric:u32_le_bits_canonical_witness_max -->13<!-- /metric:u32_le_bits_canonical_witness_max --> max) | <!-- metric:u32_le_bits_canonical_stack -->35<!-- /metric:u32_le_bits_canonical_stack --> items; <!-- metric:u32_le_bits_canonical_opcodes -->366<!-- /metric:u32_le_bits_canonical_opcodes --> static non-push opcodes |
 
 `u32_compressed_add()` is a checked wire adapter: it accepts two canonical
 compressed u32 ScriptNums, expands them through the existing byte carry chain,
@@ -256,6 +257,10 @@ byte is range-checked numerically against `0..=255`. The 514-byte fragment has
 items; it does not establish byte-unique ScriptNum encodings.
 This is a byte-input adapter rather than a replacement for the smaller
 nibble-input table when a caller already owns canonical u4 values.
+`u32_to_le_bits_canonical()` adds four raw-encoding checks before reusing the
+same splitter. It rejects aliases such as redundant positive signs and
+negative zero, costing only the explicit canonicality boundary; use the
+unchecked form when byte-unique witness encoding is already guaranteed.
 
 `u32_to_bit_planes()` transposes the four checked bytes into eight numeric
 nibbles. Each plane packs the corresponding bit from the four input bytes,

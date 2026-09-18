@@ -50,6 +50,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to one modulo-16 sum | `u4_nibbles_to_sum_mod16(32)` | 592 | 66-item peak; 65-byte witness; 31-item table |
 | One checked u32 word to little-endian bits | u32 byte splitter | 514 | 9-byte witness; 35-item peak; numeric byte range only |
 | Checked u32 byte word to eight bit planes | `u32_to_bit_planes()` | 877 | 9-byte witness; 45-item peak; eight nibble outputs |
+| Canonical checked u32 word to little-endian bits | `u32_to_le_bits_canonical()` | 562 | 9-byte representative/13-byte maximum witness; 35-item peak; rejects raw aliases |
 | u32 conditional word selection | u32 normalized truthy selector | 9 | 10–30-byte witness; 9-item peak |
 | 32 checked nibbles to 128 little-endian bits | u4 mirrored staggered table | 924 | 65-byte witness; 189-item peak; same table cost, no per-nibble reversal |
 | u32 zero predicate | direct four-limb `OP_0NOTEQUAL`/`OP_BOOLAND` fold | 4 | 5-byte four-limb witness; 4-item peak; canonical byte limbs required |

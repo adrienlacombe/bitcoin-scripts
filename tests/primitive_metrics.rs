@@ -4281,6 +4281,7 @@ fn metrics() -> Vec<Metric> {
     .chain(u32_byte_eq_mask_metrics())
     .chain(u32_byte_less_mask_metrics())
     .chain(u32_msb_mask_metrics())
+    .chain(u32_le_bits_canonical_metrics())
     .chain(u32_conditional_select_metrics())
     .chain(u32_conditional_negate_metrics())
     .chain(u4_sum_metrics())
@@ -6928,4 +6929,47 @@ fn aes_mix_columns_metrics() -> Vec<Metric> {
 #[test]
 fn aes_mix_columns_metrics_are_current() {
     check_readme_metrics(aes_mix_columns_metrics());
+}
+
+fn u32_le_bits_canonical_metrics() -> Vec<Metric> {
+    let fragment = u32::bits::u32_to_le_bits_canonical();
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_canonical",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_canonical_witness",
+            value: witness_size(&vec![vec![0x42]; 4]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_canonical_witness_max",
+            value: witness_size(&vec![scriptnum(255); 4]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_canonical_stack",
+            value: max_stack_items_strict(
+                script! {
+                    { fragment.clone() }
+                    for _ in 0..32 { OP_DROP }
+                    OP_TRUE
+                },
+                vec![vec![0x42]; 4],
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_le_bits_canonical_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]
+}
+
+#[test]
+fn u32_le_bits_canonical_metrics_are_current() {
+    check_readme_metrics(u32_le_bits_canonical_metrics());
 }
