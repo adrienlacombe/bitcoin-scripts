@@ -3603,14 +3603,14 @@
             "message_bytes": 32
           },
           "includes": "fragment-only: hashing fragment; excludes message pushes and digest comparison",
-          "script_bytes": 209726,
+          "script_bytes": 205558,
           "witness_bytes": null,
           "witness_bytes_max": null,
           "max_stack_items": null,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
-          "per_use_script_bytes": 209726,
+          "per_use_script_bytes": 205558,
           "metric_keys": [
             "sha1_u32_32"
           ]
@@ -3657,14 +3657,14 @@
             "message_bytes": 32
           },
           "includes": "fragment-only: hashing fragment; excludes message pushes and digest comparison",
-          "script_bytes": 244063,
+          "script_bytes": 240223,
           "witness_bytes": null,
           "witness_bytes_max": null,
           "max_stack_items": null,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
-          "per_use_script_bytes": 244063,
+          "per_use_script_bytes": 240223,
           "metric_keys": [
             "ripemd160_u32_32"
           ]

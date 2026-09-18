@@ -8558,3 +8558,22 @@ fn u32_compressed_lshift_metrics() -> Vec<Metric> {
 fn u32_compressed_lshift_metrics_are_current() {
     check_readme_metrics(u32_compressed_lshift_metrics());
 }
+
+/// Protect the consuming word operations and their affected hash consumers.
+#[test]
+fn consuming_bitwise_and_hash_metrics_are_current() {
+    let mut metrics = u32_consuming_bitwise_metrics();
+    metrics.extend([
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_u32_32",
+            value: script_len(ripemd160::ripemd160(32)),
+        },
+        Metric {
+            readme: "src/hashes/sha1/README.md",
+            key: "sha1_u32_32",
+            value: script_len(sha1::sha1(32)),
+        },
+    ]);
+    check_readme_metrics(metrics);
+}

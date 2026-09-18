@@ -27,5 +27,5 @@ Taproot Merkle branches are intentionally absent from this cost table. The
 native-byte adapter search is an inspected negative result: current Script
 cannot bind two hostile 32-byte nodes into the tagged `TapBranch` SHA256
 preimage without an enabled concatenation/splitting operation. See
-[NR-057](../negative-results/index.md#nr-047-native-taproot-merkle-branch-adapter-is-not-available)
-and [OP-021](../open-problems.md#op-020--taproot-merkle-path-verifier).
+[NR-057](../negative-results/index.md#nr-057-native-taproot-merkle-branch-adapter-is-not-available)
+and [OP-021](../open-problems.md#op-021--taproot-merkle-path-verifier).

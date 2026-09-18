@@ -1567,7 +1567,7 @@ from the independent `blake3` crate while the local generator exposes only the
 priced baseline; this is a missing-composition boundary, not an impossibility
 proof. Reproducing a longer output requires pricing the extra compression,
 routing, cleanup, and combined stack peak. Evidence is `locally-reproduced`;
-see [the probe](../../examples/blake3_xof_boundary.rs) and [OP-024](../open-problems.md#op-022--blake3-xof-output-frontier).
+see [the probe](../../examples/blake3_xof_boundary.rs) and [OP-024](../open-problems.md#op-024--blake3-xof-output-frontier).
 
 ## NR-062: Direct compressed u32 right shift is a stack-shape tradeoff
 

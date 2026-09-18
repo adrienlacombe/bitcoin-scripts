@@ -60,7 +60,7 @@ accepts hostile leaf/sibling/direction inputs with exact tagged SHA256
 semantics and reports script, witness, hints, stack, and execution costs, or a
 machine-checkable lower-bound argument establishes that the current opcode set
 cannot bind the two 32-byte nodes without a general byte-concatenation circuit.
-The current inspected negative result is [NR-057](negative-results/index.md#nr-047-native-taproot-merkle-branch-adapter-is-not-available).
+The current inspected negative result is [NR-057](negative-results/index.md#nr-057-native-taproot-merkle-branch-adapter-is-not-available).
 
 ## OP-022 — Constant-composition Script decoder
 
