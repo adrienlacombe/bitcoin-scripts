@@ -13,6 +13,7 @@ pub mod popcount;
 pub mod rotate;
 pub mod shift;
 pub mod shift_left;
+
 pub mod stack;
 pub mod sub;
 pub mod xnor;

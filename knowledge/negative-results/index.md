@@ -1568,3 +1568,11 @@ priced baseline; this is a missing-composition boundary, not an impossibility
 proof. Reproducing a longer output requires pricing the extra compression,
 routing, cleanup, and combined stack peak. Evidence is `locally-reproduced`;
 see [the probe](../../examples/blake3_xof_boundary.rs) and [OP-024](../open-problems.md#op-022--blake3-xof-output-frontier).
+
+## NR-062: Direct compressed u32 right shift is a stack-shape tradeoff
+
+`u32_compressed_rshift(8)` avoids four-byte expansion but measures 500 locking
+bytes versus 499 for a local decode-byte-shift-reencode baseline. It does save
+two live stack items, peaking at 5 instead of 7, with the same one-item witness.
+It is therefore not a general byte win. Evidence is `locally-reproduced` and
+deployment is `unclassified`; the result does not close OP-014.

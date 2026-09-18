@@ -92,6 +92,7 @@ as less-than-or-equal.
 | `u32_compressed_lessthan()` | <!-- metric:u32_compressed_lessthan -->124<!-- /metric:u32_compressed_lessthan --> bytes | <!-- metric:u32_compressed_lessthan_witness -->11<!-- /metric:u32_compressed_lessthan_witness --> bytes | <!-- metric:u32_compressed_lessthan_stack -->6<!-- /metric:u32_compressed_lessthan_stack --> items |
 | `u32_compressed_lessthan_constant(0x89abcdef)` | <!-- metric:u32_compressed_lessthan_constant -->127<!-- /metric:u32_compressed_lessthan_constant --> bytes | <!-- metric:u32_compressed_lessthan_constant_witness -->6<!-- /metric:u32_compressed_lessthan_constant_witness --> bytes (<!-- metric:u32_compressed_lessthan_constant_witness_max -->7<!-- /metric:u32_compressed_lessthan_constant_witness_max --> max), 1 data item | <!-- metric:u32_compressed_lessthan_constant_stack -->6<!-- /metric:u32_compressed_lessthan_constant_stack --> items; <!-- metric:u32_compressed_lessthan_constant_opcodes -->71<!-- /metric:u32_compressed_lessthan_constant_opcodes --> static non-push opcodes |
 | `u32_lessthanorequal()` | <!-- metric:u32_lessthanorequal -->61<!-- /metric:u32_lessthanorequal --> bytes | 0 bytes | <!-- metric:u32_lessthanorequal_stack -->13<!-- /metric:u32_lessthanorequal_stack --> items |
+| `u32_compressed_rshift(8)` | <!-- metric:u32_compressed_rshift_8 -->500<!-- /metric:u32_compressed_rshift_8 --> bytes | <!-- metric:u32_compressed_rshift_8_witness -->6<!-- /metric:u32_compressed_rshift_8_witness --> bytes | <!-- metric:u32_compressed_rshift_8_stack -->5<!-- /metric:u32_compressed_rshift_8_stack --> items |
 | `u32_or(0, 1, 3)` (table excluded) | <!-- metric:u32_or -->326<!-- /metric:u32_or --> bytes | 0 bytes | <!-- metric:u32_or_stack -->272<!-- /metric:u32_or_stack --> items, including table |
 | `u32_nand(0, 1, 3)` (table excluded) | <!-- metric:u32_nand -->190<!-- /metric:u32_nand --> bytes | 0 bytes | <!-- metric:u32_nand_stack -->272<!-- /metric:u32_nand_stack --> items, including table; <!-- metric:u32_nand_opcodes -->150<!-- /metric:u32_nand_opcodes --> static non-push opcodes |
 | `u32_nor(0, 1, 3)` (table excluded) | <!-- metric:u32_nor -->346<!-- /metric:u32_nor --> bytes | 0 bytes | <!-- metric:u32_nor_stack -->272<!-- /metric:u32_nor_stack --> items, including table; <!-- metric:u32_nor_opcodes -->250<!-- /metric:u32_nor_opcodes --> static non-push opcodes |
@@ -200,6 +201,12 @@ is useful when a caller needs lane-local Hamming weights; use `u32_popcount()`
 when only the total is needed. Its output preserves the four-byte word order
 and remains a fragment rather than a terminal predicate. It uses the same
 256-item table and strict 262-item peak, but omits the three final additions.
+
+`u32_compressed_rshift(shift)` accepts one canonical compressed u32 ScriptNum
+and performs a logical right shift for `shift` in `1..=31`. It validates the
+wire encoding, separates the sign-carried high bit from a legal 31-bit
+magnitude, and emits the compressed ScriptNum result. For shift 8, the direct
+fragment is <!-- metric:u32_compressed_rshift_8 -->500<!-- /metric:u32_compressed_rshift_8 --> bytes with a <!-- metric:u32_compressed_rshift_8_witness -->6<!-- /metric:u32_compressed_rshift_8_witness -->-byte one-item witness and a <!-- metric:u32_compressed_rshift_8_stack -->5<!-- /metric:u32_compressed_rshift_8_stack -->-item peak. A decode-byte-shift-reencode baseline costs <!-- metric:u32_compressed_rshift_8_baseline -->499<!-- /metric:u32_compressed_rshift_8_baseline --> bytes and peaks at <!-- metric:u32_compressed_rshift_8_baseline_stack -->7<!-- /metric:u32_compressed_rshift_8_baseline_stack --> items; both measurements exclude input pushes and the terminal predicate.
 
 ## Security
 

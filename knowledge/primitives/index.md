@@ -59,6 +59,8 @@ the source. Read a page together with its comparison page and evidence record.
 - [Fused u32 NAND](u32-nand.md)
 - [Fused u32 NOR](u32-nor.md)
 - [Checked u32 zero predicate](u32-zero.md)
+
+- [Compressed total-domain u32 logical right shift](u32-compressed-rshift.md)
 - [u31 prime-field arithmetic](u31.md)
 - [Native secp256k1 base-field arithmetic](secp256k1-field.md)
 - [Ed25519 base-field multiplication](ed25519-field.md)
