@@ -8390,3 +8390,53 @@ fn u32_zip_metrics_are_current() {
         },
     ]);
 }
+
+#[test]
+fn u32_byte_reorder_metrics_are_current() {
+    let witness = vec![vec![1u8]; 4];
+    let mut metrics = Vec::new();
+    for offset in 0..4 {
+        let fragment = u32::rotate::byte_reorder(offset);
+        let stack = max_stack_items_strict(
+            script! {
+                { fragment.clone() }
+                { u32::stack::u32_drop() }
+                OP_TRUE
+            },
+            witness.clone(),
+        );
+        metrics.extend([
+            Metric {
+                readme: "src/arithmetic/u32/README.md",
+                key: match offset {
+                    0 => "u32_byte_reorder_0",
+                    1 => "u32_byte_reorder_1",
+                    2 => "u32_byte_reorder_2",
+                    _ => "u32_byte_reorder_3",
+                },
+                value: script_len(fragment),
+            },
+            Metric {
+                readme: "src/arithmetic/u32/README.md",
+                key: match offset {
+                    0 => "u32_byte_reorder_witness_0",
+                    1 => "u32_byte_reorder_witness_1",
+                    2 => "u32_byte_reorder_witness_2",
+                    _ => "u32_byte_reorder_witness_3",
+                },
+                value: witness_size(&witness),
+            },
+            Metric {
+                readme: "src/arithmetic/u32/README.md",
+                key: match offset {
+                    0 => "u32_byte_reorder_stack_0",
+                    1 => "u32_byte_reorder_stack_1",
+                    2 => "u32_byte_reorder_stack_2",
+                    _ => "u32_byte_reorder_stack_3",
+                },
+                value: stack,
+            },
+        ]);
+    }
+    check_readme_metrics(metrics);
+}
