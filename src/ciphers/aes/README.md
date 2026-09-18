@@ -16,6 +16,10 @@ a generation-time key.
   fused encryptor. It moves 32 nibble items and does not validate their range.
 - `aes128_add_round_key` exposes one checked keyed-XOR boundary with the same
   32-nibble state layout; its 128-bit key is embedded at generation time.
+- `aes128_sub_bytes` applies the checked AES S-box to one 128-bit block without
+  a key or ShiftRows/MixColumns.
+
+- `aes128_mix_columns` applies the checked AES linear MixColumns layer without a key or the other round layers.
 
 ## Script metrics
 
@@ -36,6 +40,18 @@ and Script-number push widths vary.
 | AddRoundKey witness, 32 canonical nibbles | <!-- metric:aes128_add_round_key_witness -->65<!-- /metric:aes128_add_round_key_witness --> bytes |
 | AddRoundKey maximum combined depth | <!-- metric:aes128_add_round_key_stack -->899<!-- /metric:aes128_add_round_key_stack --> items |
 | AddRoundKey static non-push opcodes | <!-- metric:aes128_add_round_key_opcodes -->887<!-- /metric:aes128_add_round_key_opcodes --> |
+| `aes128_sub_bytes` | <!-- metric:aes128_sub_bytes -->2147<!-- /metric:aes128_sub_bytes --> bytes |
+| SubBytes witness, canonical 7 nibbles | <!-- metric:aes128_sub_bytes_witness -->65<!-- /metric:aes128_sub_bytes_witness --> bytes |
+| SubBytes witness, canonical 15 nibbles | <!-- metric:aes128_sub_bytes_witness_max -->65<!-- /metric:aes128_sub_bytes_witness_max --> bytes |
+| SubBytes maximum combined main/alt-stack depth | <!-- metric:aes128_sub_bytes_stack -->897<!-- /metric:aes128_sub_bytes_stack --> items |
+| SubBytes static non-push opcodes | <!-- metric:aes128_sub_bytes_opcodes -->1031<!-- /metric:aes128_sub_bytes_opcodes --> |
+| SubBytes shared lookup items | <!-- metric:aes128_sub_bytes_table_items -->832<!-- /metric:aes128_sub_bytes_table_items --> |
+| `aes128_mix_columns` | <!-- metric:aes128_mix_columns -->3738<!-- /metric:aes128_mix_columns --> bytes |
+| MixColumns witness, canonical 7 nibbles | <!-- metric:aes128_mix_columns_witness -->65<!-- /metric:aes128_mix_columns_witness --> bytes |
+| MixColumns witness, canonical 15 nibbles | <!-- metric:aes128_mix_columns_witness_max -->65<!-- /metric:aes128_mix_columns_witness_max --> bytes |
+| MixColumns maximum combined main/alt-stack depth | <!-- metric:aes128_mix_columns_stack -->908<!-- /metric:aes128_mix_columns_stack --> items |
+| MixColumns static non-push opcodes | <!-- metric:aes128_mix_columns_opcodes -->1959<!-- /metric:aes128_mix_columns_opcodes --> |
+| MixColumns shared lookup items | <!-- metric:aes128_mix_columns_table_items -->832<!-- /metric:aes128_mix_columns_table_items --> |
 
 The generator uses one 832-item shared lookup memory. It fuses the initial
 AddRoundKey into the first SubBytes pass, SubBytes with ShiftRows, and
@@ -59,9 +75,16 @@ composition boundary, not a smaller AES encryption path: the full encryptor
 continues to fuse AddRoundKey into SubBytes/ShiftRows and MixColumns to avoid
 repeating setup and cleanup.
 
+The standalone `aes128_sub_bytes` fragment reuses the same 832-item memory,
+checks every witness nibble for canonical `0..=15` encoding, and removes the
+temporary table before returning. It returns the 32 substituted nibbles in
+state order and requires no hints.
+
 Tests execute the FIPS-197 known-answer vector and the all-zero vector, compare
 the native reference against three published vectors, and pin the zero-key
-size and maximum stack depth.
+size and maximum stack depth. SubBytes and MixColumns tests cover boundary/random vectors,
+non-canonical and out-of-range nibbles, and preservation of surrounding stack
+state.
 
 ## Security
 
@@ -80,15 +103,14 @@ removes the 10,000-byte script-size and 201-non-push-opcode limits while retaini
 the 1,000-item combined-stack limit, which this implementation satisfies.
 
 The fragment alone does not satisfy Tapscript's cleanstack rule because it
-intentionally returns 32 ciphertext nibbles. A caller must compare or consume
-all outputs and leave exactly one truthy stack item. The full encryption
-fragment expects canonical integers in `0..=15`; the standalone AddRoundKey
-fragment validates both that range and minimal ScriptNum encoding before table
-lookup.
+intentionally returns 32 state nibbles. A caller must compare or consume
+all outputs and leave exactly one truthy stack item. Standalone AddRoundKey
+SubBytes, and MixColumns validate canonical integer encoding and the `0..=15` range for
+every input nibble; `aes128_encrypt` retains its caller-validated contract.
 
 ## Witness and hints
 
-No hints are required. The witness supplies 32 plaintext nibbles. Nibble 0
-(byte 0's high nibble) is on top and nibble 31 (byte 15's low nibble) is
-deepest. The generated fragment returns ciphertext in the same order. The key
-is not part of the witness because it is embedded in the script.
+No hints are required. These fragments consume 32 witness nibbles, with nibble 0
+(byte 0's high nibble) on top and nibble 31 (byte 15's low nibble) deepest.
+`aes128_encrypt` returns ciphertext in the same order and embeds its key in the
+script; `aes128_sub_bytes` and `aes128_mix_columns` return transformed states without keys.
