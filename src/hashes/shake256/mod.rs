@@ -676,4 +676,16 @@ mod tests {
         assert!(std::panic::catch_unwind(|| shake256_prefix(0, 0)).is_err());
         assert!(std::panic::catch_unwind(|| shake256_prefix(0, OUTPUT_LEN + 1)).is_err());
     }
+    #[test]
+    fn raw_output_exceeds_strict_stack_limit() {
+        let result = execute_script_with_inputs_strict(script! {{ shake256(0) }}, vec![]);
+        assert!(
+            !result.success,
+            "raw SHAKE256 output unexpectedly passed: {result}"
+        );
+        assert!(
+            result.stats.max_nb_stack_items >= 1_000,
+            "strict execution stopped before the stack boundary: {result}"
+        );
+    }
 }
