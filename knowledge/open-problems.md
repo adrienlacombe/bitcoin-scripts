@@ -264,10 +264,11 @@ incremental squeeze passes strict stack checks and is differentially validated
 against FIPS 202 for boundary message/output lengths.
 
 Progress: `shake256_prefix` now parameterizes the output length. Prefixes of
-1, 32, 135, 136, 137, and 256 bytes match the independent reference, and the
-32-byte prefix peaks at 813 items under the strict local executor. The
-representative fragment is still 2,000,127 bytes, and Bitcoin Core/policy
-validation plus an incremental consumer remain open.
+1, 32, 135, 136, 137, and 256 bytes match the independent reference. The
+32-byte prefix peaks at 813 items and the rate-crossing 137-byte prefix peaks
+at 813 items under the strict local executor. The representative fragments
+remain multi-megabyte, and Bitcoin Core/policy validation plus an incremental
+consumer remain open.
 
 ## OP-006 — BN254 hinted-operation inventory
 

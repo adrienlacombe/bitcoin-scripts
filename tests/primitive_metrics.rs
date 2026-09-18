@@ -4369,6 +4369,7 @@ fn winternitz20_metrics_are_current() {
 #[test]
 fn shake256_prefix_metrics_are_current() {
     let prefix = shake256::shake256_prefix(32, 32);
+    let rate_prefix = shake256::shake256_prefix(32, 137);
     let witness = vec![vec![0x42]; 32];
     check_readme_metrics(vec![
         Metric {
@@ -4388,6 +4389,24 @@ fn shake256_prefix_metrics_are_current() {
                 script! {
                     { prefix }
                     for _ in 0..16 { OP_2DROP }
+                    OP_TRUE
+                },
+                witness.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/hashes/shake256/README.md",
+            key: "shake256_prefix_32_137",
+            value: script_len(rate_prefix.clone()),
+        },
+        Metric {
+            readme: "src/hashes/shake256/README.md",
+            key: "shake256_prefix_stack_32_137",
+            value: max_stack_items_strict(
+                script! {
+                    { rate_prefix }
+                    for _ in 0..68 { OP_2DROP }
+                    OP_DROP
                     OP_TRUE
                 },
                 witness,
