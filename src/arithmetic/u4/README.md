@@ -38,6 +38,8 @@ these operations, but this module contains no hash-specific round logic.
   batch size in `1..=997` and returns one monotonicity bit.
 - `sum::u4_nibbles_sum_exact(nibble_count)` takes a checked batch size in
   `1..=997` and returns the exact sum in `0..=15*nibble_count`.
+- `mirror::u4_nibbles_to_mirror(nibble_count)` canonicalizes each nibble under
+  complement reflection to the range `0..=7`.
 - `bit_planes::u4_nibbles_to_bit_planes(nibble_count, check_inputs)` reuses
   checked nibble decomposition and transposes batches up to 234 nibbles.
 - `bit_planes::u4_nibbles_to_bit_planes_canonical(nibble_count)` additionally
@@ -108,6 +110,7 @@ each input with the same output-restoration boundary.
 | Checked reflected-Gray batch, 32 nibbles | <!-- metric:u4_gray_batch32 -->440<!-- /metric:u4_gray_batch32 --> bytes | <!-- metric:u4_gray_batch32_stack -->50<!-- /metric:u4_gray_batch32_stack --> items | <!-- metric:u4_gray_batch32_opcodes -->328<!-- /metric:u4_gray_batch32_opcodes --> |
 | Checked one-hot batch, 32 nibbles | <!-- metric:u4_one_hot_batch32 -->461<!-- /metric:u4_one_hot_batch32 --> bytes | <!-- metric:u4_one_hot_batch32_stack -->50<!-- /metric:u4_one_hot_batch32_stack --> items | <!-- metric:u4_one_hot_batch32_opcodes -->328<!-- /metric:u4_one_hot_batch32_opcodes --> |
 | Checked centered-signed batch, 32 nibbles | <!-- metric:u4_centered_batch32 -->447<!-- /metric:u4_centered_batch32 --> bytes | <!-- metric:u4_centered_batch32_stack -->50<!-- /metric:u4_centered_batch32_stack --> items | <!-- metric:u4_centered_batch32_opcodes -->328<!-- /metric:u4_centered_batch32_opcodes --> |
+| Checked reflected-domain batch, 32 nibbles | <!-- metric:u4_mirror_batch32 -->440<!-- /metric:u4_mirror_batch32 --> bytes | <!-- metric:u4_mirror_batch32_stack -->50<!-- /metric:u4_mirror_batch32_stack --> items | <!-- metric:u4_mirror_batch32_opcodes -->328<!-- /metric:u4_mirror_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -144,6 +147,8 @@ The square row measures only the checked reusable query; its generated
 <!-- metric:u4_one_hot_batch32_witness -->65<!-- /metric:u4_one_hot_batch32_witness --> serialized witness bytes for the representative one-hot batch.
 
 <!-- metric:u4_centered_batch32_witness -->65<!-- /metric:u4_centered_batch32_witness --> serialized witness bytes for the representative centered-signed batch.
+
+<!-- metric:u4_mirror_batch32_witness -->65<!-- /metric:u4_mirror_batch32_witness --> serialized witness bytes for the representative reflected-domain batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -267,6 +272,10 @@ bit serialization.
 The centered-signed table maps `x` to `x` for `0..=7` and to `x - 16` for
 `8..=15`, producing a balanced digit in `-8..=7` without changing the one-item
 per-input stack shape.
+
+The reflected-domain table maps complementary values `x` and `15-x` to the
+same representative `min(x, 15-x)` in `0..=7`. It is useful when a downstream
+relation is invariant under that complement symmetry.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -339,6 +348,9 @@ bitstring or a terminal predicate.
 
 Centered output is a signed ScriptNum in `-8..=7`, not a canonical unsigned
 nibble or a terminal predicate.
+
+Reflected-domain output is a numeric ScriptNum in `0..=7`; it intentionally
+forgets the complement-orientation bit and is not reversible by itself.
 
 ## Script compatibility and standardness
 
@@ -426,6 +438,11 @@ For `u4_nibbles_to_centered(n)`, the same input ordering is consumed and
 replaced one-for-one by centered signed digits. The standalone peak is `n + 18`
 during range checks; the generator rejects `n > 982`, and callers must reduce
 the batch for unrelated live state.
+
+For `u4_nibbles_to_mirror(n)`, the same input ordering is consumed and replaced
+one-for-one by complement-reflected representatives. The standalone peak is
+`n + 18` during range checks; the generator rejects `n > 982`, and callers must
+reduce the batch for unrelated live state.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
@@ -448,8 +465,8 @@ batches and batches above 981.
 `rotate.rs`, and `shift.rs` remain generic. `bits.rs` exhaustively tests every
 nibble in checked and unchecked mode, rejects malformed numeric inputs in
 checked mode, verifies multi-input ordering, and executes the maximum
-standalone batch under the strict local stack limit. `parity.rs`,
-`one_hot.rs`, and `centered.rs` exhaustively check the 16-value lookup domain, reject malformed
+standalone batch under the strict local stack limit. `parity.rs`, `one_hot.rs`, `centered.rs`, `mirror.rs`
+exhaustively check the 16-value lookup domain, reject malformed
 inputs and invalid batch sizes, and measure representative strict batches.
 
 The four-equal-index query is derived from the combined nibble-table sketch in

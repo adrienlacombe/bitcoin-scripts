@@ -48,6 +48,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to reflected Gray codes | `u4_nibbles_to_gray(32)` | 440 | 50-item peak; 65-byte witness; no hints |
 | 32 checked nibbles to one-hot masks | `u4_nibbles_to_one_hot(32)` | 461 | 50-item peak; 16-bit numeric selector per input |
 | 32 checked nibbles to centered signed digits | `u4_nibbles_to_centered(32)` | 447 | 50-item peak; outputs `-8..=7` |
+| 32 checked nibbles to complement-reflected representatives | `u4_nibbles_to_mirror(32)` | 440 | 50-item peak; canonical `0..=7` representative |
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | u32 per-byte population counts | `u32_byte_popcounts()` | 452 | 262-item peak; four numeric outputs; 256-item byte table |
 | u32 leading zero-byte count | `u32_leading_zero_bytes()` | 159 | 7-item peak; table-free; validates all four byte limbs |
