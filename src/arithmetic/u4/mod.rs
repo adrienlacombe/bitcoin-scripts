@@ -9,6 +9,7 @@ pub mod compare;
 pub mod interleave;
 pub mod gray;
 pub mod leading_zeros;
+pub mod gray_inverse;
 pub mod logic;
 pub mod lowbit;
 pub mod lsb;
