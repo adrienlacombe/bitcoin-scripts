@@ -4261,6 +4261,7 @@ fn metrics() -> Vec<Metric> {
     .into_iter()
     .chain(commitment_metrics())
     .chain(u32_compressed_rshift_metrics())
+    .chain(u32_compressed_lshift_metrics())
     .chain(prince_metrics())
     .chain(aes_sub_bytes_metrics())
     .chain(aes_mix_columns_metrics())
@@ -8498,4 +8499,62 @@ fn u32_compressed_rshift_metrics() -> Vec<Metric> {
 #[test]
 fn u32_compressed_rshift_metrics_are_current() {
     check_readme_metrics(u32_compressed_rshift_metrics());
+}
+
+fn byte_lshift8() -> bitcoin_script::Script {
+    script! {
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_FROMALTSTACK
+        OP_DROP
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        0
+    }
+}
+
+fn u32_compressed_lshift_metrics() -> Vec<Metric> {
+    const VALUE: u32 = 0x1234_5678;
+    let witness = vec![scriptnum(i64::from(VALUE as i32))];
+    let compressed = u32::shift::u32_compressed_lshift(8);
+    let baseline = script! {
+        { u32::stack::u32_uncompress() }
+        { byte_lshift8() }
+        { u32::stack::u32_compress() }
+    };
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8",
+            value: script_len(compressed.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_stack",
+            value: max_stack_items_strict(compressed, witness.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_baseline",
+            value: script_len(baseline.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_baseline_stack",
+            value: max_stack_items_strict(baseline, witness),
+        },
+    ]
+}
+
+#[test]
+fn u32_compressed_lshift_metrics_are_current() {
+    check_readme_metrics(u32_compressed_lshift_metrics());
 }

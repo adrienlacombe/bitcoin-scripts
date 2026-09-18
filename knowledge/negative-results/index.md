@@ -1576,3 +1576,13 @@ bytes versus 499 for a local decode-byte-shift-reencode baseline. It does save
 two live stack items, peaking at 5 instead of 7, with the same one-item witness.
 It is therefore not a general byte win. Evidence is `locally-reproduced` and
 deployment is `unclassified`; the result does not close OP-014.
+
+## NR-063: Direct compressed u32 left shift is not a byte win
+
+`u32_compressed_lshift(8)` performs a total-domain modulo-`2^32` left shift
+directly over one canonical ScriptNum, but costs 492 locking bytes versus 490
+for a local decode-byte-shift-reencode baseline. It saves two live stack items,
+peaking at 5 instead of 7, with the same one-item witness. The construction is
+retained as a stack-shape primitive and a complete-width correctness result,
+not as a general script-byte optimization. Evidence is `locally-reproduced`;
+deployment is `unclassified`; OP-026 remains open.

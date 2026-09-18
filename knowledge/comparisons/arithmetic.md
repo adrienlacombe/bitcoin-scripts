@@ -106,6 +106,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Compressed u32 unsigned less-than | Canonical two-item ScriptNum ordering | 124 | 2 witness items; 11 representative bytes; 6-item peak |
 | Compressed u32 less-than fixed threshold | `u32_compressed_lessthan_constant(0x89abcdef)` | <!-- metric:u32_compressed_lessthan_constant -->127<!-- /metric:u32_compressed_lessthan_constant --> | <!-- metric:u32_compressed_lessthan_constant_stack -->6<!-- /metric:u32_compressed_lessthan_constant_stack -->-item strict peak; one data item; signed threshold encoding |
 | Compressed u32 logical right shift | Direct one-item ScriptNum shift by 8 | 500 | 1 witness item; 5-item peak; decode baseline 499 bytes / 7-item peak |
+| Compressed u32 logical left shift | Direct one-item ScriptNum shift by 8 | 492 | 1 witness item; 5-item peak; decode baseline 490 bytes / 7-item peak |
 | Bounded RNS multiply | Legacy RNS multiply | 1,561 | 903-item peak |
 | Exact 256-bit-product RNS add | 75-prime canonical coordinatewise | 1,131 | 513-bit composite range; 151-item peak |
 | Exact 256-by-256-bit RNS multiply baseline | 75-prime table/Horner hybrid | 15,624 | No relation carries; 183-item peak |
