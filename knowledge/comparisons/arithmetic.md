@@ -56,6 +56,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Canonical checked u32 word to little-endian bits | `u32_to_le_bits_canonical()` | 562 | 9-byte representative/13-byte maximum witness; 35-item peak; rejects raw aliases |
 | u32 conditional word selection | u32 normalized truthy selector | 9 | 10–30-byte witness; 9-item peak |
 | 32 checked nibbles to 128 little-endian bits | u4 mirrored staggered table | 924 | 65-byte witness; 189-item peak; same table cost, no per-nibble reversal |
+| 32 canonical checked nibbles to 128 little-endian bits | u4 canonical little-endian table adapter | 1,306 | 189-item peak; 65-byte witness; rejects raw aliases |
 | u32 zero predicate | direct four-limb `OP_0NOTEQUAL`/`OP_BOOLAND` fold | 4 | 5-byte four-limb witness; 4-item peak; canonical byte limbs required |
 | u32 zero-byte mask | `u32_to_zero_byte_mask()` | 67 | 13-byte witness; 8-item peak; four-bit per-byte mask |
 | u32 per-byte equality mask | `u32_byte_eq_mask()` | 149 | 17-byte eight-item witness; 11-item peak; four lane predicates; no hints |
