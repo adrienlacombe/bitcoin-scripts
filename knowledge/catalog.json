@@ -9524,6 +9524,73 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/u4-mul-constant-mod16",
+      "name": "Checked public-constant u4 multiplication modulo 16",
+      "class": "arithmetic/word",
+      "summary": "Range-checks one u4 input and selects multiplication by a public compile-time constant from a reusable 16-item table.",
+      "status": "active",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u4-mul-constant-mod16.md",
+      "implementation": "src/arithmetic/u4/mul_constant.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "src/arithmetic/u4/mul_constant.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "checked-lookup",
+        "digit-arithmetic",
+        "lookup-table"
+      ],
+      "security": "The input is range-checked before OP_PICK; this proves numeric nibble validity but not byte-unique ScriptNum encoding or a terminal predicate. The multiplier is fixed in the locking script and is not witness-controlled.",
+      "stack_contract": "Consumes preserved | table[16] | value and returns preserved | table[16] | (constant * value mod 16), with value in 0..=15.",
+      "configurations": [
+        {
+          "id": "constant-10-query",
+          "label": "u4_mul_constant_mod16(constant=10)",
+          "parameters": {
+            "constant": 10,
+            "table_items": 16,
+            "data_items": 1,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: one numeric range check and one table query; excludes witness pushes, table setup and cleanup from the query script size, terminal predicate, and transaction context",
+          "script_bytes": 6,
+          "witness_bytes": 3,
+          "witness_bytes_max": 3,
+          "max_stack_items": 20,
+          "executed_opcodes": 4,
+          "validation_weight": null,
+          "setup_script_bytes": 16,
+          "per_use_script_bytes": 6,
+          "metric_keys": [
+            "u4_mul_constant_mod16",
+            "u4_mul_constant_mod16_table",
+            "u4_mul_constant_mod16_witness",
+            "u4_mul_constant_mod16_stack",
+            "u4_mul_constant_mod16_opcodes"
+          ]
+        }
+      ],
+      "limitations": [
+        "Only public compile-time constants are supported",
+        "The 16-item table remains resident until the caller drops it",
+        "Numeric range checks do not establish byte-unique ScriptNum encoding",
+        "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
     }
   ]
 }

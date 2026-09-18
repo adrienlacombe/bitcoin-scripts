@@ -15,6 +15,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 triplet-to-u12 packing](u4-triplet.md)
 - [Checked u4 quad-to-u16 packing](u4-quad.md)
 - [Checked u4 XOR reduction](u4-xor-reduction.md)
+- [Checked public-constant u4 multiplication modulo 16](u4-mul-constant-mod16.md)
 - [Checked u4 least-significant-bit projection](u4-lsb.md)
 - [Checked u4 zero-mask projection](u4-zero-mask.md)
 - [Checked u4 modulo-16 sum](u4-sum-mod16.md)

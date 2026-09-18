@@ -30,6 +30,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to parity bits | `u4_nibbles_to_parity(32)` | 440 | 50-item peak; one output bit per input |
 | 16 checked nibbles to one XOR nibble | `u4_nibbles_to_xor(16)` | 740 | 273-item peak; 256-item full XOR table |
 | Variable u32 XNOR | `u32_xnor(0, 1, 3)` | 222 | 272-item peak; 182 static non-push opcodes; shared 256-item XOR table |
+| Checked public-constant u4 multiplication | `u4_mul_constant_mod16`, `constant=10` | 6 | 20-item peak; 16-item table; one data item; zero hints |
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | u32 per-byte population counts | `u32_byte_popcounts()` | 452 | 262-item peak; four numeric outputs; 256-item byte table |
 | u32 leading zero-byte count | `u32_leading_zero_bytes()` | 159 | 7-item peak; table-free; validates all four byte limbs |

@@ -402,7 +402,6 @@ mod tests {
         execute_raw_script_with_inputs_strict, execute_script, execute_script_with_inputs_strict,
         run,
     };
-    use crate::support::execution::{execute_raw_script_with_inputs_strict, execute_script, run};
 
     fn scriptnum(value: i64) -> Vec<u8> {
         let mut bytes = [0u8; 8];
