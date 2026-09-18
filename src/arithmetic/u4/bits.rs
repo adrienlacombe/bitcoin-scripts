@@ -123,6 +123,21 @@ pub fn u4_nibbles_to_be_bits_toaltstack(nibble_count: u32, check_inputs: bool) -
     }
 }
 
+/// Consume minimally encoded nibbles and leave big-endian bits on altstack.
+pub fn u4_nibbles_to_be_bits_toaltstack_canonical(nibble_count: u32) -> Script {
+    validate_batch_size(nibble_count);
+    script! {
+        for _ in 0..nibble_count {
+            { verify_canonical_nibble() }
+            OP_TOALTSTACK
+        }
+        for _ in 0..nibble_count {
+            OP_FROMALTSTACK
+        }
+        { u4_nibbles_to_be_bits_toaltstack(nibble_count, true) }
+    }
+}
+
 /// Consume a contiguous nibble batch and replace it with big-endian bits.
 ///
 /// This has the same input contract as [`u4_nibbles_to_be_bits_toaltstack`],
@@ -386,6 +401,76 @@ mod tests {
         assert!(std::panic::catch_unwind(|| u4_nibbles_to_be_bits_canonical(0)).is_err());
         assert!(std::panic::catch_unwind(|| {
             u4_nibbles_to_be_bits_canonical(U4_BITS_MAX_BATCH + 1)
+        })
+        .is_err());
+    }
+    #[test]
+    fn canonical_big_endian_altstack_batch_matches_reference_values() {
+        let result = execute_script(script! {
+            1 10 12
+            { u4_nibbles_to_be_bits_toaltstack_canonical(3) }
+            for _ in 0..12 {
+                OP_FROMALTSTACK
+            }
+            for bit in [1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1].iter() {
+                { *bit } OP_EQUALVERIFY
+            }
+            OP_TRUE
+        });
+        assert!(
+            result.success,
+            "canonical altstack conversion failed: {result}"
+        );
+    }
+
+    #[test]
+    fn canonical_big_endian_altstack_batch_rejects_malformed_nibbles() {
+        let script = script! {
+            { u4_nibbles_to_be_bits_toaltstack_canonical(4) }
+            for _ in 0..16 {
+                OP_FROMALTSTACK OP_DROP
+            }
+            OP_TRUE
+        };
+        for position in 0..4 {
+            for replacement in [vec![1, 0], vec![0, 1], vec![0x80]] {
+                let mut witness = vec![vec![1]; 4];
+                witness[position] = replacement;
+                let result =
+                    crate::support::execution::execute_script_with_inputs(script.clone(), witness);
+                assert!(
+                    !result.success,
+                    "accepted malformed altstack nibble at {position}: {result}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn canonical_big_endian_altstack_batch_preserves_surrounding_stacks() {
+        let result = crate::support::execution::execute_script_with_inputs_strict(
+            script! {
+                99 OP_TOALTSTACK
+                { u4_nibbles_to_be_bits_toaltstack_canonical(2) }
+                for _ in 0..8 {
+                    OP_FROMALTSTACK OP_DROP
+                }
+                77 OP_EQUALVERIFY
+                OP_FROMALTSTACK 99 OP_EQUALVERIFY
+                OP_TRUE
+            },
+            vec![vec![77], vec![1], vec![2]],
+        );
+        assert!(result.success, "altstack preservation failed: {result}");
+    }
+
+    #[test]
+    fn canonical_big_endian_altstack_batch_rejects_invalid_sizes() {
+        assert!(
+            std::panic::catch_unwind(|| { u4_nibbles_to_be_bits_toaltstack_canonical(0) }).is_err()
+        );
+        assert!(std::panic::catch_unwind(|| {
+            u4_nibbles_to_be_bits_toaltstack_canonical(U4_BITS_MAX_BATCH + 1)
         })
         .is_err());
     }

@@ -629,6 +629,34 @@
             "u4_bits_canonical_batch32_opcodes"
           ],
           "static_non_push_opcodes": 1021
+        },
+        {
+          "id": "nibble-to-be-bits-altstack-batch32-canonical",
+          "label": "Canonical checked 32-nibble staggered-table big-endian altstack decomposition",
+          "parameters": {
+            "nibble_count": 32,
+            "bit_order": "most-significant bit first within each nibble, output on altstack",
+            "canonical_input_check": true,
+            "table_items": 61,
+            "data_items": 32,
+            "hint_items": 0
+          },
+          "includes": "fragment-with-memory: 32 canonical-nibble checks, 61-item staggered-table setup, 32 checked queries, table cleanup, and restoration of 128 output bits to altstack; the canonical checks reject numeric aliases before the table path, which repeats numeric range checks; witness_bytes reports 32 canonical 0x0f input items; excludes terminal predicate, unrelated live state, and transaction context; static non-push opcode count is 893, dynamic count is unavailable",
+          "script_bytes": 1178,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 189,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 61,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_bits_be_alt_canonical_batch32",
+            "u4_bits_be_alt_canonical_batch32_witness",
+            "u4_bits_be_alt_canonical_batch32_stack",
+            "u4_bits_be_alt_canonical_batch32_opcodes"
+          ],
+          "static_non_push_opcodes": 893
         }
       ],
       "limitations": [

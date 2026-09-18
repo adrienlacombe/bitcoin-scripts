@@ -43,13 +43,16 @@ these operations, but this module contains no hash-specific round logic.
   non-minimal ScriptNum encodings before little-endian decomposition.
 - `bits::u4_nibbles_to_be_bits_canonical(nibble_count)` additionally rejects
   non-minimal ScriptNum encodings before big-endian decomposition.
+- `bits::u4_nibbles_to_be_bits_toaltstack_canonical(nibble_count)` validates
+  raw ScriptNum encoding and leaves big-endian output on the altstack.
 
 ## Script metrics
 
 These are serialized locking-script fragments. Operand pushes and witness
-serialization are excluded. The 32-nibble bit-conversion rows include table
-setup, all queries, table cleanup, and restoration of 128 output bits to the
-main stack. The branch baseline applies the existing four-bit limb splitter to
+serialization are excluded. The 32-nibble main-stack bit-conversion rows
+include table setup, all queries, table cleanup, and restoration of 128 output
+bits to the main stack. The altstack row ends at the reusable altstack output
+boundary. The branch baseline applies the existing four-bit limb splitter to
 each input with the same output-restoration boundary.
 
 | Fragment | Locking script | Maximum combined stack | Static non-push opcodes |
@@ -61,6 +64,7 @@ each input with the same output-restoration boundary.
 | Little-endian staggered bit-table setup | <!-- metric:u4_bits_le_table_push -->61<!-- /metric:u4_bits_le_table_push --> bytes | 61 table items | not recorded |
 | Checked table batch, 32 nibbles | <!-- metric:u4_bits_checked_batch32 -->924<!-- /metric:u4_bits_checked_batch32 --> bytes | <!-- metric:u4_bits_checked_batch32_stack -->189<!-- /metric:u4_bits_checked_batch32_stack --> items | <!-- metric:u4_bits_checked_batch32_opcodes -->735<!-- /metric:u4_bits_checked_batch32_opcodes --> |
 | Canonical checked table batch, 32 nibbles | <!-- metric:u4_bits_canonical_batch32 -->1306<!-- /metric:u4_bits_canonical_batch32 --> bytes | <!-- metric:u4_bits_canonical_batch32_stack -->189<!-- /metric:u4_bits_canonical_batch32_stack --> items | <!-- metric:u4_bits_canonical_batch32_opcodes -->1021<!-- /metric:u4_bits_canonical_batch32_opcodes --> |
+| Canonical checked altstack batch, 32 nibbles | <!-- metric:u4_bits_be_alt_canonical_batch32 -->1178<!-- /metric:u4_bits_be_alt_canonical_batch32 --> bytes | <!-- metric:u4_bits_be_alt_canonical_batch32_stack -->189<!-- /metric:u4_bits_be_alt_canonical_batch32_stack --> items | <!-- metric:u4_bits_be_alt_canonical_batch32_opcodes -->893<!-- /metric:u4_bits_be_alt_canonical_batch32_opcodes --> |
 | Checked little-endian table batch, 32 nibbles | <!-- metric:u4_bits_le_checked_batch32 -->924<!-- /metric:u4_bits_le_checked_batch32 --> bytes | <!-- metric:u4_bits_le_checked_batch32_stack -->189<!-- /metric:u4_bits_le_checked_batch32_stack --> items | <!-- metric:u4_bits_le_checked_batch32_opcodes -->735<!-- /metric:u4_bits_le_checked_batch32_opcodes --> |
 | Canonical checked little-endian table batch, 32 nibbles | <!-- metric:u4_bits_le_canonical_batch32 -->1306<!-- /metric:u4_bits_le_canonical_batch32 --> bytes | <!-- metric:u4_bits_le_canonical_batch32_stack -->189<!-- /metric:u4_bits_le_canonical_batch32_stack --> items | <!-- metric:u4_bits_le_canonical_batch32_opcodes -->1021<!-- /metric:u4_bits_le_canonical_batch32_opcodes --> |
 | Unchecked table batch, 32 nibbles | <!-- metric:u4_bits_unchecked_batch32 -->764<!-- /metric:u4_bits_unchecked_batch32 --> bytes | 189 items | not recorded |
@@ -116,6 +120,7 @@ representative left witness is <!-- metric:u4_lexicographic_le_constant_128_witn
 <!-- metric:u4_bit_planes_canonical_batch16_witness -->33<!-- /metric:u4_bit_planes_canonical_batch16_witness --> serialized witness bytes for the representative canonical bit-plane batch.
 
 <!-- metric:u4_bits_canonical_batch32_witness -->65<!-- /metric:u4_bits_canonical_batch32_witness --> serialized witness bytes for the representative canonical big-endian batch.
+<!-- metric:u4_bits_be_alt_canonical_batch32_witness -->65<!-- /metric:u4_bits_be_alt_canonical_batch32_witness --> serialized witness bytes for the representative canonical altstack batch.
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -187,6 +192,9 @@ serialized as <!-- metric:u4_bits_le_checked_batch32_witness -->65<!-- /metric:u
 The canonical little-endian row uses the same 32-item, 65-byte representative
 witness and adds one raw ScriptNum boundary check per nibble.
 <!-- metric:u4_bits_le_canonical_batch32_witness -->65<!-- /metric:u4_bits_le_canonical_batch32_witness -->
+The canonical altstack row adds one raw ScriptNum boundary check per nibble and
+stops before restoring the 128 output bits to the main stack. It measures 1,178
+bytes, 893 static non-push opcodes, and a 189-item peak.
 
 ## Security
 
@@ -201,6 +209,9 @@ by itself prove a byte-unique ScriptNum encoding.
 The canonical little-endian adapter performs `verify_canonical_nibble()` on
 each hostile input before invoking the checked table path; it rejects negative,
 oversized, and non-minimal raw encodings while preserving the same bit order.
+The canonical altstack adapter performs `verify_canonical_nibble()` on each
+hostile input before the checked table path; it rejects negative, oversized,
+and non-minimal raw encodings while preserving the reusable altstack boundary.
 
 `compare::lexicographic_le(n)` range-checks two `n`-nibble big-endian vectors,
 compares the first differing nibble, consumes both vectors, and returns one
@@ -245,7 +256,12 @@ main stack and all new bits above any pre-existing altstack state.
 For `u4_nibbles_to_le_bits(n, ...)`, the stack contract and input order are the
 same, but each nibble's least-significant bit is emitted first. The checked
 32-nibble representative consumes 32 witness data items (65 serialized
-witness bytes for the all-15 fixture); no hint items are required.
+ witness bytes for the all-15 fixture); no hint items are required.
+
+For `u4_nibbles_to_be_bits_toaltstack_canonical(n)`, the input contract is the
+same as the checked big-endian converter, but every nibble is first checked for
+minimal ScriptNum encoding. The preserved main stack remains below the output
+bits, which remain on altstack for a following composition.
 
 The standalone batch peak is `4*n + 61` combined main/alt-stack items. The
 generator rejects `n > 234`, but callers must reduce the batch further for any
