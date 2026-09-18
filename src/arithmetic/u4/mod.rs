@@ -11,6 +11,7 @@ pub mod lsb;
 pub mod mul_constant;
 pub mod nondecreasing;
 pub mod pack;
+pub mod one_hot;
 pub mod parity;
 pub mod popcount;
 pub mod rotate;
