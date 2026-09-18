@@ -16,6 +16,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 trailing-zero projection](u4-trailing-zeros.md)
 - [Checked u4 lowest-set-bit projection](u4-lowbit.md)
 - [Checked inverse u4 Gray projection](u4-gray-inverse.md)
+- [Checked u4 nonzero-power-of-two predicate](u4-power-of-two.md)
 - [Checked u4 parity projection](u4-parity.md)
 - [Checked u4 triplet-to-u12 packing](u4-triplet.md)
 - [Checked u4 quad-to-u16 packing](u4-quad.md)

@@ -39,6 +39,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to trailing-zero counts | `u4_nibbles_to_trailing_zeros(32)` | 440 | 50-item peak; one output count per input |
 | 32 checked nibbles to lowest-set-bit selectors | `u4_nibbles_to_lowbit(32)` | 440 | 50-item peak; one selector per input |
 | 32 checked Gray nibbles to binary nibbles | `u4_nibbles_from_gray(32)` | 440 | 50-item peak; one decoded nibble per input |
+| 32 checked nibbles to nonzero-power-of-two bits | `u4_nibbles_to_power_of_two(32)` | 440 | 50-item peak; one predicate bit per input |
 | 32 checked nibbles to parity bits | `u4_nibbles_to_parity(32)` | 440 | 50-item peak; one output bit per input |
 | 16 checked nibbles to one XOR nibble | `u4_nibbles_to_xor(16)` | 740 | 273-item peak; 256-item full XOR table |
 | Variable u32 XNOR | `u32_xnor(0, 1, 3)` | 222 | 272-item peak; 182 static non-push opcodes; shared 256-item XOR table |

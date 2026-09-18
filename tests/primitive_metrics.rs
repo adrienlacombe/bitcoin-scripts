@@ -7985,3 +7985,45 @@ fn u4_gray_inverse_metrics_are_current() {
         },
     ]);
 }
+
+/// This isolated fixture measures only the checked u4 power-of-two projection.
+#[test]
+fn u4_power_of_two_metrics_are_current() {
+    const NIBBLE_COUNT: u32 = 32;
+    let fragment = u4::power_of_two::u4_nibbles_to_power_of_two(NIBBLE_COUNT);
+    let witness = vec![scriptnum(15); NIBBLE_COUNT as usize];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..NIBBLE_COUNT {
+                OP_DROP
+            }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), NIBBLE_COUNT as usize);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_power_of_two_batch32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_power_of_two_batch32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_power_of_two_batch32_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_power_of_two_batch32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
