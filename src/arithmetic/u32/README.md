@@ -40,6 +40,7 @@ they do not use BN254 or any other field modulus.
   `stack_size` is one plus the number of u32 words above the shared byte-logic
   table. With exactly two working words, the usual value is `3`.
 - `u32_nand(a, b, stack_size)` computes the bitwise complement of AND using the
+- `u32_nor(a, b, stack_size)` computes the bitwise complement of OR using the
   same shared table and preserves the word selected by `a`.
 - `popcount::u32_popcount()` consumes one four-byte word, range-checks every
   byte, and returns its set-bit count in `0..=32`.
@@ -83,6 +84,7 @@ as less-than-or-equal.
 | `u32_lessthanorequal()` | <!-- metric:u32_lessthanorequal -->61<!-- /metric:u32_lessthanorequal --> bytes | 0 bytes | <!-- metric:u32_lessthanorequal_stack -->13<!-- /metric:u32_lessthanorequal_stack --> items |
 | `u32_or(0, 1, 3)` (table excluded) | <!-- metric:u32_or -->326<!-- /metric:u32_or --> bytes | 0 bytes | <!-- metric:u32_or_stack -->272<!-- /metric:u32_or_stack --> items, including table |
 | `u32_nand(0, 1, 3)` (table excluded) | <!-- metric:u32_nand -->190<!-- /metric:u32_nand --> bytes | 0 bytes | <!-- metric:u32_nand_stack -->272<!-- /metric:u32_nand_stack --> items, including table; <!-- metric:u32_nand_opcodes -->150<!-- /metric:u32_nand_opcodes --> static non-push opcodes |
+| `u32_nor(0, 1, 3)` (table excluded) | <!-- metric:u32_nor -->346<!-- /metric:u32_nor --> bytes | 0 bytes | <!-- metric:u32_nor_stack -->272<!-- /metric:u32_nor_stack --> items, including table; <!-- metric:u32_nor_opcodes -->250<!-- /metric:u32_nor_opcodes --> static non-push opcodes |
 | `u32_notequal()` | <!-- metric:u32_notequal -->19<!-- /metric:u32_notequal --> bytes | 0 bytes | <!-- metric:u32_notequal_stack -->9<!-- /metric:u32_notequal_stack --> items |
 | `u32_compressed_equal()` | <!-- metric:u32_compressed_equal -->37<!-- /metric:u32_compressed_equal --> bytes | <!-- metric:u32_compressed_equal_witness -->11<!-- /metric:u32_compressed_equal_witness --> bytes | <!-- metric:u32_compressed_equal_stack -->5<!-- /metric:u32_compressed_equal_stack --> items |
 | `u32_conditional_select()` | <!-- metric:u32_conditional_select -->9<!-- /metric:u32_conditional_select --> bytes | <!-- metric:u32_conditional_select_witness_min -->10<!-- /metric:u32_conditional_select_witness_min -->–<!-- metric:u32_conditional_select_witness_max -->30<!-- /metric:u32_conditional_select_witness_max --> bytes | <!-- metric:u32_conditional_select_stack -->9<!-- /metric:u32_conditional_select_stack --> items |
@@ -144,6 +146,11 @@ It does not allocate a second lookup table or materialize a separate NOT
 fragment. Like the existing byte Boolean operations, it requires numeric byte
 limbs in `0..=255`; callers handling hostile witness encodings must add the
 canonical byte checks required by their protocol.
+
+`u32_nor()` is the fused dual of the AND-based NAND adapter: it performs the
+existing byte-table OR schedule and complements each result before restoring
+the word. It requires numeric byte limbs in `0..=255`; hostile witness
+encodings need the canonical byte checks required by their protocol.
 
 The canonical compressed-u32 row uses the maximum five-byte witness item for
 `-2^31`. It is a raw-encoding boundary: `u32_uncompress()` remains available

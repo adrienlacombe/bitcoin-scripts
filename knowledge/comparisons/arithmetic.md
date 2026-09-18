@@ -36,6 +36,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | u32 fixed byte extraction | `u32_extract_byte(0)` | 56 | 7-item peak; validates all four limbs; fixed index |
 | u32 per-byte parity projection | `u32_byte_parity()` | <!-- metric:u32_byte_parity -->452<!-- /metric:u32_byte_parity --> | <!-- metric:u32_byte_parity_stack -->262<!-- /metric:u32_byte_parity_stack -->-item peak; four parity outputs; same 256-item table; 3 bytes below whole-word popcount |
 | Fused u32 NAND | `u32_nand(0, 1, 3)` | 190 | 272-item peak; shared 256-item Boolean table |
+| Fused u32 NOR | `u32_nor(0, 1, 3)` | 346 | 272-item peak; shared 256-item Boolean table |
 | 32 checked nibbles to LSB bits | `u4_nibbles_to_lsb(32)` | 440 | 50-item peak; one output bit per input |
 | 32 checked nibbles to zero predicates | `u4_nibbles_to_zero_mask(32)` | 414 | 35-item peak; no resident lookup table |
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |
