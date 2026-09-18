@@ -47,6 +47,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to zero predicates | `u4_nibbles_to_zero_mask(32)` | 414 | 35-item peak; no resident lookup table |
 | 32 checked nibbles to four zero bitmasks | `u4_nibbles_to_zero_bitmasks(32)` | 482 | 36-item peak; four output bytes; no resident lookup table |
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |
+| 16 canonical checked nibbles to four bit planes | u4 canonical bit-plane transpose | 966 | 125-item peak; 33-byte witness; rejects raw aliases |
 | 32 checked nibble bit reversals | u4 16-item reversal table | 344 | 51-item peak; 65-byte witness |
 | 32 checked nibbles to one modulo-16 sum | `u4_nibbles_to_sum_mod16(32)` | 592 | 66-item peak; 65-byte witness; 31-item table |
 | 32 canonical checked nibble bit reversals | `u4_nibbles_to_bit_reverse_canonical(32)` | 504 | 51-item peak; 65-byte witness; rejects raw aliases |
