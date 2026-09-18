@@ -20,6 +20,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 nondecreasing predicate](u4-nondecreasing.md)
 - [Checked u4 exact sum](u4-exact-sum.md)
 - [Checked u4 batch nibble packing](u4-batch-pack.md)
+- [Checked u4 adjacent forward delta](u4-adjacent-delta.md)
 - [Checked u4 least-significant-bit projection](u4-lsb.md)
 - [Checked u4 zero-mask projection](u4-zero-mask.md)
 - [Checked u4 modulo-16 sum](u4-sum-mod16.md)

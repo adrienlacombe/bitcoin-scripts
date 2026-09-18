@@ -10434,6 +10434,73 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/u4-adjacent-delta",
+      "name": "Checked u4 adjacent forward delta",
+      "class": "arithmetic/word",
+      "summary": "Range-checked batch transform from contiguous u4 nibbles to forward modulo-16 edge deltas.",
+      "status": "active",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u4-adjacent-delta.md",
+      "implementation": "src/arithmetic/u4/adjacent_delta.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "src/arithmetic/u4/adjacent_delta.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "stack-scheduling",
+        "digit-arithmetic",
+        "modular-reduction"
+      ],
+      "security": "Every hostile input is range-checked before subtraction; numeric range checking does not prove byte-unique ScriptNum encoding, bind the initial nibble, or supply a terminal predicate.",
+      "stack_contract": "Consumes preserved | nibble[0] ... nibble[n-1] and returns preserved | delta[0] ... delta[n-2], where delta[i] = (nibble[i+1] - nibble[i]) mod 16; the last delta is on top.",
+      "configurations": [
+        {
+          "id": "checked-batch32",
+          "label": "u4_nibbles_to_adjacent_delta(32)",
+          "parameters": {
+            "nibble_count": 32,
+            "data_items": 32,
+            "output_items": 31,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: 32 numeric range checks, 31 direct modulo-16 differences, altstack output staging, and input cleanup; excludes input pushes, witness serialization from the script, initial-value binding, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 806,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 65,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 806,
+          "metric_keys": [
+            "u4_adjacent_delta_batch32",
+            "u4_adjacent_delta_batch32_witness",
+            "u4_adjacent_delta_batch32_stack",
+            "u4_adjacent_delta_batch32_opcodes"
+          ],
+          "static_non_push_opcodes": 547
+        }
+      ],
+      "limitations": [
+        "The initial nibble must be retained separately to invert the transform",
+        "The 499-input standalone ceiling must be reduced when unrelated stack state is live",
+        "Static non-push opcode count is not an executed-opcode measurement",
+        "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
     }
   ]
 }

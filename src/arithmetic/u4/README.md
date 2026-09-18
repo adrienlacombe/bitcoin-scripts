@@ -18,6 +18,8 @@ these operations, but this module contains no hash-specific round logic.
   in `1..=982` and returns one Hamming weight in `0..=4` per input nibble.
 - `pack::u4_nibbles_to_bytes(nibble_count)` takes an even checked batch size in
   `2..=664` and returns one byte per high/low nibble pair.
+- `adjacent_delta::u4_nibbles_to_adjacent_delta(nibble_count)` takes a checked
+  batch size in `2..=499` and returns one forward modulo-16 delta per edge.
 - `lsb::u4_nibbles_to_lsb(nibble_count)` takes a checked batch size in
   `1..=982` and returns one bit per input nibble.
 - `sum::u4_nibbles_to_sum_mod16(nibble_count)` takes a checked batch size in
@@ -90,6 +92,7 @@ each input with the same output-restoration boundary.
 | Checked nondecreasing batch, 32 nibbles | <!-- metric:u4_nondecreasing_batch32 -->588<!-- /metric:u4_nondecreasing_batch32 --> bytes | <!-- metric:u4_nondecreasing_batch32_stack -->35<!-- /metric:u4_nondecreasing_batch32_stack --> items | <!-- metric:u4_nondecreasing_batch32_opcodes -->391<!-- /metric:u4_nondecreasing_batch32_opcodes --> |
 | Checked exact-sum batch, 32 nibbles | <!-- metric:u4_exact_sum_batch32 -->489<!-- /metric:u4_exact_sum_batch32 --> bytes | <!-- metric:u4_exact_sum_batch32_stack -->35<!-- /metric:u4_exact_sum_batch32_stack --> items | <!-- metric:u4_exact_sum_batch32_opcodes -->334<!-- /metric:u4_exact_sum_batch32_opcodes --> |
 | Checked 32-nibble batch pack | <!-- metric:u4_pack_batch32 -->442<!-- /metric:u4_pack_batch32 --> bytes | <!-- metric:u4_pack_batch32_stack -->52<!-- /metric:u4_pack_batch32_stack --> items | <!-- metric:u4_pack_batch32_opcodes -->334<!-- /metric:u4_pack_batch32_opcodes --> |
+| Checked adjacent modulo-16 delta batch, 32 nibbles | <!-- metric:u4_adjacent_delta_batch32 -->806<!-- /metric:u4_adjacent_delta_batch32 --> bytes | <!-- metric:u4_adjacent_delta_batch32_stack -->65<!-- /metric:u4_adjacent_delta_batch32_stack --> items | <!-- metric:u4_adjacent_delta_batch32_opcodes -->547<!-- /metric:u4_adjacent_delta_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -144,6 +147,8 @@ representative left witness is <!-- metric:u4_lexicographic_le_constant_128_witn
 The canonical little-endian altstack row measures 1,178 bytes, 893 static
 non-push opcodes, and a 189-item peak; it stops before restoring outputs to the
 main stack.
+
+<!-- metric:u4_adjacent_delta_batch32_witness -->65<!-- /metric:u4_adjacent_delta_batch32_witness --> serialized witness bytes for the representative adjacent-delta batch.
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -206,6 +211,12 @@ the full `0..=15*n` total in one ScriptNum and uses no lookup table or hints.
 The batch pack reuses the checked high/low nibble-to-byte boundary for every
 pair, preserves pair order, and avoids a caller-side sequence of temporary
 byte conversions.
+
+The adjacent-delta fragment range-checks a contiguous vector and replaces each
+edge with `(next - current) mod 16`. It uses no lookup table or witness hints;
+the representative 32-nibble fixture has 31 output items and 65 serialized
+witness bytes. The transform is reversible only when its initial nibble is
+retained, so it is a sequence adapter rather than a standalone commitment.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -257,6 +268,10 @@ truth value. For the representative 128-nibble vectors, the complete witness
 is <!-- metric:u4_lexicographic_le_128_witness -->259<!-- /metric:u4_lexicographic_le_128_witness --> bytes across <!-- metric:u4_lexicographic_le_128_witness_items -->256<!-- /metric:u4_lexicographic_le_128_witness_items --> data items and <!-- metric:u4_lexicographic_le_128_hints -->0<!-- /metric:u4_lexicographic_le_128_hints --> hint items; all data items coexist at entry. Numeric range validation does not make non-minimal raw ScriptNum encodings byte-unique under consensus.
 Parity uses the same numeric range proof before its `OP_PICK` lookup. Its
 output is a ScriptNum bit, not a raw byte or a terminal truth value.
+Adjacent delta uses the same numeric range proof before subtraction. The
+conditional addition normalizes each result into `0..=15`; it does not prove
+byte-unique ScriptNum encodings or bind the initial nibble needed to invert the
+transform.
 
 ## Script compatibility and standardness
 
@@ -313,6 +328,11 @@ For `u4_nibbles_to_parity(n)`, the same input ordering is consumed and replaced
 one-for-one by parity bits. The standalone peak is `n + 18` during range checks;
 the generator rejects `n > 982`, and callers must reduce the batch for unrelated
 live state.
+For `adjacent_delta::u4_nibbles_to_adjacent_delta(n)`, the input vector is
+consumed and replaced by `n-1` forward modulo-16 deltas in input order. The
+standalone schedule keeps the `n` input items and up to `n-1` output items
+coexisting, so the generator rejects `n > 499` before unrelated state is
+accounted for.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
