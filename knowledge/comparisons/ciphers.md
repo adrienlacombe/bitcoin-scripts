@@ -5,6 +5,7 @@
 | PRINCEv2 u4 | 64-bit block / embedded 128-bit key | 6,136 | 17–33 | 633 |
 | AES-128 u4 | 128-bit block / embedded 128-bit key | 25,388 | 33–65 | 908 |
 | AES-128 ShiftRows | 32-nibble state permutation | <!-- metric:aes128_shift_rows -->117<!-- /metric:aes128_shift_rows --> | <!-- metric:aes128_shift_rows_witness -->65<!-- /metric:aes128_shift_rows_witness -->; 32 data items | <!-- metric:aes128_shift_rows_stack -->33<!-- /metric:aes128_shift_rows_stack --> items |
+| Checked AES-128 AddRoundKey | 32 checked u4 state nibbles / embedded 128-bit key | <!-- metric:aes128_add_round_key -->1874<!-- /metric:aes128_add_round_key --> | <!-- metric:aes128_add_round_key_witness -->65<!-- /metric:aes128_add_round_key_witness --> | <!-- metric:aes128_add_round_key_stack -->899<!-- /metric:aes128_add_round_key_stack --> |
 
 PRINCEv2 is smaller locally but is not a semantic replacement for AES-128.
 The ShiftRows row is a reusable stack-permutation boundary, not a cipher or

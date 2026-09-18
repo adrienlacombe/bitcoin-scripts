@@ -14,6 +14,8 @@ a generation-time key.
   for key expansion, native reference checks, and stack encoding.
 - `aes128_shift_rows` exposes the zero-memory state permutation used inside the
   fused encryptor. It moves 32 nibble items and does not validate their range.
+- `aes128_add_round_key` exposes one checked keyed-XOR boundary with the same
+  32-nibble state layout; its 128-bit key is embedded at generation time.
 
 ## Script metrics
 
@@ -30,6 +32,10 @@ and Script-number push widths vary.
 | `aes128_shift_rows()` | <!-- metric:aes128_shift_rows -->117<!-- /metric:aes128_shift_rows --> bytes |
 | ShiftRows witness, 32 data items | <!-- metric:aes128_shift_rows_witness -->65<!-- /metric:aes128_shift_rows_witness --> bytes |
 | ShiftRows maximum combined depth | <!-- metric:aes128_shift_rows_stack -->33<!-- /metric:aes128_shift_rows_stack --> items; <!-- metric:aes128_shift_rows_opcodes -->88<!-- /metric:aes128_shift_rows_opcodes --> static non-push opcodes |
+| `aes128_add_round_key([0; 16])` | <!-- metric:aes128_add_round_key -->1874<!-- /metric:aes128_add_round_key --> bytes |
+| AddRoundKey witness, 32 canonical nibbles | <!-- metric:aes128_add_round_key_witness -->65<!-- /metric:aes128_add_round_key_witness --> bytes |
+| AddRoundKey maximum combined depth | <!-- metric:aes128_add_round_key_stack -->899<!-- /metric:aes128_add_round_key_stack --> items |
+| AddRoundKey static non-push opcodes | <!-- metric:aes128_add_round_key_opcodes -->887<!-- /metric:aes128_add_round_key_opcodes --> |
 
 The generator uses one 832-item shared lookup memory. It fuses the initial
 AddRoundKey into the first SubBytes pass, SubBytes with ShiftRows, and
@@ -46,6 +52,12 @@ It measures <!-- metric:aes128_shift_rows -->117<!-- /metric:aes128_shift_rows -
 locking bytes, a <!-- metric:aes128_shift_rows_witness -->65<!-- /metric:aes128_shift_rows_witness -->-byte
 32-item witness, and <!-- metric:aes128_shift_rows_stack -->33<!-- /metric:aes128_shift_rows_stack -->
 combined stack items with no auxiliary hints.
+
+`aes128_add_round_key` uses the same 832-item memory and returns the state after
+XORing each canonical nibble with a generation-time round key. It is a
+composition boundary, not a smaller AES encryption path: the full encryptor
+continues to fuse AddRoundKey into SubBytes/ShiftRows and MixColumns to avoid
+repeating setup and cleanup.
 
 Tests execute the FIPS-197 known-answer vector and the all-zero vector, compare
 the native reference against three published vectors, and pin the zero-key
@@ -69,9 +81,10 @@ the 1,000-item combined-stack limit, which this implementation satisfies.
 
 The fragment alone does not satisfy Tapscript's cleanstack rule because it
 intentionally returns 32 ciphertext nibbles. A caller must compare or consume
-all outputs and leave exactly one truthy stack item. Inputs must already be
-canonical integers in `0..=15`; this fragment does not independently range-check
-them.
+all outputs and leave exactly one truthy stack item. The full encryption
+fragment expects canonical integers in `0..=15`; the standalone AddRoundKey
+fragment validates both that range and minimal ScriptNum encoding before table
+lookup.
 
 ## Witness and hints
 
