@@ -26,6 +26,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | u32 per-byte population counts | `u32_byte_popcounts()` | 452 | 262-item peak; four numeric outputs; 256-item byte table |
 | u32 leading zero-byte count | `u32_leading_zero_bytes()` | 159 | 7-item peak; table-free; validates all four byte limbs |
+| u32 trailing zero-byte count | `u32_trailing_zero_bytes()` | 147 | 7-item peak; table-free; scans the native top-limb order |
 | 32 checked nibbles to LSB bits | `u4_nibbles_to_lsb(32)` | 440 | 50-item peak; one output bit per input |
 | 32 checked nibbles to zero predicates | `u4_nibbles_to_zero_mask(32)` | 414 | 35-item peak; no resident lookup table |
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |

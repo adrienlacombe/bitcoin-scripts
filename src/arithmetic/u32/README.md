@@ -23,6 +23,8 @@ they do not use BN254 or any other field modulus.
   one four-bit mask whose bit `i` marks zero byte limb `i`.
 - `u32_leading_zero_bytes()` consumes the top word and returns the count of
   leading zero byte limbs in `0..=4`.
+- `u32_trailing_zero_bytes()` consumes the top word and returns the count of
+  trailing zero byte limbs in `0..=4`.
 - `u32_or(a, b, stack_size)`, like XOR and AND, takes distinct word offsets.
   `stack_size` is one plus the number of u32 words above the shared byte-logic
   table. With exactly two working words, the usual value is `3`.
@@ -64,6 +66,7 @@ as less-than-or-equal.
 | `u32_iszero()` | <!-- metric:u32_iszero -->4<!-- /metric:u32_iszero --> bytes | <!-- metric:u32_iszero_witness -->5<!-- /metric:u32_iszero_witness --> bytes | <!-- metric:u32_iszero_stack -->4<!-- /metric:u32_iszero_stack --> items |
 | `u32_to_zero_byte_mask()` | <!-- metric:u32_zero_byte_mask -->67<!-- /metric:u32_zero_byte_mask --> bytes | <!-- metric:u32_zero_byte_mask_witness -->13<!-- /metric:u32_zero_byte_mask_witness --> bytes | <!-- metric:u32_zero_byte_mask_stack -->8<!-- /metric:u32_zero_byte_mask_stack --> items |
 | `u32_leading_zero_bytes()` | <!-- metric:u32_leading_zero_bytes -->159<!-- /metric:u32_leading_zero_bytes --> bytes | <!-- metric:u32_leading_zero_bytes_witness -->13<!-- /metric:u32_leading_zero_bytes_witness --> bytes | <!-- metric:u32_leading_zero_bytes_stack -->7<!-- /metric:u32_leading_zero_bytes_stack --> items; <!-- metric:u32_leading_zero_bytes_opcodes -->104<!-- /metric:u32_leading_zero_bytes_opcodes --> static non-push opcodes |
+| `u32_trailing_zero_bytes()` | <!-- metric:u32_trailing_zero_bytes -->147<!-- /metric:u32_trailing_zero_bytes --> bytes | <!-- metric:u32_trailing_zero_bytes_witness -->13<!-- /metric:u32_trailing_zero_bytes_witness --> bytes | <!-- metric:u32_trailing_zero_bytes_stack -->7<!-- /metric:u32_trailing_zero_bytes_stack --> items; <!-- metric:u32_trailing_zero_bytes_opcodes -->92<!-- /metric:u32_trailing_zero_bytes_opcodes --> static non-push opcodes |
 | `u8_push_xor_table()` | <!-- metric:u8_logic_table_push -->236<!-- /metric:u8_logic_table_push --> bytes | 0 bytes | 256 table items |
 | `u8_drop_xor_table()` | <!-- metric:u8_logic_table_drop -->128<!-- /metric:u8_logic_table_drop --> bytes | 0 bytes | consumes 256 table items |
 | `u32_uncompress_canonical()` | <!-- metric:u32_uncompress_canonical -->431<!-- /metric:u32_uncompress_canonical --> bytes | <!-- metric:u32_uncompress_canonical_witness -->7<!-- /metric:u32_uncompress_canonical_witness --> bytes, 1 data item | <!-- metric:u32_uncompress_canonical_stack -->7<!-- /metric:u32_uncompress_canonical_stack --> items |
@@ -207,3 +210,9 @@ most significant to least significant, stopping its count at the first
 nonzero byte while dropping the remaining limbs. It is table-free and useful
 for prefix-length or wire-format decisions; it does not replace a terminal
 predicate or establish a complete u32 encoding on its own.
+
+`u32_trailing_zero_bytes()` validates all four byte limbs while counting from
+the least significant byte, which is the top limb in the module's stack order.
+It is table-free and useful for suffix-length or little-endian wire-format
+decisions; it does not provide a terminal predicate or a complete encoding
+check for the surrounding script.

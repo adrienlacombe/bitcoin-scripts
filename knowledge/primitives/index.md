@@ -22,6 +22,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u32 population count](u32-popcount.md)
 - [Checked u32 per-byte population counts](u32-byte-popcounts.md)
 - [Checked u32 leading zero-byte count](u32-leading-zero-bytes.md)
+- [Checked u32 trailing zero-byte count](u32-trailing-zero-bytes.md)
 - [u31 prime-field arithmetic](u31.md)
 - [Native secp256k1 base-field arithmetic](secp256k1-field.md)
 - [Ed25519 base-field multiplication](ed25519-field.md)
