@@ -2455,6 +2455,33 @@ fn metrics() -> Vec<Metric> {
         },
         Metric {
             readme: "src/arithmetic/u32/README.md",
+            key: "u32_xnor",
+            value: script_len(u32::xnor::u32_xnor(0, 1, 3)),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xnor_stack",
+            value: max_stack_items(
+                script! {
+                    { u32::xor::u8_push_xor_table() }
+                    { u32::stack::u32_push(0x0123_4567) }
+                    { u32::stack::u32_push(0x89ab_cdef) }
+                    { u32::xnor::u32_xnor(0, 1, 3) }
+                    { u32::stack::u32_drop() }
+                    { u32::stack::u32_drop() }
+                    { u32::xor::u8_drop_xor_table() }
+                    OP_1
+                },
+                vec![],
+            ),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xnor_opcodes",
+            value: static_non_push_opcodes(u32::xnor::u32_xnor(0, 1, 3)),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
             key: "u32_notequal",
             value: script_len(u32::stack::u32_notequal()),
         },
@@ -6540,6 +6567,43 @@ fn u32_nor_metrics_are_current() {
         Metric {
             readme: "src/arithmetic/u32/README.md",
             key: "u32_nor_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
+/// This isolated fixture measures only the fused u32 XNOR adapter.
+#[test]
+fn u32_xnor_metrics_are_current() {
+    let fragment = u32::xnor::u32_xnor(0, 1, 3);
+    let peak = max_stack_items(
+        script! {
+            { u32::xor::u8_push_xor_table() }
+            { u32::stack::u32_push(0x0123_4567) }
+            { u32::stack::u32_push(0x89ab_cdef) }
+            { fragment.clone() }
+            { u32::stack::u32_drop() }
+            { u32::stack::u32_drop() }
+            { u32::xor::u8_drop_xor_table() }
+            OP_1
+        },
+        vec![],
+    );
+
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xnor",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xnor_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xnor_opcodes",
             value: static_non_push_opcodes(fragment),
         },
     ]);

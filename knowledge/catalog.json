@@ -9457,6 +9457,73 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/u32-xnor",
+      "name": "Fused u32 XNOR adapter",
+      "class": "arithmetic/word",
+      "summary": "Applies variable-input bitwise XNOR to two u32 words through the shared byte XOR table.",
+      "status": "experimental",
+      "evidence": "inspected",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u32-xnor.md",
+      "implementation": "src/arithmetic/u32/xnor.rs",
+      "documentation": "src/arithmetic/u32/README.md",
+      "tests": [
+        "arithmetic::u32::xnor::tests::xnor_matches_host_boundaries_and_patterns",
+        "arithmetic::u32::xnor::tests::rejects_out_of_range_byte_witnesses",
+        "arithmetic::u32::xnor::tests::preserves_surrounding_main_and_alt_stack_items",
+        "primitive_metrics::u32_xnor_metrics_are_current"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "byte-lookup",
+        "stack-scheduling",
+        "fused-boolean-adapter"
+      ],
+      "security": "No independent cryptographic claim. Hostile byte witnesses remain subject to the shared table's range behavior.",
+      "stack_contract": "Consumes the selected second u32 word, returns its bitwise XNOR with the selected first word, preserves the selected first word and shared table.",
+      "configurations": [
+        {
+          "id": "two-words",
+          "label": "Variable XNOR of two u32 words",
+          "parameters": {
+            "word_count": 2,
+            "table_items": 256,
+            "hint_items_per_invocation": 0,
+            "complete_input_items": 8
+          },
+          "includes": "fragment-only: word routing, four table-backed XNOR byte operations, and output routing; excludes table setup and cleanup, input pushes, terminal predicate, and transaction context",
+          "script_bytes": 222,
+          "witness_bytes": 0,
+          "witness_bytes_max": 0,
+          "max_stack_items": 272,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": 222,
+          "metric_keys": [
+            "u32_xnor",
+            "u32_xnor_stack",
+            "u32_xnor_opcodes"
+          ],
+          "static_non_push_opcodes": 182
+        }
+      ],
+      "limitations": [
+        "Requires the shared 256-item XOR table",
+        "Static opcode count is not a dynamic execution measurement",
+        "Bitcoin Core consensus and relay-policy validation remain open"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
     }
   ]
 }

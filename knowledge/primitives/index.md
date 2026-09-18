@@ -20,6 +20,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 modulo-16 sum](u4-sum-mod16.md)
 - [u32 word arithmetic](u32.md)
 - [Checked u32 zero-byte mask](u32-zero-byte-mask.md)
+- [Fused u32 XNOR adapter](u32-xnor.md)
 - [Compressed total-domain u32 addition](u32-compressed-add.md)
 - [Compressed total-domain u32 equality](u32-compressed-equal.md)
 - [Compressed total-domain u32 unsigned less-than](u32-compressed-lessthan.md)

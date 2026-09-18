@@ -15,6 +15,7 @@ pub mod shift;
 pub mod shift_left;
 pub mod stack;
 pub mod sub;
+pub mod xnor;
 pub mod xor;
 pub mod zero_byte_mask;
 pub mod zip;
