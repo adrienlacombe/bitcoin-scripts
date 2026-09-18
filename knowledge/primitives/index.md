@@ -15,6 +15,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 least-significant-bit projection](u4-lsb.md)
 - [Checked u4 zero-mask projection](u4-zero-mask.md)
 - [u32 word arithmetic](u32.md)
+- [Checked u32 zero-byte mask](u32-zero-byte-mask.md)
 - [Compressed total-domain u32 addition](u32-compressed-add.md)
 - [Compressed total-domain u32 equality](u32-compressed-equal.md)
 - [Compressed total-domain u32 unsigned less-than](u32-compressed-lessthan.md)
