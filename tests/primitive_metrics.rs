@@ -6518,6 +6518,31 @@ fn hors_index_boundary_metrics_are_current() {
     ]);
 }
 
+#[test]
+fn hors_witness_boundary_metrics_are_current() {
+    let preimages = (0..32).map(|i| vec![i as u8; 32]).collect::<Vec<_>>();
+    let public_keys = hors::hors_public_keys(&preimages);
+    let locking = hors::hors_locking_script(&public_keys, 8);
+    let witness = hors::hors_unlocking_witness(&preimages, &(1..=8).collect::<Vec<_>>());
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/signatures/hors/README.md",
+            key: "hors_lock_n32_t8",
+            value: script_len(locking.clone()),
+        },
+        Metric {
+            readme: "src/signatures/hors/README.md",
+            key: "hors_witness_n32_t8_max",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/signatures/hors/README.md",
+            key: "hors_stack_n32_t8",
+            value: max_stack_items_strict(locking, witness),
+        },
+    ]);
+}
+
 fn u254_sub_noborrow_metrics() -> Vec<Metric> {
     let fragment = U254::sub_noborrow(1, 0);
     let witness = vec![Vec::new(); (2 * U254::N_LIMBS) as usize];

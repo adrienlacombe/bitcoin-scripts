@@ -5138,7 +5138,8 @@
       "documentation": "src/signatures/hors/README.md",
       "tests": [
         "signatures::hors::tests",
-        "primitive_metrics::hors_index_boundary_metrics_are_current"
+        "primitive_metrics::hors_index_boundary_metrics_are_current",
+        "primitive_metrics::hors_witness_boundary_metrics_are_current"
       ],
       "references": [
         "binohash-paper"
@@ -5160,15 +5161,17 @@
           "includes": "fragment-only: locking verifier and serialized subset witness",
           "script_bytes": 809,
           "witness_bytes": 280,
-          "witness_bytes_max": 280,
-          "max_stack_items": null,
+          "witness_bytes_max": 281,
+          "max_stack_items": 50,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
           "per_use_script_bytes": 809,
           "metric_keys": [
             "hors_lock_n32_t8",
-            "hors_witness_n32_t8"
+            "hors_witness_n32_t8",
+            "hors_witness_n32_t8_max",
+            "hors_stack_n32_t8"
           ]
         },
         {
