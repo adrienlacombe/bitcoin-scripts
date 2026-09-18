@@ -13,6 +13,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Fixed-width u4 lexicographic comparison](u4-lexicographic.md)
 - [Checked u4 parity projection](u4-parity.md)
 - [Checked u4 triplet-to-u12 packing](u4-triplet.md)
+- [Checked u4 quad-to-u16 packing](u4-quad.md)
 - [Checked u4 least-significant-bit projection](u4-lsb.md)
 - [Checked u4 zero-mask projection](u4-zero-mask.md)
 - [Checked u4 modulo-16 sum](u4-sum-mod16.md)
