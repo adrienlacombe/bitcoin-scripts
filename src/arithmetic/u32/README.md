@@ -36,6 +36,8 @@ they do not use BN254 or any other field modulus.
 - `u32_msb_mask()` consumes one canonical u32 word and returns a four-bit mask
   whose bit 3 is the most-significant byte's high bit and bit 0 is the
   least-significant byte's high bit.
+- `u32_{xor,and,or}_drop()` consume both input words and return only the
+  bitwise result.
 - `u32_or(a, b, stack_size)`, like XOR and AND, takes distinct word offsets.
   `stack_size` is one plus the number of u32 words above the shared byte-logic
   table. With exactly two working words, the usual value is `3`.
@@ -103,6 +105,9 @@ as less-than-or-equal.
 | `u32_byte_eq_mask()` | <!-- metric:u32_byte_eq_mask -->149<!-- /metric:u32_byte_eq_mask --> bytes | <!-- metric:u32_byte_eq_mask_witness -->17<!-- /metric:u32_byte_eq_mask_witness --> bytes (<!-- metric:u32_byte_eq_mask_witness_max -->25<!-- /metric:u32_byte_eq_mask_witness_max --> max) | <!-- metric:u32_byte_eq_mask_stack -->11<!-- /metric:u32_byte_eq_mask_stack --> items; <!-- metric:u32_byte_eq_mask_opcodes -->100<!-- /metric:u32_byte_eq_mask_opcodes --> static non-push opcodes; `u32_equal()` baseline <!-- metric:u32_byte_eq_mask_equal_baseline -->18<!-- /metric:u32_byte_eq_mask_equal_baseline --> bytes |
 | `u32_byte_lessthan_mask()` | <!-- metric:u32_byte_less_mask -->149<!-- /metric:u32_byte_less_mask --> bytes | <!-- metric:u32_byte_less_mask_witness -->17<!-- /metric:u32_byte_less_mask_witness --> bytes (<!-- metric:u32_byte_less_mask_witness_max -->25<!-- /metric:u32_byte_less_mask_witness_max --> max) | <!-- metric:u32_byte_less_mask_stack -->11<!-- /metric:u32_byte_less_mask_stack --> items; <!-- metric:u32_byte_less_mask_opcodes -->100<!-- /metric:u32_byte_less_mask_opcodes --> static non-push opcodes; `u32_lessthan()` baseline <!-- metric:u32_byte_less_mask_less_baseline -->38<!-- /metric:u32_byte_less_mask_less_baseline --> bytes |
 | `u32_msb_mask()` | <!-- metric:u32_msb_mask -->133<!-- /metric:u32_msb_mask --> bytes | <!-- metric:u32_msb_mask_witness -->9<!-- /metric:u32_msb_mask_witness --> bytes (<!-- metric:u32_msb_mask_witness_max -->13<!-- /metric:u32_msb_mask_witness_max --> max) | <!-- metric:u32_msb_mask_stack -->8<!-- /metric:u32_msb_mask_stack --> items; <!-- metric:u32_msb_mask_opcodes -->92<!-- /metric:u32_msb_mask_opcodes --> static non-push opcodes |
+| `u32_xor_drop(0, 1, 3)` | <!-- metric:u32_xor_drop -->202<!-- /metric:u32_xor_drop --> bytes | 0 bytes | <!-- metric:u32_xor_drop_stack -->268<!-- /metric:u32_xor_drop_stack --> items; <!-- metric:u32_xor_drop_opcodes -->174<!-- /metric:u32_xor_drop_opcodes --> static non-push opcodes |
+| `u32_and_drop(0, 1, 3)` | <!-- metric:u32_and_drop -->169<!-- /metric:u32_and_drop --> bytes | 0 bytes | <!-- metric:u32_and_drop_stack -->268<!-- /metric:u32_and_drop_stack --> items; <!-- metric:u32_and_drop_opcodes -->142<!-- /metric:u32_and_drop_opcodes --> static non-push opcodes |
+| `u32_or_drop(0, 1, 3)` | <!-- metric:u32_or_drop -->326<!-- /metric:u32_or_drop --> bytes | 0 bytes | <!-- metric:u32_or_drop_stack -->268<!-- /metric:u32_or_drop_stack --> items; <!-- metric:u32_or_drop_opcodes -->242<!-- /metric:u32_or_drop_opcodes --> static non-push opcodes |
 | `u8_push_xor_table()` | <!-- metric:u8_logic_table_push -->236<!-- /metric:u8_logic_table_push --> bytes | 0 bytes | 256 table items |
 | `u8_drop_xor_table()` | <!-- metric:u8_logic_table_drop -->128<!-- /metric:u8_logic_table_drop --> bytes | 0 bytes | consumes 256 table items |
 | `u32_uncompress_canonical()` | <!-- metric:u32_uncompress_canonical -->431<!-- /metric:u32_uncompress_canonical --> bytes | <!-- metric:u32_uncompress_canonical_witness -->7<!-- /metric:u32_uncompress_canonical_witness --> bytes, 1 data item | <!-- metric:u32_uncompress_canonical_stack -->7<!-- /metric:u32_uncompress_canonical_stack --> items |
@@ -163,6 +168,11 @@ canonical byte checks required by their protocol.
 existing byte-table OR schedule and complements each result before restoring
 the word. It requires numeric byte limbs in `0..=255`; hostile witness
 encodings need the canonical byte checks required by their protocol.
+The consuming `u32_{xor,and,or}_drop()` variants use the same table and
+standalone fragment sizes as their preserving counterparts, but consume both
+input words. Their representative combined peak is 268 items, four below the
+preserving OR profile; callers that otherwise discard the preserved word also
+avoid the extra word-routing fragment.
 
 The canonical compressed-u32 row uses the maximum five-byte witness item for
 `-2^31`. It is a raw-encoding boundary: `u32_uncompress()` remains available
