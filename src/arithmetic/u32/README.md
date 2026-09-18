@@ -34,6 +34,8 @@ they do not use BN254 or any other field modulus.
   byte, and returns its set-bit count in `0..=32`.
 - `popcount::u32_byte_popcounts()` consumes one four-byte word, range-checks
   every byte, and returns four per-byte counts in the same word order.
+- `u32_to_bit_planes()` consumes one checked word and returns eight 4-bit
+  planes, with plane seven on top and plane zero deepest.
 - `u32_conditional_select()` consumes `condition | when_true | when_false`,
   normalizes the condition with `OP_0NOTEQUAL`, and returns one complete word.
 - Stack helpers use whole-word offsets. Rotation helpers additionally take a
@@ -79,6 +81,7 @@ as less-than-or-equal.
 | `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
 | `u32_byte_popcounts()` | <!-- metric:u32_byte_popcounts -->452<!-- /metric:u32_byte_popcounts --> bytes | <!-- metric:u32_byte_popcounts_witness -->13<!-- /metric:u32_byte_popcounts_witness --> bytes | <!-- metric:u32_byte_popcounts_stack -->262<!-- /metric:u32_byte_popcounts_stack --> items; <!-- metric:u32_byte_popcounts_opcodes -->168<!-- /metric:u32_byte_popcounts_opcodes --> static non-push opcodes |
 | `u32_to_le_bits()` | <!-- metric:u32_le_bits -->514<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
+| `u32_to_bit_planes()` | <!-- metric:u32_bit_planes -->877<!-- /metric:u32_bit_planes --> bytes | <!-- metric:u32_bit_planes_witness -->9<!-- /metric:u32_bit_planes_witness --> bytes (<!-- metric:u32_bit_planes_witness_max -->13<!-- /metric:u32_bit_planes_witness_max --> max) | <!-- metric:u32_bit_planes_stack -->45<!-- /metric:u32_bit_planes_stack --> items; <!-- metric:u32_bit_planes_opcodes -->628<!-- /metric:u32_bit_planes_opcodes --> static non-push opcodes |
 
 `u32_compressed_add()` is a checked wire adapter: it accepts two canonical
 compressed u32 ScriptNums, expands them through the existing byte carry chain,
@@ -183,6 +186,13 @@ byte is range-checked numerically against `0..=255`. The 514-byte fragment has
 items; it does not establish byte-unique ScriptNum encodings.
 This is a byte-input adapter rather than a replacement for the smaller
 nibble-input table when a caller already owns canonical u4 values.
+
+`u32_to_bit_planes()` transposes the four checked bytes into eight numeric
+nibbles. Each plane packs the corresponding bit from the four input bytes,
+with the most-significant input byte as the plane's high bit; plane zero is on
+the bottom of the returned stack and plane seven is on top. It reuses the
+byte-to-bit conversion and a fixed-depth routing pass, so it trades 877 locking bytes and a 45-item local peak
+for eight composable nibble items rather than 32 individual bits.
 
 ## Conditional and zero predicates
 
