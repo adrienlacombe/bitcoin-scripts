@@ -7569,3 +7569,45 @@ fn u4_vector_rotate_metrics_are_current() {
         },
     ]);
 }
+
+/// This isolated fixture measures only the checked u4 vector interleave.
+#[test]
+fn u4_interleave_metrics_are_current() {
+    const WIDTH: u32 = 32;
+    let fragment = u4::interleave::u4_nibbles_interleave(WIDTH);
+    let witness = vec![scriptnum(15); (2 * WIDTH) as usize];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..2 * WIDTH {
+                OP_DROP
+            }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), (2 * WIDTH) as usize);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_interleave_batch32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_interleave_batch32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_interleave_batch32_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_interleave_batch32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}

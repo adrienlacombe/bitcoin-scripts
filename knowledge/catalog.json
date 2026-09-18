@@ -10568,6 +10568,73 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/u4-interleave",
+      "name": "Checked u4 vector interleave",
+      "class": "arithmetic/word",
+      "summary": "Range-checked stack permutation that alternates two equal-width u4 vectors.",
+      "status": "active",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u4-interleave.md",
+      "implementation": "src/arithmetic/u4/interleave.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "src/arithmetic/u4/interleave.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "stack-scheduling",
+        "permutation",
+        "digit-arithmetic"
+      ],
+      "security": "Every hostile input nibble is range-checked before copying; the permutation does not authenticate ordering, prove byte-unique ScriptNum encodings, or provide a terminal predicate.",
+      "stack_contract": "Consumes preserved | left[0] ... left[n-1] | right[0] ... right[n-1] and returns preserved | left[0] right[0] ... left[n-1] right[n-1]; staged outputs temporarily occupy the altstack.",
+      "configurations": [
+        {
+          "id": "checked-width32",
+          "label": "u4_nibbles_interleave(32)",
+          "parameters": {
+            "width": 32,
+            "data_items": 64,
+            "output_items": 64,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: 64 numeric range checks, 64 direct stack copies, altstack output staging, input cleanup, and output restoration; excludes input pushes, witness serialization from the script, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 954,
+          "witness_bytes": 129,
+          "witness_bytes_max": 129,
+          "max_stack_items": 128,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 954,
+          "metric_keys": [
+            "u4_interleave_batch32",
+            "u4_interleave_batch32_witness",
+            "u4_interleave_batch32_stack",
+            "u4_interleave_batch32_opcodes"
+          ],
+          "static_non_push_opcodes": 608
+        }
+      ],
+      "limitations": [
+        "Both vectors must have the same declared width and remain live during output staging",
+        "The 249-wide standalone ceiling must be reduced when unrelated stack state is live",
+        "Static non-push opcode count is not an executed-opcode measurement",
+        "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
     }
   ]
 }

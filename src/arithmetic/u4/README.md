@@ -22,6 +22,8 @@ these operations, but this module contains no hash-specific round logic.
   batch size in `2..=499` and returns one forward modulo-16 delta per edge.
 - `vector_rotate::u4_nibbles_rotate_left(nibble_count)` takes a checked batch
   size in `1..=499` and cyclically moves the first nibble to the top.
+- `interleave::u4_nibbles_interleave(width)` takes two checked vectors of equal
+  width in `1..=249` and alternates their items.
 - `lsb::u4_nibbles_to_lsb(nibble_count)` takes a checked batch size in
   `1..=982` and returns one bit per input nibble.
 - `sum::u4_nibbles_to_sum_mod16(nibble_count)` takes a checked batch size in
@@ -96,6 +98,7 @@ each input with the same output-restoration boundary.
 | Checked 32-nibble batch pack | <!-- metric:u4_pack_batch32 -->442<!-- /metric:u4_pack_batch32 --> bytes | <!-- metric:u4_pack_batch32_stack -->52<!-- /metric:u4_pack_batch32_stack --> items | <!-- metric:u4_pack_batch32_opcodes -->334<!-- /metric:u4_pack_batch32_opcodes --> |
 | Checked adjacent modulo-16 delta batch, 32 nibbles | <!-- metric:u4_adjacent_delta_batch32 -->806<!-- /metric:u4_adjacent_delta_batch32 --> bytes | <!-- metric:u4_adjacent_delta_batch32_stack -->65<!-- /metric:u4_adjacent_delta_batch32_stack --> items | <!-- metric:u4_adjacent_delta_batch32_opcodes -->547<!-- /metric:u4_adjacent_delta_batch32_opcodes --> |
 | Checked cyclic left rotation, 32 nibbles | <!-- metric:u4_vector_rotate_batch32 -->457<!-- /metric:u4_vector_rotate_batch32 --> bytes | <!-- metric:u4_vector_rotate_batch32_stack -->64<!-- /metric:u4_vector_rotate_batch32_stack --> items | <!-- metric:u4_vector_rotate_batch32_opcodes -->303<!-- /metric:u4_vector_rotate_batch32_opcodes --> |
+| Checked 32-wide vector interleave | <!-- metric:u4_interleave_batch32 -->954<!-- /metric:u4_interleave_batch32 --> bytes | <!-- metric:u4_interleave_batch32_stack -->128<!-- /metric:u4_interleave_batch32_stack --> items | <!-- metric:u4_interleave_batch32_opcodes -->608<!-- /metric:u4_interleave_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -154,6 +157,8 @@ main stack.
 <!-- metric:u4_adjacent_delta_batch32_witness -->65<!-- /metric:u4_adjacent_delta_batch32_witness --> serialized witness bytes for the representative adjacent-delta batch.
 
 <!-- metric:u4_vector_rotate_batch32_witness -->65<!-- /metric:u4_vector_rotate_batch32_witness --> serialized witness bytes for the representative vector-rotation batch.
+
+<!-- metric:u4_interleave_batch32_witness -->129<!-- /metric:u4_interleave_batch32_witness --> serialized witness bytes for the representative vector-interleave batch.
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -228,6 +233,11 @@ permuted copies on the altstack, consumes the original vector, and restores the
 rotated order. It uses no lookup table or witness hints; the full input and
 output schedules coexist during the permutation, which determines the 499-item
 standalone ceiling.
+
+The vector interleave range-checks two equal-width vectors, stages the alternating
+copies on the altstack, consumes both inputs, and restores the paired order. It
+uses no lookup table or witness hints. Since both input and output vectors are
+live during staging, the standalone width ceiling is 249.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -287,6 +297,9 @@ transform.
 Vector rotation range-checks every source before copying it. The permutation
 does not authenticate ordering beyond the supplied stack contract and does not
 provide a terminal predicate.
+
+Interleave range-checks every hostile source nibble before copying. It changes
+ordering only; it does not bind vector length or provide a terminal predicate.
 
 ## Script compatibility and standardness
 
@@ -353,6 +366,12 @@ For `vector_rotate::u4_nibbles_rotate_left(n)`, the input vector is consumed
 and replaced by `nibble[1] ... nibble[n-1] nibble[0]`. The standalone schedule
 keeps the input and staged output vectors live together, so callers must reduce
 the 499-item generator ceiling for unrelated stack state.
+
+For `interleave::u4_nibbles_interleave(n)`, the input is
+`left[0..n] | right[0..n]` and the output is
+`left[0], right[0], ..., left[n-1], right[n-1]`. The standalone schedule keeps
+both vectors and all staged outputs live, so callers must reduce the 249-wide
+generator ceiling for unrelated state.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
