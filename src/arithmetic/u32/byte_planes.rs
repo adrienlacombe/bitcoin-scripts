@@ -47,17 +47,14 @@ pub fn u32_words_to_byte_planes(word_count: u32, check_inputs: bool) -> Script {
         // Stage the batch through altstack to install an internal delimiter
         // without knowing how many unrelated main-stack items precede it.
         for _ in 0..4 * word_count {
+            if check_inputs {
+                OP_DUP OP_0 { 256 } OP_WITHIN OP_VERIFY
+            }
             OP_TOALTSTACK
         }
         OP_0
         for _ in 0..4 * word_count {
             OP_FROMALTSTACK
-        }
-
-        if check_inputs {
-            for _ in 0..4 * word_count {
-                OP_DUP OP_0 { 256 } OP_WITHIN OP_VERIFY
-            }
         }
 
         { transpose }
@@ -72,7 +69,7 @@ pub fn u32_words_to_byte_planes(word_count: u32, check_inputs: bool) -> Script {
 mod tests {
     use super::*;
     use crate::arithmetic::u32::stack::u32_push;
-    use crate::support::execution::execute_script;
+    use crate::support::execution::{execute_script, execute_script_with_inputs_strict};
 
     fn verify(words: &[u32], expected_planes: &[u32]) {
         let result = execute_script(script! {
@@ -114,14 +111,28 @@ mod tests {
     }
 
     #[test]
-    fn checked_mode_rejects_malformed_byte_items() {
-        for invalid in [-1, 256] {
-            let result = execute_script(script! {
-                0 0 0 { invalid }
-                { u32_words_to_byte_planes(1, true) }
-                OP_TRUE
-            });
-            assert!(!result.success, "accepted invalid byte {invalid}");
+    fn checked_mode_rejects_malformed_byte_items_at_every_position() {
+        for word_count in [1, 2] {
+            for position in 0..4 * word_count {
+                for invalid in [-1, 256] {
+                    let mut bytes = vec![0; (4 * word_count) as usize];
+                    bytes[position as usize] = invalid;
+                    let result = execute_script(script! {
+                        OP_7 OP_TOALTSTACK
+                        OP_9
+                        for byte in bytes { { byte } }
+                        { u32_words_to_byte_planes(word_count, true) }
+                        for _ in 0..4 * word_count { OP_DROP }
+                        OP_DROP
+                        OP_FROMALTSTACK OP_7 OP_EQUALVERIFY
+                        OP_TRUE
+                    });
+                    assert!(
+                        !result.success,
+                        "accepted invalid byte {invalid} at position {position} in {word_count}-word batch"
+                    );
+                }
+            }
         }
     }
 
@@ -144,20 +155,18 @@ mod tests {
     #[test]
     fn batch_guard_matches_the_strict_peak() {
         const MEASURED_WORDS: u32 = 8;
-        let result = execute_script(script! {
-            for _ in 0..4 * MEASURED_WORDS {
-                OP_0
-            }
-            { u32_words_to_byte_planes(MEASURED_WORDS, true) }
-            for _ in 0..4 * MEASURED_WORDS {
-                OP_DROP
-            }
-            OP_TRUE
-        });
+        let result = execute_script_with_inputs_strict(
+            script! {
+                { u32_words_to_byte_planes(MEASURED_WORDS, true) }
+                for _ in 0..4 * MEASURED_WORDS { OP_DROP }
+                OP_TRUE
+            },
+            vec![vec![1]; (4 * MEASURED_WORDS) as usize],
+        );
         assert!(result.success, "measured batch failed: {result}");
         assert_eq!(
             result.stats.max_nb_stack_items,
-            (4 * MEASURED_WORDS + 4) as usize
+            (4 * MEASURED_WORDS + 3) as usize
         );
 
         assert!(std::panic::catch_unwind(|| u32_words_to_byte_planes(0, true)).is_err());
