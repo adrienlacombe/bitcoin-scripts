@@ -1527,3 +1527,12 @@ multinomial buckets and 160-bit arithmetic; a static replacement would need a
 large position/count/digit table whose Script lifetime and stack cost are not
 yet established. Treating the host `decode_message` helper as Script evidence
 would overstate the construction. The boundary remains under OP-022.
+## NR-059: The current BLAKE3 fragment stops at one chunk
+
+The public BLAKE3 generator accepts at most 1,024 bytes. Its existing block
+flags implement chunk compression but expose no `PARENT` compression or binary
+tree scheduler, so a 1,025-byte message is rejected rather than priced as a
+multi-chunk tree. The existing boundary tests reproduce acceptance at exactly
+1,024 bytes and rejection at 1,025 bytes. This is a
+`locally-reproduced` API boundary and `inspected` missing-construction result,
+not an impossibility claim; the follow-up criterion is recorded in OP-023.

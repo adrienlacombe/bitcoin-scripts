@@ -3663,7 +3663,7 @@
       "status": "active",
       "evidence": "differentially-validated",
       "execution": "research-unlimited",
-      "as_of": "2026-09-01",
+      "as_of": "2026-09-11",
       "knowledge_page": "knowledge/primitives/blake3-limb29.md",
       "implementation": "src/hashes/blake3/mod.rs",
       "documentation": "src/hashes/blake3/README.md",
@@ -3766,6 +3766,7 @@
       ],
       "limitations": [
         "Messages limited to one 1,024-byte chunk",
+        "No parent-node compression or multi-chunk tree API",
         "Only unkeyed 32-byte output is implemented",
         "Local witness-input and peak-metric execution disables the stack-limit check; Bitcoin Core consensus and policy validation were not performed",
         "A wholly padded final second input group is ignored and not bound"
@@ -3773,7 +3774,8 @@
       "open_problems": [
         "OP-001",
         "OP-003",
-        "OP-013"
+        "OP-013",
+        "OP-023"
       ]
     },
     {
