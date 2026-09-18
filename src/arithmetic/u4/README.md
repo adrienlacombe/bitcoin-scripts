@@ -86,6 +86,8 @@ The square row measures only the checked reusable query; its generated
 
 <!-- metric:u4_popcount_batch32_witness -->65<!-- /metric:u4_popcount_batch32_witness --> serialized witness bytes for the representative checked popcount batch.
 
+| Canonical checked 32-nibble bit reversal | <!-- metric:u4_bit_reverse_canonical_batch32 -->504<!-- /metric:u4_bit_reverse_canonical_batch32 --> bytes | <!-- metric:u4_bit_reverse_canonical_batch32_stack -->51<!-- /metric:u4_bit_reverse_canonical_batch32_stack --> items | <!-- metric:u4_bit_reverse_canonical_batch32_opcodes -->360<!-- /metric:u4_bit_reverse_canonical_batch32_opcodes --> |
+
 <!-- metric:u4_parity_batch32_witness -->65<!-- /metric:u4_parity_batch32_witness --> serialized witness bytes for the representative parity batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
@@ -99,6 +101,8 @@ representative left witness is <!-- metric:u4_lexicographic_le_constant_128_witn
 
 <!-- metric:u4_xor_reduce_batch16_witness -->33<!-- /metric:u4_xor_reduce_batch16_witness --> serialized witness bytes for the representative XOR-reduction batch.
 <!-- metric:u4_zero_bitmask_batch32_witness -->65<!-- /metric:u4_zero_bitmask_batch32_witness --> serialized witness bytes for the representative packed zero-bitmask batch.
+
+<!-- metric:u4_bit_reverse_canonical_batch32_witness -->65<!-- /metric:u4_bit_reverse_canonical_batch32_witness --> serialized witness bytes for the representative canonical bit-reversal batch.
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -157,6 +161,10 @@ The bit-reversal primitive installs 16 table items, checks each nibble, and
 uses no witness hints beyond its input nibbles. Its 32-nibble row above is the
 representative batch; callers with unrelated live state must reduce the 981
 nibble standalone ceiling.
+`u4_nibbles_to_bit_reverse_canonical(nibble_count)` uses the same table and
+output contract while proving minimal ScriptNum encoding for every hostile
+nibble. Its 32-nibble profile is measured separately because the numeric-only
+range form remains useful when a caller already owns canonical limbs.
 The little-endian row has the same size and stack profile: it changes only the
 four values stored in each staggered table group. It is intended for callers
 that consume each nibble least-significant-bit first; reversing four output

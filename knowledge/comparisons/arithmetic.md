@@ -48,6 +48,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 16 checked nibbles to four bit planes | u4 table plus stack transpose | 776 | 125-item peak; 33-byte witness |
 | 32 checked nibble bit reversals | u4 16-item reversal table | 344 | 51-item peak; 65-byte witness |
 | 32 checked nibbles to one modulo-16 sum | `u4_nibbles_to_sum_mod16(32)` | 592 | 66-item peak; 65-byte witness; 31-item table |
+| 32 canonical checked nibble bit reversals | `u4_nibbles_to_bit_reverse_canonical(32)` | 504 | 51-item peak; 65-byte witness; rejects raw aliases |
 | One checked u32 word to little-endian bits | u32 byte splitter | 514 | 9-byte witness; 35-item peak; numeric byte range only |
 | Checked u32 byte word to eight bit planes | `u32_to_bit_planes()` | 877 | 9-byte witness; 45-item peak; eight nibble outputs |
 | Canonical checked u32 word to little-endian bits | `u32_to_le_bits_canonical()` | 562 | 9-byte representative/13-byte maximum witness; 35-item peak; rejects raw aliases |
