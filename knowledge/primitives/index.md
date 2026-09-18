@@ -14,6 +14,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 parity projection](u4-parity.md)
 - [Checked u4 least-significant-bit projection](u4-lsb.md)
 - [Checked u4 zero-mask projection](u4-zero-mask.md)
+- [Checked u4 modulo-16 sum](u4-sum-mod16.md)
 - [u32 word arithmetic](u32.md)
 - [Checked u32 zero-byte mask](u32-zero-byte-mask.md)
 - [Compressed total-domain u32 addition](u32-compressed-add.md)
