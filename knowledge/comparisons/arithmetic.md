@@ -40,6 +40,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Checked public-constant u4 multiplication | `u4_mul_constant_mod16`, `constant=10` | 6 | 20-item peak; 16-item table; one data item; zero hints |
 | Checked u4 square modulo 16 | `u4_square_mod16()` | 6 | 20-item peak; 16-item table; one data item; zero hints |
 | 32 checked nibbles nondecreasing predicate | `u4_nibbles_nondecreasing(32)` | 478 | 35-item peak; one output bit; no table |
+| 32 checked nibbles to an exact sum | `u4_nibbles_sum_exact(32)` | 497 | 34-item peak; no table; full sum rather than modulo 16 |
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | u32 per-byte population counts | `u32_byte_popcounts()` | 452 | 262-item peak; four numeric outputs; 256-item byte table |
 | u32 leading zero-byte count | `u32_leading_zero_bytes()` | 159 | 7-item peak; table-free; validates all four byte limbs |
