@@ -85,6 +85,11 @@ differ. Follow each catalog configuration before comparing numbers.
 | u32 per-byte less-than mask | `u32_byte_lessthan_mask()` | 149 | 17-byte eight-item witness; 11-item peak; four lane predicates; no hints |
 | u32 byte high-bit mask | `u32_msb_mask()` | 133 | 9-byte witness; 8-item peak; four packed lane bits; no hints |
 | Checked u32 rotate-right by sixteen | `u32_rrot16_checked()` | <!-- metric:u32_rrot16_checked -->55<!-- /metric:u32_rrot16_checked --> | <!-- metric:u32_rrot16_checked_stack -->7<!-- /metric:u32_rrot16_checked_stack -->-item peak; <!-- metric:u32_rrot16_checked_witness -->9<!-- /metric:u32_rrot16_checked_witness -->-byte representative witness; reuses one-opcode byte permutation |
+| Consuming u32 XOR | `u32_xor_drop(0, 1, 3)` | 202 | Destructive two-word routing; 268-item peak with shared table |
+| Consuming u32 AND | `u32_and_drop(0, 1, 3)` | 169 | Destructive two-word routing; 268-item peak with shared table |
+| Consuming u32 OR | `u32_or_drop(0, 1, 3)` | 326 | Destructive two-word routing; 268-item peak with shared table |
+| Checked u32 zero predicate | `u32_iszero()` | 53 | 6-item peak; no lookup table |
+| Stack-preserving u32 copy | `u32_pick(2)` | 8 | 16-item peak; 24-byte witness; copies a word at depth two |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide add with bounded limbs | U254 carry-free add | 142 | Nine limbs; each corresponding sum must stay below radix |
 | Wide subtract | U254 sub | 190 | Nine limbs; propagates borrows |
@@ -100,6 +105,8 @@ differ. Follow each catalog configuration before comparing numbers.
 | Compressed u32 equality | Canonical two-item ScriptNum wire comparison | 37 | 2 witness items; 11 representative bytes; 5-item peak |
 | Compressed u32 unsigned less-than | Canonical two-item ScriptNum ordering | 124 | 2 witness items; 11 representative bytes; 6-item peak |
 | Compressed u32 less-than fixed threshold | `u32_compressed_lessthan_constant(0x89abcdef)` | <!-- metric:u32_compressed_lessthan_constant -->127<!-- /metric:u32_compressed_lessthan_constant --> | <!-- metric:u32_compressed_lessthan_constant_stack -->6<!-- /metric:u32_compressed_lessthan_constant_stack -->-item strict peak; one data item; signed threshold encoding |
+| Compressed u32 logical right shift | Direct one-item ScriptNum shift by 8 | 500 | 1 witness item; 5-item peak; decode baseline 499 bytes / 7-item peak |
+| Compressed u32 logical left shift | Direct one-item ScriptNum shift by 8 | 492 | 1 witness item; 5-item peak; decode baseline 490 bytes / 7-item peak |
 | Bounded RNS multiply | Legacy RNS multiply | 1,561 | 903-item peak |
 | Exact 256-bit-product RNS add | 75-prime canonical coordinatewise | 1,131 | 513-bit composite range; 151-item peak |
 | Exact 256-by-256-bit RNS multiply baseline | 75-prime table/Horner hybrid | 15,624 | No relation carries; 183-item peak |

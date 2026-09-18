@@ -185,6 +185,27 @@ The lab now pins integration revision `4b7269a`, and the shared driver delegates
 these checks to the repaired dependency; see
 [NR-048](#nr-048-minimal-push-policy-must-follow-execution). Earlier measurements
 keep their original tool provenance and evidence classes.
+## NR-061: BLAKE3 derive-key mode is not a drop-in unkeyed extension
+
+The local BLAKE3 backend implements the unkeyed mode with the fixed BLAKE3 IV,
+unkeyed flags, and one message-hashing schedule. The reference specification
+defines derive-key mode as two distinct phases: hash the context under
+`DERIVE_KEY_CONTEXT`, then hash the material under `DERIVE_KEY_MATERIAL` using
+the context digest as the chaining key. Prepending the context to the material
+or merely changing the final flags therefore does not implement the mode.
+
+An inspection of `src/hashes/blake3/mod.rs` and its compression helper found no
+API for a runtime context, a derived chaining value, or mode-specific flags;
+the README explicitly limits the implementation to unkeyed 32-byte output.
+No partial derive-key port is retained because it would either silently claim
+the wrong domain or duplicate the full compression schedule without a measured
+stack boundary. Evidence: `inspected`, against the
+[BLAKE3 specification and reference implementation](https://github.com/BLAKE3-team/BLAKE3).
+
+This is a scope boundary, not a claim that derive-key mode cannot fit. A future
+implementation must match official context/material vectors, report both
+compression phases and their mode flags, and measure the derived-key boundary
+under the combined 1,000-item stack limit.
 
 ## NR-037: PRINCEv2 shared-selector corrections outweigh memory savings
 
@@ -901,6 +922,14 @@ and consuming its 64 nibbles before a constant-word compressor instead gives a
 match ordinary host BLAKE3. The invalid 63,766-byte number is not a composable
 optimization result.
 
+An isolated 2026-09-16 generator probe also removed the temporary
+park/restore around table cleanup, leaving the 337-item prefix above the 330
+table items. Generation stopped at the stack tracker assertion that a tracked
+variable must be topmost before `TablesVars::drop` can remove it. This is a
+generator boundary, not a Script execution result, and does not establish a
+lower bound for a hand-written `OP_ROLL` linker; the existing park/restore is
+still required by the current tracked-variable API.
+
 The optimized G29 `[s]B` fragment and the key-specialized hash total 3,946,610
 raw bytes before transcript routing, digest use, `R` binding, the `[h]A` side,
 or a terminal predicate. They cannot merely be concatenated under the stack
@@ -1501,3 +1530,59 @@ The older binary path with explicit selector checks is also opcode-dominated:
 its 9/11 counted opcodes per bit can be replaced by 5/7 with changed digests.
 Keeping its old hash function permits 7 counted opcodes for saved normalized
 bits, plus the old terminal hash. These alternatives must not share digests.
+
+## NR-057: Native Taproot Merkle-branch adapter is not available
+
+Taproot `TapBranch` requires tagged SHA256 over the lexicographically ordered
+concatenation of two hostile 32-byte nodes. Current Script can hash one stack
+item but has no enabled native byte concatenation/splitting boundary, so a
+compact adapter cannot bind separately supplied nodes to a 64-byte witness
+blob. The repository's mixed-hash path commits to nested SHA256/RIPEMD160
+outputs and is not TapBranch. A full u4 SHA256 circuit remains possible but is
+not a compact native primitive; this inspected result is tracked under OP-021.
+## NR-058: Constant-composition byte recovery is not yet a composable Script primitive
+
+The fixed-composition Winternitz verifier locally authenticates 49 digit slots,
+but its 20-byte decoder remains host-side. Exact rank recovery needs dynamic
+multinomial buckets and 160-bit arithmetic; a static replacement would need a
+large position/count/digit table whose Script lifetime and stack cost are not
+yet established. Treating the host `decode_message` helper as Script evidence
+would overstate the construction. The boundary remains under OP-022.
+## NR-059: The current BLAKE3 fragment stops at one chunk
+
+The public BLAKE3 generator accepts at most 1,024 bytes. Its existing block
+flags implement chunk compression but expose no `PARENT` compression or binary
+tree scheduler, so a 1,025-byte message is rejected rather than priced as a
+multi-chunk tree. The existing boundary tests reproduce acceptance at exactly
+1,024 bytes and rejection at 1,025 bytes. This is a
+`locally-reproduced` API boundary and `inspected` missing-construction result,
+not an impossibility claim; the follow-up criterion is recorded in OP-023.
+## NR-060: BLAKE3 XOF output is outside the current generator contract
+
+The local BLAKE3 generators stop at the unkeyed 32-byte digest and do not
+implement the root-output block counter needed for XOF continuation. A
+deterministic probe over the 32-byte message `00 01 ... 1f` obtains 64 bytes
+from the independent `blake3` crate while the local generator exposes only the
+32-byte output contract. The existing 32-byte compute profile remains the
+priced baseline; this is a missing-composition boundary, not an impossibility
+proof. Reproducing a longer output requires pricing the extra compression,
+routing, cleanup, and combined stack peak. Evidence is `locally-reproduced`;
+see [the probe](../../examples/blake3_xof_boundary.rs) and [OP-024](../open-problems.md#op-024--blake3-xof-output-frontier).
+
+## NR-062: Direct compressed u32 right shift is a stack-shape tradeoff
+
+`u32_compressed_rshift(8)` avoids four-byte expansion but measures 500 locking
+bytes versus 499 for a local decode-byte-shift-reencode baseline. It does save
+two live stack items, peaking at 5 instead of 7, with the same one-item witness.
+It is therefore not a general byte win. Evidence is `locally-reproduced` and
+deployment is `unclassified`; the result does not close OP-014.
+
+## NR-063: Direct compressed u32 left shift is not a byte win
+
+`u32_compressed_lshift(8)` performs a total-domain modulo-`2^32` left shift
+directly over one canonical ScriptNum, but costs 492 locking bytes versus 490
+for a local decode-byte-shift-reencode baseline. It saves two live stack items,
+peaking at 5 instead of 7, with the same one-item witness. The construction is
+retained as a stack-shape primitive and a complete-width correctness result,
+not as a general script-byte optimization. Evidence is `locally-reproduced`;
+deployment is `unclassified`; OP-026 remains open.

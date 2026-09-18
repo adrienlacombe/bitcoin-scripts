@@ -27,6 +27,15 @@ All 20 local/Core comparisons agree after adopting `702544c9`, with zero panics
 and two identical reports. These focused repairs are prerequisites to the full
 transaction API; fixing them does not itself implement commitment, annex or
 full-witness budget checks. The context-free profiles retain their guard.
+## OP-025 — BLAKE3 derive-key boundary
+
+Add a mode-correct derive-key construction to the tracked-stack BLAKE3 backend.
+**Complete when:** a deterministic implementation matches the official
+context/material vectors for an empty context, a short context, and a
+multi-block context; records both `DERIVE_KEY_CONTEXT` and
+`DERIVE_KEY_MATERIAL` phases, the derived chaining-key handoff, script bytes,
+witness shape, and combined stack peak; and either executes under the 1,000-item
+limit or records a measured negative result. See [NR-061](negative-results/index.md).
 
 ## OP-019 — PRINCEv2 M-hat circuit frontier
 
@@ -42,6 +51,26 @@ this criterion; see [the layout search](negative-results/princev2-layout.md).
 The new checked 6,426-byte zero-key leaf measures input validation and a
 terminal predicate as well; it is a separate boundary and does not advance
 the sub-5,000-byte fragment objective.
+
+## OP-021 — Taproot Merkle-path verifier
+
+Resolve the missing dynamic byte boundary for Taproot `TapBranch` verification.
+**Complete when:** either a sound native-opcode or Script-circuit verifier
+accepts hostile leaf/sibling/direction inputs with exact tagged SHA256
+semantics and reports script, witness, hints, stack, and execution costs, or a
+machine-checkable lower-bound argument establishes that the current opcode set
+cannot bind the two 32-byte nodes without a general byte-concatenation circuit.
+The current inspected negative result is [NR-057](negative-results/index.md#nr-057-native-taproot-merkle-branch-adapter-is-not-available).
+
+## OP-022 — Constant-composition Script decoder
+
+Recover the canonical 20-byte message from the 49-digit fixed-composition
+Winternitz encoding inside Script. **Complete when:** a decoder rejects hostile
+length, radix, composition, and unused-rank inputs; returns exactly 20
+canonical bytes; reports script, witness, hint, stack, executed-opcode, and
+execution-class costs; and is compared against the host `decode_message` helper
+on deterministic boundary vectors. The current inspected non-composable
+boundary is documented in `research/constant-composition-decoder-negative`.
 
 ## OP-001 — Strict execution matrix
 
@@ -264,10 +293,11 @@ incremental squeeze passes strict stack checks and is differentially validated
 against FIPS 202 for boundary message/output lengths.
 
 Progress: `shake256_prefix` now parameterizes the output length. Prefixes of
-1, 32, 135, 136, 137, and 256 bytes match the independent reference, and the
-32-byte prefix peaks at 813 items under the strict local executor. The
-representative fragment is still 2,000,127 bytes, and Bitcoin Core/policy
-validation plus an incremental consumer remain open.
+1, 32, 135, 136, 137, and 256 bytes match the independent reference. The
+32-byte prefix peaks at 813 items and the rate-crossing 137-byte prefix peaks
+at 813 items under the strict local executor. The representative fragments
+remain multi-megabyte, and Bitcoin Core/policy validation plus an incremental
+consumer remain open.
 
 ## OP-006 — BN254 hinted-operation inventory
 
@@ -460,6 +490,17 @@ lengths and malformed inputs; and it either beats 59,529 bytes below the
 1,000-item peak or records a machine-checkable lower bound for that search
 space.
 
+## OP-023 — BLAKE3 parent-tree composition
+
+Add a standalone `PARENT` compression fragment over two 32-byte child chaining
+values and compose it with at least two strict 1,024-byte chunk outputs.
+**Complete when:** parent and two-chunk root outputs match pinned BLAKE3
+reference vectors; malformed child-word encodings and extra witness items are
+rejected; the complete tree reports locking-script bytes, serialized witness
+bytes, static/executed opcode evidence where available, and combined main/alt
+stack peaks; and the result is labeled with its actual consensus/policy
+execution class rather than inherited from the current single-chunk fragment.
+
 ## OP-014 — Total-domain ScriptNum right-shift frontier
 
 Determine whether a one-item ScriptNum representation can beat the four-byte
@@ -470,6 +511,28 @@ negative-zero special case are explicit; input/output conversion, shared-table
 setup, script bytes, executed opcodes, and strict stack peaks are compared on
 the same boundary; malformed encodings are rejected; and a complete tapscript
 leaf is differentially validated against a pinned Bitcoin Core revision.
+
+Progress: `u32_compressed_rshift(shift)` now passes deterministic boundary and
+malformed-input tests for every shift in `1..=31`. At shift 8 it costs 500
+fragment bytes and peaks at five items, versus 499 bytes and seven items for a
+local decode-byte-shift-reencode baseline. The full OP-014 criterion remains
+open because the comparison is local and the complete Core differential is
+not yet present.
+
+## OP-026 — Total-domain compressed-u32 shift pair
+
+Determine whether a canonical one-item compressed u32 representation can
+provide both logical shifts as a composable alternative to byte expansion.
+**Complete when:** left and right shifts `1..=31` have like-for-like input and
+output conversion costs, executed-opcode and strict combined-stack metrics,
+malformed-wire rejection, complete tapscript leaves, and pinned Bitcoin Core
+differential validation; any shift width dominated by byte expansion is
+recorded rather than omitted.
+
+Progress: deterministic local left-shift tests cover all widths and the direct
+shift-8 fragment measures 492 bytes and five stack items versus a 490-byte,
+seven-item local decode/shift/re-encode baseline. The result is a stack-shape
+tradeoff, not a byte win, and the deployment criterion remains open.
 
 ## OP-015 — Native secp256k1 field circuit frontier
 
@@ -812,11 +875,13 @@ and all 94 exact scalar relations without serializing q; the G29 q-free probe
 does the same for its 44 pairs and 88 relations. None has been validated by
 executing a complete leaf or by Bitcoin Core.
 
-For the historical hinted baseline, one remaining byte experiment is to leave the BLAKE3 backend's 330 lookup-table
-items below `prefix | digest` instead of moving the 337-item prefix during hash
-cleanup. The challenge schedule appears to have enough stack room to carry
-them and the endpoint could drop them, but this has not been generated or
-executed. **Accept when:** an exact linker variant preserves all routing and
+For the historical hinted baseline, one remaining byte experiment is to leave
+the BLAKE3 backend's 330 lookup-table items below `prefix | digest` instead of
+moving the 337-item prefix during hash cleanup. An isolated 2026-09-16 probe
+removed the park/restore around cleanup, but generation stopped at the tracked
+stack-variable topmost assertion before a Script was serialized. That only
+establishes a current generator/API boundary; a hand-written linker remains
+unexplored. **Accept when:** an exact linker variant preserves all routing and
 clean-stack semantics, stays below 1,000 combined items in a strict schedule,
 matches the standard BLAKE3 digest in a focused execution, and reports a
 policy-produced leaf smaller than the 3,828,057-byte projection with the same 792 entry items
@@ -843,3 +908,10 @@ pinned Bitcoin Core revision in each claimed script context. Report pinning,
 signature and binding costs, complete witness items (including zero or explicit
 hint counts), combined stack peak, static legacy opcodes and policy results.
 State the remaining cryptographic assumptions separately from execution tests.
+## OP-024 — BLAKE3 XOF output frontier
+
+Price a reusable BLAKE3 root-output continuation beyond the first 32-byte
+digest. **Complete when:** a generation-time output length supports at least a
+64-byte XOF vector, matches the independent BLAKE3 implementation, records the
+additional output-block compression/routing/cleanup and witness shape, and
+passes the combined 1,000-item stack check for the documented composition.

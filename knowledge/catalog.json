@@ -958,6 +958,81 @@
           ]
         },
         {
+          "id": "xor-drop",
+          "label": "u32_xor_drop(0,1,3)",
+          "parameters": {
+            "a_depth": 0,
+            "b_depth": 1,
+            "consumes_both": true,
+            "table_items": 256
+          },
+          "includes": "fragment-only: destructive two-word routing and XOR lookup; excludes table setup, operand pushes, output check, and transaction context",
+          "script_bytes": 202,
+          "witness_bytes": 0,
+          "witness_bytes_max": 0,
+          "max_stack_items": 268,
+          "executed_opcodes": null,
+          "static_non_push_opcodes": 174,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 202,
+          "metric_keys": [
+            "u32_xor_drop",
+            "u32_xor_drop_stack",
+            "u32_xor_drop_opcodes"
+          ]
+        },
+        {
+          "id": "and-drop",
+          "label": "u32_and_drop(0,1,3)",
+          "parameters": {
+            "a_depth": 0,
+            "b_depth": 1,
+            "consumes_both": true,
+            "table_items": 256
+          },
+          "includes": "fragment-only: destructive two-word routing and AND lookup; excludes table setup, operand pushes, output check, and transaction context",
+          "script_bytes": 169,
+          "witness_bytes": 0,
+          "witness_bytes_max": 0,
+          "max_stack_items": 268,
+          "executed_opcodes": null,
+          "static_non_push_opcodes": 142,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 169,
+          "metric_keys": [
+            "u32_and_drop",
+            "u32_and_drop_stack",
+            "u32_and_drop_opcodes"
+          ]
+        },
+        {
+          "id": "or-drop",
+          "label": "u32_or_drop(0,1,3)",
+          "parameters": {
+            "a_depth": 0,
+            "b_depth": 1,
+            "consumes_both": true,
+            "table_items": 256
+          },
+          "includes": "fragment-only: destructive two-word routing and OR lookup; excludes table setup, operand pushes, output check, and transaction context",
+          "script_bytes": 326,
+          "witness_bytes": 0,
+          "witness_bytes_max": 0,
+          "max_stack_items": 268,
+          "executed_opcodes": null,
+          "static_non_push_opcodes": 242,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 326,
+          "metric_keys": [
+            "u32_or_drop",
+            "u32_or_drop_stack",
+            "u32_or_drop_opcodes"
+          ]
+        },
+        {
           "id": "conditional-select",
           "label": "u32_conditional_select()",
           "parameters": {
@@ -1373,6 +1448,168 @@
             "u32_rrot16_checked_opcodes"
           ],
           "static_non_push_opcodes": 35
+        },
+        {
+          "id": "pick-depth-2",
+          "label": "Stack-preserving u32 copy at depth two",
+          "parameters": {
+            "word_depth": 2,
+            "word_items": 4
+          },
+          "includes": "fragment-only: four OP_PICK copies of one u32 word; excludes input pushes and output checks",
+          "script_bytes": 8,
+          "witness_bytes": 24,
+          "witness_bytes_max": 24,
+          "max_stack_items": 16,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 8,
+          "metric_keys": [
+            "u32_pick_2",
+            "u32_pick_2_witness",
+            "u32_pick_2_stack"
+          ]
+        },
+        {
+          "id": "u32-zip",
+          "label": "u32_zip(0,1)",
+          "parameters": {
+            "first_depth": 0,
+            "second_depth": 1,
+            "input_items": 8,
+            "output_items": 8
+          },
+          "includes": "fragment-only: interleaves two four-byte words by byte position and consumes both inputs; excludes input pushes and output checks",
+          "script_bytes": 16,
+          "witness_bytes": 17,
+          "witness_bytes_max": 17,
+          "max_stack_items": 9,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 16,
+          "metric_keys": [
+            "u32_zip",
+            "u32_zip_witness",
+            "u32_zip_stack"
+          ]
+        },
+        {
+          "id": "u32-copy-zip",
+          "label": "u32_copy_zip(0,1)",
+          "parameters": {
+            "first_depth": 0,
+            "second_depth": 1,
+            "input_items": 8,
+            "output_items": 12
+          },
+          "includes": "fragment-only: interleaves two four-byte words while retaining a copy of the selected top word; excludes input pushes and output checks",
+          "script_bytes": 16,
+          "witness_bytes": 17,
+          "witness_bytes_max": 17,
+          "max_stack_items": 13,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 16,
+          "metric_keys": [
+            "u32_copy_zip",
+            "u32_copy_zip_witness",
+            "u32_copy_zip_stack"
+          ]
+        },
+        {
+          "id": "byte-reorder-0",
+          "label": "byte_reorder(0)",
+          "parameters": {
+            "offset": 0,
+            "input_items": 4,
+            "output_items": 4
+          },
+          "includes": "fragment-only: byte permutation; excludes input pushes and output checks",
+          "script_bytes": 3,
+          "witness_bytes": 9,
+          "witness_bytes_max": 9,
+          "max_stack_items": 4,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 3,
+          "metric_keys": [
+            "u32_byte_reorder_0",
+            "u32_byte_reorder_witness_0",
+            "u32_byte_reorder_stack_0"
+          ]
+        },
+        {
+          "id": "byte-reorder-1",
+          "label": "byte_reorder(1)",
+          "parameters": {
+            "offset": 1,
+            "input_items": 4,
+            "output_items": 4
+          },
+          "includes": "fragment-only: byte permutation; excludes input pushes and output checks",
+          "script_bytes": 2,
+          "witness_bytes": 9,
+          "witness_bytes_max": 9,
+          "max_stack_items": 4,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 2,
+          "metric_keys": [
+            "u32_byte_reorder_1",
+            "u32_byte_reorder_witness_1",
+            "u32_byte_reorder_stack_1"
+          ]
+        },
+        {
+          "id": "byte-reorder-2",
+          "label": "byte_reorder(2)",
+          "parameters": {
+            "offset": 2,
+            "input_items": 4,
+            "output_items": 4
+          },
+          "includes": "fragment-only: byte permutation; excludes input pushes and output checks",
+          "script_bytes": 4,
+          "witness_bytes": 9,
+          "witness_bytes_max": 9,
+          "max_stack_items": 4,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 4,
+          "metric_keys": [
+            "u32_byte_reorder_2",
+            "u32_byte_reorder_witness_2",
+            "u32_byte_reorder_stack_2"
+          ]
+        },
+        {
+          "id": "byte-reorder-3",
+          "label": "byte_reorder(3)",
+          "parameters": {
+            "offset": 3,
+            "input_items": 4,
+            "output_items": 4
+          },
+          "includes": "fragment-only: byte permutation; excludes input pushes and output checks",
+          "script_bytes": 3,
+          "witness_bytes": 9,
+          "witness_bytes_max": 9,
+          "max_stack_items": 4,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 3,
+          "metric_keys": [
+            "u32_byte_reorder_3",
+            "u32_byte_reorder_witness_3",
+            "u32_byte_reorder_stack_3"
+          ]
         }
       ],
       "limitations": [
@@ -3262,6 +3499,7 @@
       "documentation": "src/hashes/hash160/README.md",
       "tests": [
         "hashes::hash160::tests::matches_reference_vectors",
+        "hashes::hash160::tests::shared_table_rejects_non_byte_inputs",
         "hashes::hash160::tests::rejects_unsupported_message_length"
       ],
       "references": [
@@ -3284,18 +3522,41 @@
             "intermediate_representation": "32 byte-valued stack items"
           },
           "includes": "fragment-with-memory: SHA-256 and RIPEMD-160 fragments with table setup and cleanup; excludes message pushes, digest comparison, and witness serialization",
-          "script_bytes": 756491,
+          "script_bytes": 752651,
           "witness_bytes": 65,
           "witness_bytes_max": 65,
           "max_stack_items": 856,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
-          "per_use_script_bytes": 756491,
+          "per_use_script_bytes": 752651,
           "metric_keys": [
             "hash160_32",
             "hash160_witness_32",
             "hash160_stack_32"
+          ]
+        },
+        {
+          "id": "message-32-shared-table",
+          "label": "32-byte input with shared byte-logic table",
+          "parameters": {
+            "message_bytes": 32,
+            "intermediate_representation": "32 byte-valued stack items",
+            "shared_table_items": 256
+          },
+          "includes": "fragment-with-memory: one shared byte-logic table, SHA-256 and RIPEMD-160 fragments, and final table cleanup; excludes message pushes, digest comparison, and witness serialization",
+          "script_bytes": 752327,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 856,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": 752327,
+          "metric_keys": [
+            "hash160_shared_table_32",
+            "hash160_witness_32",
+            "hash160_shared_table_stack_32"
           ]
         }
       ],
@@ -3342,14 +3603,14 @@
             "message_bytes": 32
           },
           "includes": "fragment-only: hashing fragment; excludes message pushes and digest comparison",
-          "script_bytes": 209726,
+          "script_bytes": 205558,
           "witness_bytes": null,
           "witness_bytes_max": null,
           "max_stack_items": null,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
-          "per_use_script_bytes": 209726,
+          "per_use_script_bytes": 205558,
           "metric_keys": [
             "sha1_u32_32"
           ]
@@ -3396,14 +3657,14 @@
             "message_bytes": 32
           },
           "includes": "fragment-only: hashing fragment; excludes message pushes and digest comparison",
-          "script_bytes": 244063,
+          "script_bytes": 240223,
           "witness_bytes": null,
           "witness_bytes_max": null,
           "max_stack_items": null,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
-          "per_use_script_bytes": 244063,
+          "per_use_script_bytes": 240223,
           "metric_keys": [
             "ripemd160_u32_32"
           ]
@@ -3501,6 +3762,33 @@
       "stack_contract": "Consumes two canonical nibble items per message byte and returns digest nibbles in the documented order.",
       "configurations": [
         {
+          "id": "message-80-shared-lookup",
+          "label": "80-byte input with shared row lookup",
+          "parameters": {
+            "message_bytes": 80,
+            "chunks": 2,
+            "shared_lookup_items": 16
+          },
+          "includes": "fragment-only: hashing fragment; excludes message pushes and digest comparison",
+          "evidence": "locally-reproduced",
+          "execution": "unclassified",
+          "script_bytes": 736595,
+          "witness_bytes": 161,
+          "witness_bytes_max": 161,
+          "max_stack_items": 905,
+          "executed_opcodes": 594466,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 736595,
+          "metric_keys": [
+            "sha2_u4_80_shared_lookup",
+            "sha2_u4_80_shared_lookup_witness",
+            "sha2_u4_80_shared_lookup_hints",
+            "sha2_u4_80_shared_lookup_stack",
+            "sha2_u4_80_shared_lookup_opcodes"
+          ]
+        },
+        {
           "id": "message-32",
           "label": "32-byte input",
           "parameters": {
@@ -3537,7 +3825,7 @@
       "status": "active",
       "evidence": "differentially-validated",
       "execution": "research-unlimited",
-      "as_of": "2026-09-01",
+      "as_of": "2026-09-11",
       "knowledge_page": "knowledge/primitives/blake3-limb29.md",
       "implementation": "src/hashes/blake3/mod.rs",
       "documentation": "src/hashes/blake3/README.md",
@@ -3640,14 +3928,18 @@
       ],
       "limitations": [
         "Messages limited to one 1,024-byte chunk",
+        "No parent-node compression or multi-chunk tree API",
         "Only unkeyed 32-byte output is implemented",
         "Local witness-input and peak-metric execution disables the stack-limit check; Bitcoin Core consensus and policy validation were not performed",
-        "A wholly padded final second input group is ignored and not bound"
+        "A wholly padded final second input group is ignored and not bound",
+        "BLAKE3 XOF output-block counter is not implemented"
       ],
       "open_problems": [
         "OP-001",
         "OP-003",
-        "OP-013"
+        "OP-013",
+        "OP-023",
+        "OP-024"
       ]
     },
     {
@@ -3665,6 +3957,8 @@
       "tests": [
         "hashes::blake3::tests::test_short_direct_nibbles_all_lengths",
         "hashes::blake3::tests::test_short_direct_nibbles_reject_malformed_inputs",
+        "hashes::blake3::tests::test_short_truncated_128_all_lengths",
+        "hashes::blake3::tests::test_short_truncated_128_rejects_malformed_inputs",
         "hashes::blake3::tests::test_compute_script_is_optimizer_fixed_point",
         "hashes::blake3::tests::stack_identity_peepholes_are_exact",
         "hashes::blake3::utils::tests::destructive_final_xor_query_cleanup_matches_runtime_shape",
@@ -3683,8 +3977,8 @@
         "constant-folding",
         "sparse-state"
       ],
-      "security": "Security is inherited from BLAKE3 for the supported unkeyed 32-byte-output mode; all witness-backed nibbles are numerically checked in [0,16), omitted words are fixed zero padding, and raw-byte canonicality plus digest binding remain caller obligations.",
-      "stack_contract": "Consumes exactly two numeric nibble items per declared message byte from an otherwise empty main stack and returns 64 digest nibbles; the 32-byte configuration uses the documented physical word and digit permutations.",
+      "security": "Security is inherited from BLAKE3 for the supported unkeyed output modes; the truncated mode is a prefix of the standard digest, all witness-backed nibbles are numerically checked in [0,16), omitted words are fixed zero padding, and raw-byte canonicality plus digest binding remain caller obligations.",
+      "stack_contract": "Consumes exactly two numeric nibble items per declared message byte from an otherwise empty main stack and returns either 64 full-digest nibbles or 32 nibbles for the standard low-128-bit prefix; the 32-byte configuration uses the documented physical word and digit permutations.",
       "configurations": [
         {
           "id": "message32-direct-u4",
@@ -3719,32 +4013,66 @@
             ]
           },
           "includes": "fragment-with-memory: exact-count u4 input range validation, split 353-byte packed lookup-table setup, sparse length-specialized hashing, destructive 165-byte cleanup, and digest restoration; excludes input witness serialization and output verification",
-          "script_bytes": 59529,
+          "script_bytes": 59534,
           "witness_bytes": 111,
           "witness_bytes_max": 129,
           "max_stack_items": 527,
+          "static_non_push_opcodes": 41135,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 353,
-          "per_use_script_bytes": 59016,
+          "per_use_script_bytes": 59021,
           "metric_keys": [
             "blake3_short_32",
             "blake3_stack_short_32",
             "blake3_witness_short_32",
             "blake3_witness_short_32_max"
           ]
+        },
+        {
+          "id": "message32-direct-u4-low128",
+          "label": "32-byte input, checked direct u4, low 128 bits",
+          "parameters": {
+            "message_bytes": 32,
+            "input_nibbles": 64,
+            "output_bits": 128,
+            "output_nibbles": 32,
+            "metric_message": "00 01 ... 1f",
+            "optimizer": "bitcoin-script-stack plus proved local stack identities, fixed point",
+            "static_non_push_opcodes": 40816,
+            "stack_measurement": "combined main/alt peak from strict local execution of the host-push and prefix-verifier composition",
+            "table_cleanup_script_bytes": 166
+          },
+          "includes": "fragment-with-memory: exact-count u4 input range validation, split packed lookup-table setup, sparse length-specialized hashing, non-destructive table cleanup, and restoration of only the first four digest words; excludes input witness serialization and output verification",
+          "script_bytes": 59105,
+          "witness_bytes": 111,
+          "witness_bytes_max": 129,
+          "max_stack_items": 527,
+          "static_non_push_opcodes": 40816,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 353,
+          "per_use_script_bytes": 59105,
+          "metric_keys": [
+            "blake3_short_truncated_128_32",
+            "blake3_short_truncated_128_32_compute",
+            "blake3_short_truncated_128_32_opcodes",
+            "blake3_short_truncated_128_32_stack"
+          ]
         }
       ],
       "limitations": [
         "Messages are limited to 32 bytes and the length is fixed when the script is generated",
-        "Only unkeyed 32-byte output is implemented",
+        "Only unkeyed 32-byte output and its 128-bit prefix are implemented",
         "The direct u4 layout uses up to 64 witness items and differs from the selected-limb API",
-        "Bitcoin Core consensus and policy validation were not performed"
+        "Bitcoin Core consensus and policy validation were not performed",
+        "BLAKE3 XOF output-block counter is not implemented"
       ],
       "open_problems": [
         "OP-001",
         "OP-003",
-        "OP-013"
+        "OP-013",
+        "OP-024"
       ]
     },
     {
@@ -3760,7 +4088,8 @@
       "implementation": "src/hashes/shake256/mod.rs",
       "documentation": "src/hashes/shake256/README.md",
       "tests": [
-        "hashes::shake256::tests"
+        "hashes::shake256::tests::hashes_standard_vectors_to_1024_bytes",
+        "hashes::shake256::tests::raw_output_exceeds_strict_stack_limit"
       ],
       "references": [
         "fips-202",
@@ -3781,21 +4110,25 @@
             "output_bytes": 1024,
             "message_bytes_max": 511
           },
-          "includes": "fragment-only: full sponge and squeeze; checked byte metrics not yet recorded",
-          "script_bytes": null,
-          "witness_bytes": null,
-          "witness_bytes_max": null,
-          "max_stack_items": null,
+          "includes": "fragment-with-memory: full sponge and squeeze; message pushes, output comparison, terminal predicate, and witness serialization excluded from script size",
+          "script_bytes": 15927814,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 1709,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": null,
           "per_use_script_bytes": null,
-          "metric_keys": []
+          "metric_keys": [
+            "shake256_32_1024",
+            "shake256_witness_32",
+            "shake256_stack_32_1024"
+          ]
         }
       ],
       "limitations": [
         "Output alone exceeds the 1,000-item consensus stack limit",
-        "No metric snapshot yet"
+        "The representative 32-byte input exceeds the 1,000-item stack limit with the complete 1,024-byte output"
       ],
       "open_problems": [
         "OP-003",
@@ -8924,11 +9257,33 @@
             "shake256_prefix_witness_32",
             "shake256_prefix_stack_32_32"
           ]
+        },
+        {
+          "id": "message-32-output-137",
+          "label": "32-byte input and 137-byte prefix",
+          "parameters": {
+            "message_bytes": 32,
+            "output_bytes": 137
+          },
+          "includes": "fragment-with-memory: generated sponge, lookup-table setup/cleanup, and prefix squeeze; excludes message pushes, output comparison, terminal predicate, and transaction framing",
+          "script_bytes": 3989612,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 893,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 3989612,
+          "metric_keys": [
+            "shake256_prefix_32_137",
+            "shake256_prefix_witness_32",
+            "shake256_prefix_stack_32_137"
+          ]
         }
       ],
       "limitations": [
-        "Only the representative 32-byte prefix has a strict local stack measurement",
-        "The 2,000,127-byte fragment remains impractical for ordinary script-size and relay-policy limits",
+        "Only the 32-byte and rate-crossing 137-byte prefixes have strict local stack measurements",
+        "The prefix fragments remain impractical for ordinary script-size and relay-policy limits",
         "Executed-opcode counter is unavailable in the local tapscript interpreter",
         "Bitcoin Core consensus and policy validation not performed"
       ],
@@ -11394,6 +11749,249 @@
         "OP-001",
         "OP-002",
         "OP-003"
+      ]
+    },
+    {
+      "id": "arithmetic/u32-zero",
+      "name": "Checked u32 zero predicate",
+      "class": "arithmetic/word",
+      "summary": "Range-checked zero predicate for a four-byte u32 word without lookup-table memory.",
+      "status": "active",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-11",
+      "knowledge_page": "knowledge/primitives/u32-zero.md",
+      "implementation": "src/arithmetic/u32/zero.rs",
+      "documentation": "src/arithmetic/u32/README.md",
+      "tests": [
+        "src/arithmetic/u32/zero.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "digit-arithmetic",
+        "range-check",
+        "stack-routing"
+      ],
+      "security": "Every hostile byte is range-checked before its zero predicate; the check proves numeric byte range but not byte-unique ScriptNum encoding or a terminal predicate.",
+      "stack_contract": "Consumes four byte-valued limbs in most-significant-byte-first order and replaces them with one numeric Boolean. No lookup table remains resident.",
+      "configurations": [
+        {
+          "id": "checked-word",
+          "label": "u32_iszero()",
+          "parameters": {
+            "byte_count": 4,
+            "input_check": true,
+            "data_items": 4,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: four byte range checks, four zero predicates, Boolean accumulation, and no table memory; excludes input pushes, witness serialization from the script, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 53,
+          "witness_bytes": 13,
+          "witness_bytes_max": 13,
+          "max_stack_items": 6,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 53,
+          "metric_keys": [
+            "u32_zero",
+            "u32_zero_witness",
+            "u32_zero_stack"
+          ]
+        }
+      ],
+      "limitations": [
+        "Numeric Boolean output is not a complete clean-stack script",
+        "Numeric range checks do not establish byte-unique ScriptNum encoding",
+        "Static non-push opcode count is not an executed-opcode measurement",
+        "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
+    },
+    {
+      "id": "arithmetic/u32-compressed-rshift",
+      "name": "Compressed total-domain u32 logical right shift",
+      "class": "arithmetic/word",
+      "summary": "Canonical one-item ScriptNum adapter for logical u32 right shifts.",
+      "status": "experimental",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-11",
+      "knowledge_page": "knowledge/primitives/u32-compressed-rshift.md",
+      "implementation": "src/arithmetic/u32/shift.rs",
+      "documentation": "src/arithmetic/u32/README.md",
+      "tests": [
+        "arithmetic::u32::shift::tests::test_u32_compressed_rshift_boundaries_and_random_values",
+        "arithmetic::u32::shift::tests::test_u32_compressed_rshift_rejects_noncanonical_inputs",
+        "primitive_metrics::u32_compressed_rshift_metrics_are_current",
+        "examples/u32_compressed_rshift_benchmark.rs"
+      ],
+      "references": [
+        "bip-342",
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "digit-arithmetic",
+        "metadata-carrier"
+      ],
+      "security": "No independent cryptographic claim. The compressed input is hostile and must pass exact canonical-wire checks before sign/magnitude normalization; complete protocol binding and deployment validation remain open.",
+      "stack_contract": "... word -> ... (word >> shift); shift is 1..=31, the input is consumed, and unrelated lower stack state is preserved.",
+      "configurations": [
+        {
+          "id": "shift-8-direct",
+          "label": "Direct compressed logical right shift by 8",
+          "parameters": {
+            "shift": 8,
+            "value": "0x89abcdef",
+            "hint_items_per_invocation": 0,
+            "complete_input_items": 1
+          },
+          "includes": "fragment-with-memory: canonical-wire check, sign/magnitude normalization, threshold division, and logical high-bit restoration; excludes input push, terminal predicate, transaction framing, and unrelated live state",
+          "script_bytes": 500,
+          "witness_bytes": 6,
+          "witness_bytes_max": 7,
+          "max_stack_items": 5,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 500,
+          "metric_keys": [
+            "u32_compressed_rshift_8",
+            "u32_compressed_rshift_8_witness",
+            "u32_compressed_rshift_8_stack"
+          ]
+        },
+        {
+          "id": "shift-8-decode-baseline",
+          "label": "Decode, byte-shift, and re-encode baseline",
+          "parameters": {
+            "shift": 8,
+            "value": "0x89abcdef",
+            "complete_input_items": 1
+          },
+          "includes": "fragment-only: existing compressed decoder, four-item byte shift, and existing encoder; excludes input push, terminal predicate, transaction framing, and unrelated live state",
+          "script_bytes": 499,
+          "witness_bytes": 6,
+          "witness_bytes_max": 7,
+          "max_stack_items": 7,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 499,
+          "metric_keys": [
+            "u32_compressed_rshift_8_baseline",
+            "u32_compressed_rshift_8_witness",
+            "u32_compressed_rshift_8_baseline_stack"
+          ]
+        }
+      ],
+      "limitations": [
+        "Shift-ladder size varies with the compile-time shift",
+        "Dominated by the local baseline for shift-8 locking-script bytes",
+        "Bitcoin Core, complete-transaction, relay-policy, and canonical witness-policy validation remain open"
+      ],
+      "open_problems": [
+        "OP-002",
+        "OP-003",
+        "OP-014"
+      ]
+    },
+    {
+      "id": "arithmetic/u32-compressed-lshift",
+      "name": "Compressed total-domain u32 logical left shift",
+      "class": "arithmetic/word",
+      "summary": "Canonical one-item ScriptNum adapter for modulo-2^32 logical u32 left shifts.",
+      "status": "experimental",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-11",
+      "knowledge_page": "knowledge/primitives/u32-compressed-lshift.md",
+      "implementation": "src/arithmetic/u32/shift.rs",
+      "documentation": "src/arithmetic/u32/README.md",
+      "tests": [
+        "arithmetic::u32::shift::tests::test_u32_compressed_lshift_boundaries_and_random_values",
+        "arithmetic::u32::shift::tests::test_u32_compressed_lshift_rejects_noncanonical_inputs",
+        "primitive_metrics::u32_compressed_lshift_metrics_are_current",
+        "examples/u32_compressed_lshift_benchmark.rs"
+      ],
+      "references": [
+        "bip-342",
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "digit-arithmetic",
+        "metadata-carrier"
+      ],
+      "security": "No independent cryptographic claim. The compressed input is hostile and must pass exact canonical-wire checks before sign/magnitude normalization; complete protocol binding and deployment validation remain open.",
+      "stack_contract": "... word -> ... ((word << shift) mod 2^32); shift is 1..=31, the input is consumed, and unrelated lower stack state is preserved.",
+      "configurations": [
+        {
+          "id": "shift-8-direct",
+          "label": "Direct compressed logical left shift by 8",
+          "parameters": {
+            "shift": 8,
+            "value": "0x12345678",
+            "hint_items_per_invocation": 0,
+            "complete_input_items": 1
+          },
+          "includes": "fragment-with-memory: canonical-wire check, sign/magnitude normalization, repeated doubling, and recentering; excludes input push, terminal predicate, transaction framing, and unrelated live state",
+          "script_bytes": 492,
+          "witness_bytes": 6,
+          "witness_bytes_max": 7,
+          "max_stack_items": 5,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 492,
+          "metric_keys": [
+            "u32_compressed_lshift_8",
+            "u32_compressed_lshift_8_witness",
+            "u32_compressed_lshift_8_stack"
+          ]
+        },
+        {
+          "id": "shift-8-decode-baseline",
+          "label": "Decode, byte-shift, and re-encode baseline",
+          "parameters": {
+            "shift": 8,
+            "value": "0x12345678",
+            "complete_input_items": 1
+          },
+          "includes": "fragment-only: existing compressed decoder, four-item byte shift, and existing encoder; excludes input push, terminal predicate, transaction framing, and unrelated live state",
+          "script_bytes": 490,
+          "witness_bytes": 6,
+          "witness_bytes_max": 7,
+          "max_stack_items": 7,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 490,
+          "metric_keys": [
+            "u32_compressed_lshift_8_baseline",
+            "u32_compressed_lshift_8_witness",
+            "u32_compressed_lshift_8_baseline_stack"
+          ]
+        }
+      ],
+      "limitations": [
+        "Shift-ladder size varies with the compile-time shift",
+        "Dominated by the local baseline for shift-8 locking-script bytes",
+        "Bitcoin Core, complete-transaction, relay-policy, and canonical witness-policy validation remain open"
+      ],
+      "open_problems": [
+        "OP-002",
+        "OP-003",
+        "OP-026"
       ]
     }
   ]

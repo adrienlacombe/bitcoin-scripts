@@ -4260,6 +4260,8 @@ fn metrics() -> Vec<Metric> {
     ]
     .into_iter()
     .chain(commitment_metrics())
+    .chain(u32_compressed_rshift_metrics())
+    .chain(u32_compressed_lshift_metrics())
     .chain(prince_metrics())
     .chain(aes_sub_bytes_metrics())
     .chain(aes_mix_columns_metrics())
@@ -4285,10 +4287,12 @@ fn metrics() -> Vec<Metric> {
     .chain(u32_conditional_select_metrics())
     .chain(u32_conditional_negate_metrics())
     .chain(u4_sum_metrics())
+    .chain(u32_consuming_bitwise_metrics())
     .chain(u4_le_bits_metrics())
     .chain(u32_iszero_metrics())
     .chain(u254_add_nocarry_metrics())
     .chain(u254_sub_noborrow_metrics())
+    .chain(sha2_u4_shared_lookup_metrics())
     .collect()
 }
 
@@ -4369,6 +4373,7 @@ fn winternitz20_metrics_are_current() {
 #[test]
 fn shake256_prefix_metrics_are_current() {
     let prefix = shake256::shake256_prefix(32, 32);
+    let rate_prefix = shake256::shake256_prefix(32, 137);
     let witness = vec![vec![0x42]; 32];
     check_readme_metrics(vec![
         Metric {
@@ -4390,8 +4395,72 @@ fn shake256_prefix_metrics_are_current() {
                     for _ in 0..16 { OP_2DROP }
                     OP_TRUE
                 },
+                witness.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/hashes/shake256/README.md",
+            key: "shake256_prefix_32_137",
+            value: script_len(rate_prefix.clone()),
+        },
+        Metric {
+            readme: "src/hashes/shake256/README.md",
+            key: "shake256_prefix_stack_32_137",
+            value: max_stack_items_strict(
+                script! {
+                    { rate_prefix }
+                    for _ in 0..68 { OP_2DROP }
+                    OP_DROP
+                    OP_TRUE
+                },
                 witness,
             ),
+        },
+    ]);
+}
+
+#[test]
+fn blake3_short_truncated_128_metrics_are_current() {
+    let message: [u8; 32] = std::array::from_fn(|index| index as u8);
+    let expected = *::blake3::hash(&message).as_bytes();
+    let compute = blake3::blake3_short_compute_script_truncated_128(32);
+    let complete = script! {
+        { blake3::blake3_push_short_message_script(&message) }
+        { compute.clone() }
+        { blake3::blake3_verify_output_prefix_script(expected[..16].try_into().unwrap()) }
+    };
+    let full = blake3::blake3_short_compute_script(32);
+    assert_eq!(script_len(full.clone()) - script_len(compute.clone()), 429);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_32",
+            value: script_len(full.clone()),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_opcodes_short_32",
+            value: static_non_push_opcodes(full),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_truncated_128_32",
+            value: script_len(compute.clone()),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_truncated_128_32_compute",
+            value: script_len(compute.clone()),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_truncated_128_32_opcodes",
+            value: static_non_push_opcodes(compute),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_truncated_128_32_stack",
+            value: max_stack_items_strict(complete, vec![]),
         },
     ]);
 }
@@ -5903,6 +5972,7 @@ fn hash_path_chain_metrics_are_current() {
 }
 
 fn hash160_composition_metrics() -> Vec<Metric> {
+    let shared = hash160::hash160_shared_table(32);
     vec![
         Metric {
             readme: "src/hashes/hash160/README.md",
@@ -5923,6 +5993,23 @@ fn hash160_composition_metrics() -> Vec<Metric> {
                     for _ in 0..20 {
                         OP_DROP
                     }
+                    OP_TRUE
+                },
+                vec![vec![0x42]; 32],
+            ),
+        },
+        Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_shared_table_32",
+            value: script_len(shared.clone()),
+        },
+        Metric {
+            readme: "src/hashes/hash160/README.md",
+            key: "hash160_shared_table_stack_32",
+            value: max_stack_items_strict(
+                script! {
+                    { shared }
+                    for _ in 0..20 { OP_DROP }
                     OP_TRUE
                 },
                 vec![vec![0x42]; 32],
@@ -8068,4 +8155,435 @@ fn u4_mod3_metrics_are_current() {
             value: static_non_push_opcodes(fragment),
         },
     ]);
+}
+
+fn u32_consuming_bitwise_metrics() -> Vec<Metric> {
+    let stack = |fragment: bitcoin_script::Script| {
+        max_stack_items_strict(
+            script! {
+                { u32::xor::u8_push_xor_table() }
+                { u32::stack::u32_push(0x0123_4567) }
+                { u32::stack::u32_push(0x89ab_cdef) }
+                { fragment }
+                { u32::stack::u32_drop() }
+                { u32::xor::u8_drop_xor_table() }
+                OP_1
+            },
+            vec![],
+        )
+    };
+    let xor = u32::xor::u32_xor_drop(0, 1, 3);
+    let and = u32::and::u32_and_drop(0, 1, 3);
+    let or = u32::or::u32_or_drop(0, 1, 3);
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xor_drop",
+            value: script_len(xor.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xor_drop_stack",
+            value: stack(xor.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_xor_drop_opcodes",
+            value: static_non_push_opcodes(xor),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_and_drop",
+            value: script_len(and.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_and_drop_stack",
+            value: stack(and.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_and_drop_opcodes",
+            value: static_non_push_opcodes(and),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_or_drop",
+            value: script_len(or.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_or_drop_stack",
+            value: stack(or.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_or_drop_opcodes",
+            value: static_non_push_opcodes(or),
+        },
+    ]
+}
+
+fn sha2_u4_shared_lookup_metrics() -> Vec<Metric> {
+    let fragment = sha256::sha2_u4::sha256(80);
+    let witness = vec![Vec::new(); 160];
+    let cleanup = u4::stack::u4_drop(64);
+    let execution = execute_script_with_inputs_strict(
+        script! {
+            { fragment.clone() }
+            { cleanup.clone() }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    assert!(
+        execution.success,
+        "strict SHA-256 u4 metric failed: {execution}"
+    );
+    vec![
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_80_shared_lookup",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_80_shared_lookup_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_80_shared_lookup_hints",
+            value: 0,
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_80_shared_lookup_stack",
+            value: execution.stats.max_nb_stack_items,
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_80_shared_lookup_opcodes",
+            value: execution
+                .stats
+                .opcode_count
+                .checked_sub(cleanup.compile_with_policy().instructions().count() + 1)
+                .expect("cleanup and terminator must be counted"),
+        },
+    ]
+}
+
+#[test]
+fn sha2_u4_shared_lookup_metrics_are_current() {
+    check_readme_metrics(sha2_u4_shared_lookup_metrics());
+}
+
+/// This isolated fixture measures only the checked u32 zero predicate.
+#[test]
+fn u32_zero_metrics_are_current() {
+    let fragment = u32::zero::u32_iszero();
+    let witness = vec![scriptnum(255); 4];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            OP_DROP
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), 4);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zero_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
+#[test]
+fn u32_pick_metrics_are_current() {
+    let fragment = u32::stack::u32_pick(2);
+    let witness = (0..12).map(scriptnum).collect::<Vec<_>>();
+    let stack = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..8 { OP_2DROP }
+            OP_1
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_pick_2",
+            value: script_len(fragment),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_pick_2_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_pick_2_stack",
+            value: stack,
+        },
+    ]);
+}
+
+#[test]
+fn u32_zip_metrics_are_current() {
+    let witness = vec![vec![1u8]; 8];
+    let zip = u32::zip::u32_zip(0, 1);
+    let zip_stack = max_stack_items_strict(
+        script! {
+            { zip.clone() }
+            for _ in 0..8 { OP_DROP }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    let copy_zip = u32::zip::u32_copy_zip(0, 1);
+    let copy_zip_stack = max_stack_items_strict(
+        script! {
+            { copy_zip.clone() }
+            for _ in 0..12 { OP_DROP }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zip",
+            value: script_len(zip),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zip_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_zip_stack",
+            value: zip_stack,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_copy_zip",
+            value: script_len(copy_zip),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_copy_zip_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_copy_zip_stack",
+            value: copy_zip_stack,
+        },
+    ]);
+}
+
+#[test]
+fn u32_byte_reorder_metrics_are_current() {
+    let witness = vec![vec![1u8]; 4];
+    let mut metrics = Vec::new();
+    for offset in 0..4 {
+        let fragment = u32::rotate::byte_reorder(offset);
+        let stack = max_stack_items_strict(
+            script! {
+                { fragment.clone() }
+                { u32::stack::u32_drop() }
+                OP_TRUE
+            },
+            witness.clone(),
+        );
+        metrics.extend([
+            Metric {
+                readme: "src/arithmetic/u32/README.md",
+                key: match offset {
+                    0 => "u32_byte_reorder_0",
+                    1 => "u32_byte_reorder_1",
+                    2 => "u32_byte_reorder_2",
+                    _ => "u32_byte_reorder_3",
+                },
+                value: script_len(fragment),
+            },
+            Metric {
+                readme: "src/arithmetic/u32/README.md",
+                key: match offset {
+                    0 => "u32_byte_reorder_witness_0",
+                    1 => "u32_byte_reorder_witness_1",
+                    2 => "u32_byte_reorder_witness_2",
+                    _ => "u32_byte_reorder_witness_3",
+                },
+                value: witness_size(&witness),
+            },
+            Metric {
+                readme: "src/arithmetic/u32/README.md",
+                key: match offset {
+                    0 => "u32_byte_reorder_stack_0",
+                    1 => "u32_byte_reorder_stack_1",
+                    2 => "u32_byte_reorder_stack_2",
+                    _ => "u32_byte_reorder_stack_3",
+                },
+                value: stack,
+            },
+        ]);
+    }
+    check_readme_metrics(metrics);
+}
+
+fn byte_shift8() -> bitcoin_script::Script {
+    script! {
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        0
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_DROP
+    }
+}
+
+fn u32_compressed_rshift_metrics() -> Vec<Metric> {
+    const VALUE: u32 = 0x89ab_cdef;
+    let witness = vec![scriptnum(i64::from(VALUE as i32))];
+    let compressed = u32::shift::u32_compressed_rshift(8);
+    let baseline = script! {
+        { u32::stack::u32_uncompress() }
+        { byte_shift8() }
+        { u32::stack::u32_compress() }
+    };
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_rshift_8",
+            value: script_len(compressed.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_rshift_8_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_rshift_8_stack",
+            value: max_stack_items_strict(compressed, witness.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_rshift_8_baseline",
+            value: script_len(baseline.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_rshift_8_baseline_stack",
+            value: max_stack_items_strict(baseline, witness),
+        },
+    ]
+}
+
+#[test]
+fn u32_compressed_rshift_metrics_are_current() {
+    check_readme_metrics(u32_compressed_rshift_metrics());
+}
+
+fn byte_lshift8() -> bitcoin_script::Script {
+    script! {
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_TOALTSTACK
+        OP_FROMALTSTACK
+        OP_DROP
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        0
+    }
+}
+
+fn u32_compressed_lshift_metrics() -> Vec<Metric> {
+    const VALUE: u32 = 0x1234_5678;
+    let witness = vec![scriptnum(i64::from(VALUE as i32))];
+    let compressed = u32::shift::u32_compressed_lshift(8);
+    let baseline = script! {
+        { u32::stack::u32_uncompress() }
+        { byte_lshift8() }
+        { u32::stack::u32_compress() }
+    };
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8",
+            value: script_len(compressed.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_stack",
+            value: max_stack_items_strict(compressed, witness.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_baseline",
+            value: script_len(baseline.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lshift_8_baseline_stack",
+            value: max_stack_items_strict(baseline, witness),
+        },
+    ]
+}
+
+#[test]
+fn u32_compressed_lshift_metrics_are_current() {
+    check_readme_metrics(u32_compressed_lshift_metrics());
+}
+
+/// Protect the consuming word operations and their affected hash consumers.
+#[test]
+fn consuming_bitwise_and_hash_metrics_are_current() {
+    let mut metrics = u32_consuming_bitwise_metrics();
+    metrics.extend([
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_u32_32",
+            value: script_len(ripemd160::ripemd160(32)),
+        },
+        Metric {
+            readme: "src/hashes/sha1/README.md",
+            key: "sha1_u32_32",
+            value: script_len(sha1::sha1(32)),
+        },
+    ]);
+    check_readme_metrics(metrics);
 }
