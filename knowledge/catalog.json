@@ -555,7 +555,11 @@
         "arithmetic::u32::shift::tests::checked_shift_accepts_boundaries",
         "arithmetic::u32::shift::tests::checked_shift_rejects_malformed_bytes",
         "arithmetic::u32::shift::tests::checked_shift_preserves_surrounding_stacks",
-        "primitive_metrics::u32_rshift8_checked_metrics_are_current"
+        "primitive_metrics::u32_rshift8_checked_metrics_are_current",
+        "arithmetic::u32::shift_left::tests::checked_shift_accepts_boundaries",
+        "arithmetic::u32::shift_left::tests::checked_shift_rejects_malformed_bytes",
+        "arithmetic::u32::shift_left::tests::checked_shift_preserves_surrounding_stacks",
+        "primitive_metrics::u32_lshift8_checked_metrics_are_current"
       ],
       "references": [
         "bitcoin-script-locked",
@@ -827,6 +831,35 @@
             "u32_iszero_witness_max"
           ],
           "static_non_push_opcodes": 4
+        },
+        {
+          "id": "lshift8-checked-canonical",
+          "label": "Canonical checked u32 logical left shift by 8 bits",
+          "parameters": {
+            "shift": 8,
+            "word_width_bits": 32,
+            "input_bytes": 4,
+            "canonical_input_check": true,
+            "data_items": 4,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: four canonical byte checks, direct three-byte stack transport, dropped most-significant byte, inserted zero least-significant byte, and output restoration; excludes input pushes, terminal predicate, unrelated live state, and transaction context; static non-push opcode count is measured separately",
+          "script_bytes": 56,
+          "witness_bytes": 9,
+          "witness_bytes_max": 13,
+          "max_stack_items": 7,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u32_lshift8_checked",
+            "u32_lshift8_checked_witness",
+            "u32_lshift8_checked_witness_max",
+            "u32_lshift8_checked_stack",
+            "u32_lshift8_checked_opcodes"
+          ],
+          "static_non_push_opcodes": 35
         }
       ],
       "limitations": [

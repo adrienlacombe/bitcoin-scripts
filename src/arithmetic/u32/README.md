@@ -56,6 +56,8 @@ they do not use BN254 or any other field modulus.
   values in `0..=0x7fffffff`; it rejects negative values and raw aliases.
 - `u32_rshift8_checked()` validates four canonical byte limbs before the
   direct byte-aligned logical right shift.
+- `u32_lshift8_checked()` validates four canonical byte limbs before the
+  direct byte-aligned logical left shift.
 
 ## Script metrics
 
@@ -93,6 +95,7 @@ as less-than-or-equal.
 | `u8_extract_hbit_checked(4)` | <!-- metric:u8_extract_hbit_checked -->73<!-- /metric:u8_extract_hbit_checked --> bytes | <!-- metric:u8_extract_hbit_checked_witness -->4<!-- /metric:u8_extract_hbit_checked_witness --> bytes, 1 data item | <!-- metric:u8_extract_hbit_checked_stack -->5<!-- /metric:u8_extract_hbit_checked_stack --> items |
 | `verify_canonical_byte()` | <!-- metric:u32_canonical_byte -->12<!-- /metric:u32_canonical_byte --> bytes | <!-- metric:u32_canonical_byte_witness -->4<!-- /metric:u32_canonical_byte_witness --> bytes, 1 data item | <!-- metric:u32_canonical_byte_stack -->4<!-- /metric:u32_canonical_byte_stack --> items |
 | `u32_rshift8_checked()` | <!-- metric:u32_rshift8_checked -->62<!-- /metric:u32_rshift8_checked --> bytes | <!-- metric:u32_rshift8_checked_witness -->9<!-- /metric:u32_rshift8_checked_witness --> bytes (<!-- metric:u32_rshift8_checked_witness_max -->13<!-- /metric:u32_rshift8_checked_witness_max --> max), 4 data items, 0 hints | <!-- metric:u32_rshift8_checked_stack -->7<!-- /metric:u32_rshift8_checked_stack --> items; <!-- metric:u32_rshift8_checked_opcodes -->41<!-- /metric:u32_rshift8_checked_opcodes --> static non-push opcodes |
+| `u32_lshift8_checked()` | <!-- metric:u32_lshift8_checked -->56<!-- /metric:u32_lshift8_checked --> bytes | <!-- metric:u32_lshift8_checked_witness -->9<!-- /metric:u32_lshift8_checked_witness --> bytes (<!-- metric:u32_lshift8_checked_witness_max -->13<!-- /metric:u32_lshift8_checked_witness_max --> max), 4 data items, 0 hints | <!-- metric:u32_lshift8_checked_stack -->7<!-- /metric:u32_lshift8_checked_stack --> items; <!-- metric:u32_lshift8_checked_opcodes -->35<!-- /metric:u32_lshift8_checked_opcodes --> static non-push opcodes |
 | `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
 | `u32_byte_popcounts()` | <!-- metric:u32_byte_popcounts -->452<!-- /metric:u32_byte_popcounts --> bytes | <!-- metric:u32_byte_popcounts_witness -->13<!-- /metric:u32_byte_popcounts_witness --> bytes | <!-- metric:u32_byte_popcounts_stack -->262<!-- /metric:u32_byte_popcounts_stack --> items; <!-- metric:u32_byte_popcounts_opcodes -->168<!-- /metric:u32_byte_popcounts_opcodes --> static non-push opcodes |
 | `u32_to_le_bits()` | <!-- metric:u32_le_bits -->514<!-- /metric:u32_le_bits --> bytes | <!-- metric:u32_le_bits_witness -->9<!-- /metric:u32_le_bits_witness --> bytes | <!-- metric:u32_le_bits_stack -->35<!-- /metric:u32_le_bits_stack --> items |
@@ -167,6 +170,11 @@ XOR-table setup and cleanup measures 561 bytes, 420 static non-push opcodes,
 and a 272-item peak; this checked direct path measures 62 bytes, 41 opcodes,
 and a 7-item peak. Both use four data items and no auxiliary hints, while the
 generic path additionally keeps its 256-item table live during execution.
+
+`u32_lshift8_checked()` is the byte-aligned left-shift counterpart to the
+generic bitwise shift family. It drops the most-significant byte, inserts zero
+at the least-significant end, and preserves unrelated stack state. It has no
+auxiliary hints and remains a fragment rather than a complete locking script.
 
 ## Script compatibility and standardness
 

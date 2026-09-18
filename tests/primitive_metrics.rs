@@ -6157,3 +6157,45 @@ fn u32_msb_mask_metrics() -> Vec<Metric> {
 fn u32_msb_mask_metrics_are_current() {
     check_readme_metrics(u32_msb_mask_metrics());
 }
+
+#[test]
+fn u32_lshift8_checked_metrics_are_current() {
+    let fragment = u32::shift_left::u32_lshift8_checked();
+    let witness = vec![scriptnum(7); 4];
+    let maximum_witness = vec![scriptnum(255); 4];
+    let stack = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..4 { OP_DROP }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_lshift8_checked",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_lshift8_checked_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_lshift8_checked_witness_max",
+            value: witness_size(&maximum_witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_lshift8_checked_stack",
+            value: stack,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_lshift8_checked_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}

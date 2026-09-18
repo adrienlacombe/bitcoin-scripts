@@ -12,6 +12,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Small-field variable multiply | M31 u31 multiply | 1,370 | Witness quotient relation |
 | Canonical checked byte boundary | `verify_canonical_byte()` | 12 | 4-item peak; 4-byte witness; rejects noncanonical ScriptNums |
 | Checked u32 logical right shift by eight | `u32_rshift8_checked()` | <!-- metric:u32_rshift8_checked -->62<!-- /metric:u32_rshift8_checked --> | <!-- metric:u32_rshift8_checked_stack -->7<!-- /metric:u32_rshift8_checked_stack -->-item peak; 9-byte representative witness; no shared table or hints; generic `u32_shr(8, 2)` is 561 bytes and 272 items with table setup/cleanup |
+| Checked u32 logical left shift by eight | `u32_lshift8_checked()` | <!-- metric:u32_lshift8_checked -->56<!-- /metric:u32_lshift8_checked --> | <!-- metric:u32_lshift8_checked_stack -->7<!-- /metric:u32_lshift8_checked_stack -->-item peak; 9-byte witness; no hints or shared table; generic table-backed boundary is 561 bytes and 272 items |
 | 32 checked nibbles to 128 bits | u4 staggered batch table | 924 | 189-item peak; tapscript-oriented |
 | Canonical compressed-u32 decode | u32 raw-encoding boundary | 431 | 7-item peak; 7-byte maximum witness; rejects aliases |
 | Canonical nonnegative compressed-u32 decode | u32 narrow raw-encoding boundary | 405 | 7-item peak; 6-byte maximum witness; rejects negative values and aliases |
