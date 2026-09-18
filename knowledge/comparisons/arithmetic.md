@@ -40,6 +40,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | u32 zero-byte mask | `u32_to_zero_byte_mask()` | 67 | 13-byte witness; 8-item peak; four-bit per-byte mask |
 | u32 per-byte equality mask | `u32_byte_eq_mask()` | 149 | 17-byte eight-item witness; 11-item peak; four lane predicates; no hints |
 | u32 per-byte less-than mask | `u32_byte_lessthan_mask()` | 149 | 17-byte eight-item witness; 11-item peak; four lane predicates; no hints |
+| u32 byte high-bit mask | `u32_msb_mask()` | 133 | 9-byte witness; 8-item peak; four packed lane bits; no hints |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide add with bounded limbs | U254 carry-free add | 142 | Nine limbs; each corresponding sum must stay below radix |
 | Wide subtract | U254 sub | 190 | Nine limbs; propagates borrows |

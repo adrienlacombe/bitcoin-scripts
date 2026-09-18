@@ -36,6 +36,12 @@ the single Boolean returned by `u32_lessthan()`. Its 149-byte fragment has no
 lookup table or hints, but validates eight canonical byte limbs and is useful
 only when the caller needs the individual lane bits.
 
+The checked u32 byte high-bit mask is a compact projection boundary: it keeps
+one selected bit from each byte as a four-bit numeric mask. Its 133-byte
+fragment validates four canonical byte limbs, uses no table or hints, and is
+smaller than the 514-byte full 32-bit splitter when the remaining bit lanes
+are irrelevant.
+
 For terminal one-time authentication, the host may instead encode an unchanged
 message as a fixed-sum vector. The
 [20-byte Winternitz construction](../primitives/winternitz-constant-sum20.md)
