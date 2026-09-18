@@ -415,7 +415,6 @@ mod tests {
     use crate::support::execution::{
         execute_raw_script_with_inputs_strict, execute_script, execute_script_with_inputs_strict,
         run,
-        execute_raw_script_with_inputs_strict, execute_script_with_inputs_strict, run,
     };
 
     fn scriptnum(value: i64) -> Vec<u8> {
