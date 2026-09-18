@@ -18,6 +18,7 @@ pub mod nondecreasing;
 pub mod pack;
 pub mod one_hot;
 pub mod mirror;
+pub mod mod3;
 pub mod parity;
 pub mod popcount;
 pub mod power_of_two;

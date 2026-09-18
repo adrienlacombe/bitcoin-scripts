@@ -50,6 +50,8 @@ these operations, but this module contains no hash-specific round logic.
   complement reflection to the range `0..=7`.
 - `leading_zeros::u4_nibbles_to_leading_zeros(nibble_count)` maps checked
   nibbles to their four-bit leading-zero count in `0..=4`.
+- `mod3::u4_nibbles_to_mod3(nibble_count)` maps checked nibbles to residues in
+  `0..=2` using a 16-item lookup table.
 - `bit_planes::u4_nibbles_to_bit_planes(nibble_count, check_inputs)` reuses
   checked nibble decomposition and transposes batches up to 234 nibbles.
 - `bit_planes::u4_nibbles_to_bit_planes_canonical(nibble_count)` additionally
@@ -129,6 +131,7 @@ each input with the same output-restoration boundary.
 | Checked lowest-set-bit batch, 32 nibbles | <!-- metric:u4_lowbit_batch32 -->440<!-- /metric:u4_lowbit_batch32 --> bytes | <!-- metric:u4_lowbit_batch32_stack -->50<!-- /metric:u4_lowbit_batch32_stack --> items | <!-- metric:u4_lowbit_batch32_opcodes -->328<!-- /metric:u4_lowbit_batch32_opcodes --> |
 | Checked inverse-Gray batch, 32 nibbles | <!-- metric:u4_gray_inverse_batch32 -->440<!-- /metric:u4_gray_inverse_batch32 --> bytes | <!-- metric:u4_gray_inverse_batch32_stack -->50<!-- /metric:u4_gray_inverse_batch32_stack --> items | <!-- metric:u4_gray_inverse_batch32_opcodes -->328<!-- /metric:u4_gray_inverse_batch32_opcodes --> |
 | Checked power-of-two batch, 32 nibbles | <!-- metric:u4_power_of_two_batch32 -->440<!-- /metric:u4_power_of_two_batch32 --> bytes | <!-- metric:u4_power_of_two_batch32_stack -->50<!-- /metric:u4_power_of_two_batch32_stack --> items | <!-- metric:u4_power_of_two_batch32_opcodes -->328<!-- /metric:u4_power_of_two_batch32_opcodes --> |
+| Checked modulo-three batch, 32 nibbles | <!-- metric:u4_mod3_batch32 -->440<!-- /metric:u4_mod3_batch32 --> bytes | <!-- metric:u4_mod3_batch32_stack -->50<!-- /metric:u4_mod3_batch32_stack --> items | <!-- metric:u4_mod3_batch32_opcodes -->328<!-- /metric:u4_mod3_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -179,6 +182,8 @@ The square row measures only the checked reusable query; its generated
 <!-- metric:u4_gray_inverse_batch32_witness -->65<!-- /metric:u4_gray_inverse_batch32_witness --> serialized witness bytes for the representative inverse-Gray batch.
 
 <!-- metric:u4_power_of_two_batch32_witness -->65<!-- /metric:u4_power_of_two_batch32_witness --> serialized witness bytes for the representative power-of-two batch.
+
+<!-- metric:u4_mod3_batch32_witness -->65<!-- /metric:u4_mod3_batch32_witness --> serialized witness bytes for the representative modulo-three batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -333,6 +338,10 @@ that use Gray order to limit adjacent codeword changes.
 The power-of-two table maps exactly `1`, `2`, `4`, and `8` to one and all other
 nibbles, including zero, to zero. It is a compact validation predicate for
 selectors that must be a single set bit.
+
+The modulo-three table maps each nibble to a residue in `0..=2`, providing a
+small-radix representation for ternary accumulators without a general modulo
+interpreter.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -426,6 +435,9 @@ encoding or a terminal predicate.
 
 Power-of-two output is a numeric ScriptNum bit for nonzero powers of two, not a
 proof of canonical byte encoding or a terminal predicate.
+
+Modulo-three output is a numeric residue in `0..=2`, not a terminal predicate
+or a byte encoding.
 
 ## Script compatibility and standardness
 
@@ -548,6 +560,11 @@ For `power_of_two::u4_nibbles_to_power_of_two(n)`, the same input ordering is
 consumed and replaced one-for-one by nonzero-power-of-two bits. The standalone
 peak is `n + 18` during range checks; the generator rejects `n > 982`, and
 callers must reduce the batch for unrelated live state.
+
+For `mod3::u4_nibbles_to_mod3(n)`, the same input ordering is consumed and
+replaced one-for-one by modulo-three residues. The standalone peak is `n + 18`
+during range checks; the generator rejects `n > 982`, and callers must reduce
+the batch for unrelated live state.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
