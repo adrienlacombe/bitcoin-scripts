@@ -16,6 +16,8 @@ these operations, but this module contains no hash-specific round logic.
   `1..=742` and reduces the batch to one nibble with the full XOR table.
 - `popcount::u4_nibbles_to_popcount(nibble_count)` takes a checked batch size
   in `1..=982` and returns one Hamming weight in `0..=4` per input nibble.
+- `pack::u4_nibbles_to_bytes(nibble_count)` takes an even checked batch size in
+  `2..=664` and returns one byte per high/low nibble pair.
 - `lsb::u4_nibbles_to_lsb(nibble_count)` takes a checked batch size in
   `1..=982` and returns one bit per input nibble.
 - `sum::u4_nibbles_to_sum_mod16(nibble_count)` takes a checked batch size in
@@ -87,6 +89,7 @@ each input with the same output-restoration boundary.
 | Checked XOR reduction, 16 nibbles | <!-- metric:u4_xor_reduce_batch16 -->740<!-- /metric:u4_xor_reduce_batch16 --> bytes | <!-- metric:u4_xor_reduce_batch16_stack -->273<!-- /metric:u4_xor_reduce_batch16_stack --> items | <!-- metric:u4_xor_reduce_batch16_opcodes -->438<!-- /metric:u4_xor_reduce_batch16_opcodes --> |
 | Checked nondecreasing batch, 32 nibbles | <!-- metric:u4_nondecreasing_batch32 -->588<!-- /metric:u4_nondecreasing_batch32 --> bytes | <!-- metric:u4_nondecreasing_batch32_stack -->35<!-- /metric:u4_nondecreasing_batch32_stack --> items | <!-- metric:u4_nondecreasing_batch32_opcodes -->391<!-- /metric:u4_nondecreasing_batch32_opcodes --> |
 | Checked exact-sum batch, 32 nibbles | <!-- metric:u4_exact_sum_batch32 -->489<!-- /metric:u4_exact_sum_batch32 --> bytes | <!-- metric:u4_exact_sum_batch32_stack -->35<!-- /metric:u4_exact_sum_batch32_stack --> items | <!-- metric:u4_exact_sum_batch32_opcodes -->334<!-- /metric:u4_exact_sum_batch32_opcodes --> |
+| Checked 32-nibble batch pack | <!-- metric:u4_pack_batch32 -->442<!-- /metric:u4_pack_batch32 --> bytes | <!-- metric:u4_pack_batch32_stack -->52<!-- /metric:u4_pack_batch32_stack --> items | <!-- metric:u4_pack_batch32_opcodes -->334<!-- /metric:u4_pack_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -115,6 +118,8 @@ The square row measures only the checked reusable query; its generated
 <!-- metric:u4_nondecreasing_batch32_witness -->65<!-- /metric:u4_nondecreasing_batch32_witness --> serialized witness bytes for the representative nondecreasing batch.
 
 <!-- metric:u4_exact_sum_batch32_witness -->65<!-- /metric:u4_exact_sum_batch32_witness --> serialized witness bytes for the representative exact-sum batch.
+
+<!-- metric:u4_pack_batch32_witness -->65<!-- /metric:u4_pack_batch32_witness --> serialized witness bytes for the representative packed batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -197,6 +202,10 @@ rather than the complete adjacent mask.
 
 The exact-sum fold differs from the existing modulo-16 nibble sum: it retains
 the full `0..=15*n` total in one ScriptNum and uses no lookup table or hints.
+
+The batch pack reuses the checked high/low nibble-to-byte boundary for every
+pair, preserves pair order, and avoids a caller-side sequence of temporary
+byte conversions.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.

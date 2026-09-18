@@ -41,6 +41,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Checked u4 square modulo 16 | `u4_square_mod16()` | 6 | 20-item peak; 16-item table; one data item; zero hints |
 | 32 checked nibbles nondecreasing predicate | `u4_nibbles_nondecreasing(32)` | 478 | 35-item peak; one output bit; no table |
 | 32 checked nibbles to an exact sum | `u4_nibbles_sum_exact(32)` | 497 | 34-item peak; no table; full sum rather than modulo 16 |
+| 32 checked nibbles to 16 bytes | `u4_nibbles_to_bytes(32)` | 448 | 50-item peak; checked pair packing; no hints |
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | u32 per-byte population counts | `u32_byte_popcounts()` | 452 | 262-item peak; four numeric outputs; 256-item byte table |
 | u32 leading zero-byte count | `u32_leading_zero_bytes()` | 159 | 7-item peak; table-free; validates all four byte limbs |

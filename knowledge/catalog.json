@@ -10367,6 +10367,73 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/u4-batch-pack",
+      "name": "Checked u4 batch nibble packing",
+      "class": "arithmetic/word",
+      "summary": "Range-checked even-width u4 vector packing to byte-valued ScriptNums.",
+      "status": "active",
+      "evidence": "inspected",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u4-batch-pack.md",
+      "implementation": "src/arithmetic/u4/pack.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "src/arithmetic/u4/pack.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "stack-scheduling",
+        "digit-arithmetic",
+        "tracked-stack"
+      ],
+      "security": "Every hostile nibble is checked through the existing pair boundary before packing; numeric range checking does not prove byte-unique ScriptNum encoding or a terminal predicate.",
+      "stack_contract": "Consumes preserved | nibble[0] ... nibble[n-1] and returns preserved | byte[0] ... byte[n/2-1], with the final packed byte on top. Temporary packed outputs occupy the altstack while inputs remain live.",
+      "configurations": [
+        {
+          "id": "checked-batch32",
+          "label": "u4_nibbles_to_bytes(32)",
+          "parameters": {
+            "nibble_count": 32,
+            "byte_count": 16,
+            "data_items": 32,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: 16 checked high/low pair conversions, altstack output staging, input cleanup, and output restoration; excludes input pushes, witness serialization from the script, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 442,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 52,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 442,
+          "metric_keys": [
+            "u4_pack_batch32",
+            "u4_pack_batch32_witness",
+            "u4_pack_batch32_stack",
+            "u4_pack_batch32_opcodes"
+          ],
+          "static_non_push_opcodes": 334
+        }
+      ],
+      "limitations": [
+        "Outputs are byte-valued ScriptNums rather than serialized byte strings",
+        "The 664-nibble standalone ceiling must be reduced when unrelated stack state is live",
+        "Static non-push opcode count is not an executed-opcode measurement",
+        "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
     }
   ]
 }
