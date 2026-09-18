@@ -520,15 +520,28 @@
         "arithmetic::u4::xor_reduce::tests::preserves_surrounding_main_and_alt_stack_items",
         "primitive_metrics::u4_xor_reduce_metrics_are_current"
       ],
-      "references": ["bitcoin-script-locked", "bitcoin-scriptexec-locked"],
-      "techniques": ["batch-lookup", "range-check", "stack-scheduling"],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "batch-lookup",
+        "range-check",
+        "stack-scheduling"
+      ],
       "security": "No independent cryptographic claim. Every input is range-checked before it indexes the full XOR table.",
       "stack_contract": "Consumes a nonempty batch of canonical u4 limbs and returns their XOR as one nibble. The 256-item table is removed before return and unrelated caller state is preserved.",
       "configurations": [
         {
           "id": "batch16",
           "label": "Checked 16-nibble XOR reduction",
-          "parameters": {"nibble_count": 16, "table_items": 256, "data_items": 16, "hint_items_per_invocation": 0, "complete_input_items": 16},
+          "parameters": {
+            "nibble_count": 16,
+            "table_items": 256,
+            "data_items": 16,
+            "hint_items_per_invocation": 0,
+            "complete_input_items": 16
+          },
           "includes": "fragment-with-memory: range checks, full XOR table, pairwise reduction, cleanup, and output routing; excludes input pushes, terminal predicate, unrelated live state, and transaction context",
           "script_bytes": 740,
           "witness_bytes": 33,
@@ -538,12 +551,26 @@
           "validation_weight": null,
           "setup_script_bytes": null,
           "per_use_script_bytes": 740,
-          "metric_keys": ["u4_xor_reduce_batch16", "u4_xor_reduce_batch16_witness", "u4_xor_reduce_batch16_stack", "u4_xor_reduce_batch16_opcodes"],
+          "metric_keys": [
+            "u4_xor_reduce_batch16",
+            "u4_xor_reduce_batch16_witness",
+            "u4_xor_reduce_batch16_stack",
+            "u4_xor_reduce_batch16_opcodes"
+          ],
           "static_non_push_opcodes": 438
         }
       ],
-      "limitations": ["The 256-item table makes this unsuitable as a standalone legacy P2SH/P2WSH fragment", "Parity is cheaper when one bit per input is sufficient", "Static opcode count is not a dynamic execution measurement", "Bitcoin Core consensus and relay-policy validation remain open"],
-      "open_problems": ["OP-001", "OP-002", "OP-003"]
+      "limitations": [
+        "The 256-item table makes this unsuitable as a standalone legacy P2SH/P2WSH fragment",
+        "Parity is cheaper when one bit per input is sufficient",
+        "Static opcode count is not a dynamic execution measurement",
+        "Bitcoin Core consensus and relay-policy validation remain open"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
     },
     {
       "id": "arithmetic/u4-parity",
@@ -9284,6 +9311,76 @@
         "The packed result is a numeric ScriptNum rather than four independent limbs",
         "The 16-bit result may exceed byte-oriented consumer domains",
         "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
+    },
+    {
+      "id": "arithmetic/u32-nand",
+      "name": "Fused u32 NAND",
+      "class": "arithmetic/word",
+      "summary": "Bitwise NAND of two byte-oriented u32 words using the shared Boolean lookup table and fused per-byte complements.",
+      "status": "experimental",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u32-nand.md",
+      "implementation": "src/arithmetic/u32/nand.rs",
+      "documentation": "src/arithmetic/u32/README.md",
+      "tests": [
+        "arithmetic::u32::nand::tests::nand_matches_host_boundaries_and_patterns",
+        "arithmetic::u32::nand::tests::rejects_out_of_range_byte_witnesses",
+        "arithmetic::u32::nand::tests::preserves_surrounding_main_and_alt_stack_items",
+        "primitive_metrics::u32_nand_metrics_are_current"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "lookup-table",
+        "fused-composition",
+        "stack-scheduling"
+      ],
+      "security": "Numeric byte limbs must be in 0..=255 before table indexing; canonical ScriptNum encoding and terminal predicates remain caller obligations.",
+      "stack_contract": "... table | left[0..3] | right[0..3] -> ... table | preserved-left[0..3] | nand[0..3], with the table below the working words",
+      "configurations": [
+        {
+          "id": "shared-table-two-words",
+          "label": "u32_nand(0, 1, 3)",
+          "parameters": {
+            "byte_count": 4,
+            "table_items": 256,
+            "data_items": 8,
+            "hint_items": 0,
+            "stack_size": 3
+          },
+          "includes": "fragment-only: word zipping, four shared-table AND queries, four fused 255-minus-result complements, and output restoration; excludes table setup/cleanup, input pushes, terminal predicate, and transaction context",
+          "script_bytes": 190,
+          "witness_bytes": 0,
+          "witness_bytes_max": 0,
+          "max_stack_items": 272,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": 190,
+          "hint_items": 0,
+          "static_non_push_opcodes": 150,
+          "metric_keys": [
+            "u32_nand",
+            "u32_nand_stack",
+            "u32_nand_opcodes"
+          ]
+        }
+      ],
+      "limitations": [
+        "Requires a resident 256-item Boolean table",
+        "Numeric range checks and canonical ScriptNum checks are caller obligations",
+        "Static non-push count is not an executed-opcode measurement",
+        "Not differentially validated against Bitcoin Core"
       ],
       "open_problems": [
         "OP-001",

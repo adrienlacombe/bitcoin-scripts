@@ -6,6 +6,7 @@ pub mod byte_less_mask;
 pub mod byte_parity;
 pub mod cmp;
 pub mod msb_mask;
+pub mod nand;
 pub mod or;
 pub mod popcount;
 pub mod rotate;
