@@ -20,6 +20,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Compressed total-domain u32 addition](u32-compressed-add.md)
 - [Compressed total-domain u32 equality](u32-compressed-equal.md)
 - [Compressed total-domain u32 unsigned less-than](u32-compressed-lessthan.md)
+- [Checked compressed u32 less-than with an embedded threshold](u32-compressed-lessthan-constant.md)
 - [Checked u32 population count](u32-popcount.md)
 - [Checked u32 per-byte population counts](u32-byte-popcounts.md)
 - [Checked u32 leading zero-byte count](u32-leading-zero-bytes.md)

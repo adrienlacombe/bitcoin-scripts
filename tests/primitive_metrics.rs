@@ -5144,6 +5144,49 @@ fn u32_compressed_lessthan_metrics_are_current() {
     check_readme_metrics(u32_compressed_lessthan_metrics());
 }
 
+/// This isolated fixture measures compressed u32 less-than with a fixed threshold.
+#[test]
+fn u32_compressed_lessthan_constant_metrics_are_current() {
+    const INPUT: u32 = 0x0102_0304;
+    let fragment = u32::cmp::u32_compressed_lessthan_constant(0x89ab_cdef);
+    let witness = vec![compressed_u32_witness(INPUT)];
+    let stack = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            OP_DROP
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lessthan_constant",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lessthan_constant_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lessthan_constant_witness_max",
+            value: witness_size(&[compressed_u32_witness(0x8000_0000)]),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lessthan_constant_stack",
+            value: stack,
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_compressed_lessthan_constant_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
 #[test]
 fn u4_lexicographic_metrics_are_current() {
     let fragment = u4::compare::lexicographic_le(128);

@@ -59,6 +59,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Bounded RNS add | Legacy RNS add | 216 | Modulo 69,300 |
 | Compressed u32 equality | Canonical two-item ScriptNum wire comparison | 37 | 2 witness items; 11 representative bytes; 5-item peak |
 | Compressed u32 unsigned less-than | Canonical two-item ScriptNum ordering | 124 | 2 witness items; 11 representative bytes; 6-item peak |
+| Compressed u32 less-than fixed threshold | `u32_compressed_lessthan_constant(0x89abcdef)` | <!-- metric:u32_compressed_lessthan_constant -->127<!-- /metric:u32_compressed_lessthan_constant --> | <!-- metric:u32_compressed_lessthan_constant_stack -->6<!-- /metric:u32_compressed_lessthan_constant_stack -->-item strict peak; one data item; signed threshold encoding |
 | Bounded RNS multiply | Legacy RNS multiply | 1,561 | 903-item peak |
 | Exact 256-bit-product RNS add | 75-prime canonical coordinatewise | 1,131 | 513-bit composite range; 151-item peak |
 | Exact 256-by-256-bit RNS multiply baseline | 75-prime table/Horner hybrid | 15,624 | No relation carries; 183-item peak |
