@@ -53,6 +53,16 @@ machine-checkable lower-bound argument establishes that the current opcode set
 cannot bind the two 32-byte nodes without a general byte-concatenation circuit.
 The current inspected negative result is [NR-057](negative-results/index.md#nr-047-native-taproot-merkle-branch-adapter-is-not-available).
 
+## OP-022 — Constant-composition Script decoder
+
+Recover the canonical 20-byte message from the 49-digit fixed-composition
+Winternitz encoding inside Script. **Complete when:** a decoder rejects hostile
+length, radix, composition, and unused-rank inputs; returns exactly 20
+canonical bytes; reports script, witness, hint, stack, executed-opcode, and
+execution-class costs; and is compared against the host `decode_message` helper
+on deterministic boundary vectors. The current inspected non-composable
+boundary is documented in `research/constant-composition-decoder-negative`.
+
 ## OP-001 — Strict execution matrix
 
 Add explicit legacy/P2WSH/tapscript strict and research-unlimited execution

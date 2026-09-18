@@ -1519,3 +1519,11 @@ compact adapter cannot bind separately supplied nodes to a 64-byte witness
 blob. The repository's mixed-hash path commits to nested SHA256/RIPEMD160
 outputs and is not TapBranch. A full u4 SHA256 circuit remains possible but is
 not a compact native primitive; this inspected result is tracked under OP-021.
+## NR-058: Constant-composition byte recovery is not yet a composable Script primitive
+
+The fixed-composition Winternitz verifier locally authenticates 49 digit slots,
+but its 20-byte decoder remains host-side. Exact rank recovery needs dynamic
+multinomial buckets and 160-bit arithmetic; a static replacement would need a
+large position/count/digit table whose Script lifetime and stack cost are not
+yet established. Treating the host `decode_message` helper as Script evidence
+would overstate the construction. The boundary remains under OP-022.
