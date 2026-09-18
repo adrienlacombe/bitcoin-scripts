@@ -37,7 +37,8 @@ use bitcoin_lab::{
         hors, lamport, pointlocks, schnorr,
         winternitz::{
             ChainHash, ConstantCompositionWinternitz20, ConstantSumWinternitz20, FastWinternitz,
-            FullWidth, Hash160, Preimage16, PreimageSize, Sha256, Sha256Hash160, Wots, Wots32,
+            FullWidth, Hash160, MixedConstantSumWinternitz20, Preimage16, PreimageSize, Sha256,
+            Sha256Hash160, Wots, Wots32,
         },
     },
     support::{
@@ -248,6 +249,8 @@ fn winternitz_metric_readme(key: &str) -> &'static str {
             .any(|suffix| key.ends_with(suffix))
         {
             "src/signatures/winternitz/README.md"
+        } else if key.starts_with("w20_mixed_sum_") {
+            "src/signatures/winternitz/constant_sum_mixed/README.md"
         } else if key.starts_with("w20_composition_") {
             "src/signatures/winternitz/constant_composition/README.md"
         } else {
@@ -1333,6 +1336,71 @@ fn winternitz20_composition_metrics() -> Vec<Metric> {
         ))
         .chain(row!("w20_composition_isolated_sha256", Sha256, Isolated))
         .collect()
+}
+
+fn mixed_sum_wots20_metrics(keys: [&'static str; 10], staged_guard: bool) -> Vec<Metric> {
+    let public_key = MixedConstantSumWinternitz20::public_key(
+        &MixedConstantSumWinternitz20::signing_key_from_seed([0x42; 32]),
+    );
+    // This valid message attains the 844-byte signer-witness maximum.
+    let maximum = [
+        0x00, 0x01, 0x30, 0x27, 0x5c, 0x86, 0xcf, 0x4a, 0x98, 0x7b, 0xa6, 0x2d, 0x99, 0x45, 0x1e,
+        0x92, 0xb2, 0x80, 0x00, 0x00,
+    ];
+    let witnesses = [
+        [0; 20],
+        [0xff; 20],
+        core::array::from_fn(|i| (i * 37) as u8),
+        maximum,
+    ]
+    .map(|message| {
+        MixedConstantSumWinternitz20::sign(
+            MixedConstantSumWinternitz20::signing_key_from_seed([0x42; 32]),
+            &message,
+        )
+        .to_witness()
+    });
+    let fragment = if staged_guard {
+        MixedConstantSumWinternitz20::checksig_verify_staged_and_clear(&public_key)
+    } else {
+        MixedConstantSumWinternitz20::checksig_verify_isolated_and_clear(&public_key)
+    };
+    winternitz20_row(keys, fragment, witnesses)
+}
+
+fn winternitz20_mixed_sum_metrics() -> Vec<Metric> {
+    mixed_sum_wots20_metrics(
+        [
+            "w20_mixed_sum_isolated_script",
+            "w20_mixed_sum_isolated_witness_zero",
+            "w20_mixed_sum_isolated_witness_ff",
+            "w20_mixed_sum_isolated_witness_varied",
+            "w20_mixed_sum_isolated_witness_max",
+            "w20_mixed_sum_isolated_stack",
+            "w20_mixed_sum_isolated_opcodes",
+            "w20_mixed_sum_isolated_total_max",
+            "w20_mixed_sum_isolated_items",
+            "w20_mixed_sum_isolated_hints",
+        ],
+        false,
+    )
+    .into_iter()
+    .chain(mixed_sum_wots20_metrics(
+        [
+            "w20_mixed_sum_staged_script",
+            "w20_mixed_sum_staged_witness_zero",
+            "w20_mixed_sum_staged_witness_ff",
+            "w20_mixed_sum_staged_witness_varied",
+            "w20_mixed_sum_staged_witness_max",
+            "w20_mixed_sum_staged_stack",
+            "w20_mixed_sum_staged_opcodes",
+            "w20_mixed_sum_staged_total_max",
+            "w20_mixed_sum_staged_items",
+            "w20_mixed_sum_staged_hints",
+        ],
+        true,
+    ))
+    .collect()
 }
 
 fn winternitz20_metrics() -> Vec<Metric> {
@@ -4102,6 +4170,7 @@ fn metrics() -> Vec<Metric> {
     .chain(winternitz_overview_metrics())
     .chain(winternitz20_metrics())
     .chain(winternitz20_composition_metrics())
+    .chain(winternitz20_mixed_sum_metrics())
     .chain(u32_compressed_add_metrics())
     .chain(u32_compressed_equal_metrics())
     .chain(u32_compressed_lessthan_metrics())
@@ -4134,6 +4203,7 @@ fn winternitz_metrics_are_current() {
             .chain(winternitz_overview_metrics())
             .chain(winternitz20_metrics())
             .chain(winternitz20_composition_metrics())
+            .chain(winternitz20_mixed_sum_metrics())
             .collect(),
     );
 }
@@ -4141,6 +4211,11 @@ fn winternitz_metrics_are_current() {
 #[test]
 fn winternitz20_composition_metrics_are_current() {
     check_readme_metrics(winternitz20_composition_metrics());
+}
+
+#[test]
+fn winternitz20_mixed_sum_metrics_are_current() {
+    check_readme_metrics(winternitz20_mixed_sum_metrics());
 }
 
 #[test]

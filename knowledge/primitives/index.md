@@ -63,6 +63,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Fast base-16 Winternitz signatures](winternitz-fast-base16.md)
 - [Constant-composition Winternitz for 20-byte messages](winternitz-constant-composition20.md)
 - [Constant-sum Winternitz for 20-byte messages](winternitz-constant-sum20.md)
+- [Mixed-stage constant-sum Winternitz for 20-byte messages](winternitz-constant-sum-mixed20.md)
 
 ## Curves and pairings
 
