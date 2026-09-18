@@ -185,6 +185,27 @@ The lab now pins integration revision `4b7269a`, and the shared driver delegates
 these checks to the repaired dependency; see
 [NR-048](#nr-048-minimal-push-policy-must-follow-execution). Earlier measurements
 keep their original tool provenance and evidence classes.
+## NR-061: BLAKE3 derive-key mode is not a drop-in unkeyed extension
+
+The local BLAKE3 backend implements the unkeyed mode with the fixed BLAKE3 IV,
+unkeyed flags, and one message-hashing schedule. The reference specification
+defines derive-key mode as two distinct phases: hash the context under
+`DERIVE_KEY_CONTEXT`, then hash the material under `DERIVE_KEY_MATERIAL` using
+the context digest as the chaining key. Prepending the context to the material
+or merely changing the final flags therefore does not implement the mode.
+
+An inspection of `src/hashes/blake3/mod.rs` and its compression helper found no
+API for a runtime context, a derived chaining value, or mode-specific flags;
+the README explicitly limits the implementation to unkeyed 32-byte output.
+No partial derive-key port is retained because it would either silently claim
+the wrong domain or duplicate the full compression schedule without a measured
+stack boundary. Evidence: `inspected`, against the
+[BLAKE3 specification and reference implementation](https://github.com/BLAKE3-team/BLAKE3).
+
+This is a scope boundary, not a claim that derive-key mode cannot fit. A future
+implementation must match official context/material vectors, report both
+compression phases and their mode flags, and measure the derived-key boundary
+under the combined 1,000-item stack limit.
 
 ## NR-037: PRINCEv2 shared-selector corrections outweigh memory savings
 

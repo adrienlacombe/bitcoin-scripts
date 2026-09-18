@@ -27,6 +27,15 @@ All 20 local/Core comparisons agree after adopting `702544c9`, with zero panics
 and two identical reports. These focused repairs are prerequisites to the full
 transaction API; fixing them does not itself implement commitment, annex or
 full-witness budget checks. The context-free profiles retain their guard.
+## OP-025 — BLAKE3 derive-key boundary
+
+Add a mode-correct derive-key construction to the tracked-stack BLAKE3 backend.
+**Complete when:** a deterministic implementation matches the official
+context/material vectors for an empty context, a short context, and a
+multi-block context; records both `DERIVE_KEY_CONTEXT` and
+`DERIVE_KEY_MATERIAL` phases, the derived chaining-key handoff, script bytes,
+witness shape, and combined stack peak; and either executes under the 1,000-item
+limit or records a measured negative result. See [NR-061](negative-results/index.md).
 
 ## OP-019 — PRINCEv2 M-hat circuit frontier
 
