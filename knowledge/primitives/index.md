@@ -20,6 +20,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 least-significant-bit projection](u4-lsb.md)
 - [Checked u4 zero-mask projection](u4-zero-mask.md)
 - [Checked u4 modulo-16 sum](u4-sum-mod16.md)
+- [Checked u4 packed zero-bitmask projection](u4-zero-bitmask.md)
 - [u32 word arithmetic](u32.md)
 - [Checked u32 zero-byte mask](u32-zero-byte-mask.md)
 - [Fused u32 XNOR adapter](u32-xnor.md)

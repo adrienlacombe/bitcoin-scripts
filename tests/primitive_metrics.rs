@@ -6747,3 +6747,39 @@ fn u4_popcount_metrics_are_current() {
         },
     ]);
 }
+
+#[test]
+fn u4_zero_bitmask_metrics_are_current() {
+    let fragment = u4::zero_bitmask::u4_nibbles_to_zero_bitmasks(32);
+    let witness = vec![scriptnum(15); 32];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            { u4::stack::u4_drop(4) }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_zero_bitmask_batch32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_zero_bitmask_batch32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_zero_bitmask_batch32_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_zero_bitmask_batch32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}

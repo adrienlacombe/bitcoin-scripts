@@ -18,3 +18,4 @@ pub mod stack_shift;
 pub mod zero;
 pub mod sum;
 pub mod xor_reduce;
+pub mod zero_bitmask;

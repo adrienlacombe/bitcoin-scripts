@@ -20,6 +20,8 @@ these operations, but this module contains no hash-specific round logic.
   `1..=982` and returns one bit per input nibble.
 - `sum::u4_nibbles_to_sum_mod16(nibble_count)` takes a checked batch size in
   `1..=965` and returns the batch sum modulo 16.
+- `zero_bitmask::u4_nibbles_to_zero_bitmasks(nibble_count)` takes a checked
+  multiple of eight in `8..=992` and returns one byte mask per eight nibbles.
 - `bit_planes::u4_nibbles_to_bit_planes(nibble_count, check_inputs)` reuses
   checked nibble decomposition and transposes batches up to 234 nibbles.
 - `bit_reverse::u4_nibbles_to_bit_reverse(nibble_count)` checks and reverses
@@ -67,6 +69,7 @@ each input with the same output-restoration boundary.
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
+| Checked 32-nibble zero bitmask batch | <!-- metric:u4_zero_bitmask_batch32 -->482<!-- /metric:u4_zero_bitmask_batch32 --> bytes | <!-- metric:u4_zero_bitmask_batch32_stack -->36<!-- /metric:u4_zero_bitmask_batch32_stack --> items | <!-- metric:u4_zero_bitmask_batch32_opcodes -->382<!-- /metric:u4_zero_bitmask_batch32_opcodes --> |
 | Checked 16-nibble bit-plane transpose | <!-- metric:u4_bit_planes_batch16 -->776<!-- /metric:u4_bit_planes_batch16 --> bytes | <!-- metric:u4_bit_planes_batch16_stack -->125<!-- /metric:u4_bit_planes_batch16_stack --> items | <!-- metric:u4_bit_planes_batch16_opcodes -->573<!-- /metric:u4_bit_planes_batch16_opcodes --> |
 | Checked 32-nibble bit reversal | <!-- metric:u4_bit_reverse_batch32 -->344<!-- /metric:u4_bit_reverse_batch32 --> bytes | <!-- metric:u4_bit_reverse_batch32_stack -->51<!-- /metric:u4_bit_reverse_batch32_stack --> items | <!-- metric:u4_bit_reverse_batch32_opcodes -->232<!-- /metric:u4_bit_reverse_batch32_opcodes --> |
 | Checked modulo-16 sum, 32 nibbles | <!-- metric:u4_sum_mod16_batch32 -->592<!-- /metric:u4_sum_mod16_batch32 --> bytes | <!-- metric:u4_sum_mod16_batch32_stack -->66<!-- /metric:u4_sum_mod16_batch32_stack --> items | <!-- metric:u4_sum_mod16_batch32_opcodes -->400<!-- /metric:u4_sum_mod16_batch32_opcodes --> |
@@ -95,6 +98,7 @@ The square row measures only the checked reusable query; its generated
 representative left witness is <!-- metric:u4_lexicographic_le_constant_128_witness -->257<!-- /metric:u4_lexicographic_le_constant_128_witness --> serialized bytes across <!-- metric:u4_lexicographic_le_constant_128_witness_items -->128<!-- /metric:u4_lexicographic_le_constant_128_witness_items --> data items, with <!-- metric:u4_lexicographic_le_constant_128_hints -->0<!-- /metric:u4_lexicographic_le_constant_128_hints --> hints. It is a fixed-constant witness-shape adapter, not a general locking-byte optimization.
 
 <!-- metric:u4_xor_reduce_batch16_witness -->33<!-- /metric:u4_xor_reduce_batch16_witness --> serialized witness bytes for the representative XOR-reduction batch.
+<!-- metric:u4_zero_bitmask_batch32_witness -->65<!-- /metric:u4_zero_bitmask_batch32_witness --> serialized witness bytes for the representative packed zero-bitmask batch.
 
 The staggered table has 61 setup items and costs 31 bytes to remove. A checked
 query costs 22 bytes and restoring its four bits costs another four, so the
@@ -140,6 +144,12 @@ numeric weight in `0..=4` per input, avoiding four-bit expansion when a caller
 needs Hamming weights rather than individual planes. The representative batch
 is 440 bytes with a 50-item peak and 65 serialized witness bytes, versus 924
 bytes and 189 items for the checked bit-plane expansion.
+
+The packed zero-bitmask batch consumes eight checked nibbles at a time and
+returns one numeric byte mask per group, with bit `i` set when nibble `i` is
+zero. The representative 32-nibble batch is 482 bytes and peaks at 36 combined
+items: 42 bytes larger than the per-nibble table projection, but with four
+output items instead of 32 and no resident table.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
