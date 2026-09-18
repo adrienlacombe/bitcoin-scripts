@@ -30,6 +30,9 @@ they do not use BN254 or any other field modulus.
 - `u32_byte_eq_mask()` consumes two canonical u32 words and returns a four-bit
   mask whose bit 3 compares the most-significant bytes and bit 0 compares the
   least-significant bytes.
+- `u32_byte_lessthan_mask()` consumes two canonical u32 words and returns a
+  four-bit mask whose bit 3 compares the most-significant bytes and bit 0
+  compares the least-significant bytes.
 - `u32_or(a, b, stack_size)`, like XOR and AND, takes distinct word offsets.
   `stack_size` is one plus the number of u32 words above the shared byte-logic
   table. With exactly two working words, the usual value is `3`.
@@ -76,6 +79,7 @@ as less-than-or-equal.
 | `u32_trailing_zero_bytes()` | <!-- metric:u32_trailing_zero_bytes -->147<!-- /metric:u32_trailing_zero_bytes --> bytes | <!-- metric:u32_trailing_zero_bytes_witness -->13<!-- /metric:u32_trailing_zero_bytes_witness --> bytes | <!-- metric:u32_trailing_zero_bytes_stack -->7<!-- /metric:u32_trailing_zero_bytes_stack --> items; <!-- metric:u32_trailing_zero_bytes_opcodes -->92<!-- /metric:u32_trailing_zero_bytes_opcodes --> static non-push opcodes |
 | `u32_extract_byte(0)` | <!-- metric:u32_extract_byte -->56<!-- /metric:u32_extract_byte --> bytes | <!-- metric:u32_extract_byte_witness -->13<!-- /metric:u32_extract_byte_witness --> bytes | <!-- metric:u32_extract_byte_stack -->7<!-- /metric:u32_extract_byte_stack --> items; <!-- metric:u32_extract_byte_opcodes -->36<!-- /metric:u32_extract_byte_opcodes --> static non-push opcodes |
 | `u32_byte_eq_mask()` | <!-- metric:u32_byte_eq_mask -->149<!-- /metric:u32_byte_eq_mask --> bytes | <!-- metric:u32_byte_eq_mask_witness -->17<!-- /metric:u32_byte_eq_mask_witness --> bytes (<!-- metric:u32_byte_eq_mask_witness_max -->25<!-- /metric:u32_byte_eq_mask_witness_max --> max) | <!-- metric:u32_byte_eq_mask_stack -->11<!-- /metric:u32_byte_eq_mask_stack --> items; <!-- metric:u32_byte_eq_mask_opcodes -->100<!-- /metric:u32_byte_eq_mask_opcodes --> static non-push opcodes; `u32_equal()` baseline <!-- metric:u32_byte_eq_mask_equal_baseline -->18<!-- /metric:u32_byte_eq_mask_equal_baseline --> bytes |
+| `u32_byte_lessthan_mask()` | <!-- metric:u32_byte_less_mask -->149<!-- /metric:u32_byte_less_mask --> bytes | <!-- metric:u32_byte_less_mask_witness -->17<!-- /metric:u32_byte_less_mask_witness --> bytes (<!-- metric:u32_byte_less_mask_witness_max -->25<!-- /metric:u32_byte_less_mask_witness_max --> max) | <!-- metric:u32_byte_less_mask_stack -->11<!-- /metric:u32_byte_less_mask_stack --> items; <!-- metric:u32_byte_less_mask_opcodes -->100<!-- /metric:u32_byte_less_mask_opcodes --> static non-push opcodes; `u32_lessthan()` baseline <!-- metric:u32_byte_less_mask_less_baseline -->38<!-- /metric:u32_byte_less_mask_less_baseline --> bytes |
 | `u8_push_xor_table()` | <!-- metric:u8_logic_table_push -->236<!-- /metric:u8_logic_table_push --> bytes | 0 bytes | 256 table items |
 | `u8_drop_xor_table()` | <!-- metric:u8_logic_table_drop -->128<!-- /metric:u8_logic_table_drop --> bytes | 0 bytes | consumes 256 table items |
 | `u32_uncompress_canonical()` | <!-- metric:u32_uncompress_canonical -->431<!-- /metric:u32_uncompress_canonical --> bytes | <!-- metric:u32_uncompress_canonical_witness -->7<!-- /metric:u32_uncompress_canonical_witness --> bytes, 1 data item | <!-- metric:u32_uncompress_canonical_stack -->7<!-- /metric:u32_uncompress_canonical_stack --> items |
@@ -234,6 +238,21 @@ at the all-`0xff` maximum); it uses zero hint items. The whole-word equality
 baseline is <!-- metric:u32_byte_eq_mask_equal_baseline -->18<!-- /metric:u32_byte_eq_mask_equal_baseline -->
 bytes, so the mask deliberately pays for four independently addressable lane
 predicates rather than improving aggregate equality.
+
+`u32_byte_lessthan_mask()` consumes two words and validates all eight byte
+limbs, including their minimal ScriptNum encodings, before comparing
+corresponding lanes. It returns `8*(a[0] < b[0]) + 4*(a[1] < b[1]) +
+2*(a[2] < b[2]) + (a[3] < b[3])`. The representative strict fragment is
+<!-- metric:u32_byte_less_mask -->149<!-- /metric:u32_byte_less_mask --> bytes,
+has a <!-- metric:u32_byte_less_mask_stack -->11<!-- /metric:u32_byte_less_mask_stack -->-item
+combined peak, and contains <!-- metric:u32_byte_less_mask_opcodes -->100<!-- /metric:u32_byte_less_mask_opcodes -->
+static non-push opcodes. Its representative witness has eight data items and
+<!-- metric:u32_byte_less_mask_witness -->17<!-- /metric:u32_byte_less_mask_witness -->
+serialized bytes (<!-- metric:u32_byte_less_mask_witness_max -->25<!-- /metric:u32_byte_less_mask_witness_max -->
+at the all-`0xff` maximum); it uses zero hint items. The whole-word
+`u32_lessthan()` baseline is <!-- metric:u32_byte_less_mask_less_baseline -->38<!-- /metric:u32_byte_less_mask_less_baseline -->
+bytes, so the mask is a lane-information primitive rather than a cheaper
+word comparison.
 
 The zero-word fixture uses 5 serialized witness bytes; the maximum canonical byte-word witness is <!-- metric:u32_iszero_witness_max -->13<!-- /metric:u32_iszero_witness_max --> bytes. The little-endian bit fixture uses four `0x42` limbs (9 bytes), with a maximum canonical witness of <!-- metric:u32_le_bits_witness_max -->13<!-- /metric:u32_le_bits_witness_max --> bytes. These focused metrics use strict local tapscript execution; deployment remains `unclassified`.
 

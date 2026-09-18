@@ -2,6 +2,7 @@ pub mod add;
 pub mod and;
 pub mod bits;
 pub mod byte_eq_mask;
+pub mod byte_less_mask;
 pub mod cmp;
 pub mod or;
 pub mod popcount;

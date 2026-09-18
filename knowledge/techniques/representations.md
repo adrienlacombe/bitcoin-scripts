@@ -30,6 +30,12 @@ the single Boolean returned by `u32_equal()`. Its 149-byte fragment has no
 lookup table or hints, but validates eight canonical byte limbs and therefore
 is useful only when the caller needs the individual lane bits.
 
+The checked u32 byte-less-than mask is a two-word routing boundary: it keeps
+four lane-local ordering predicates as one nibble instead of folding them into
+the single Boolean returned by `u32_lessthan()`. Its 149-byte fragment has no
+lookup table or hints, but validates eight canonical byte limbs and is useful
+only when the caller needs the individual lane bits.
+
 For terminal one-time authentication, the host may instead encode an unchanged
 message as a fixed-sum vector. The
 [20-byte Winternitz construction](../primitives/winternitz-constant-sum20.md)
