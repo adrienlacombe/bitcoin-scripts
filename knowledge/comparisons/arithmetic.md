@@ -45,6 +45,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to forward modulo-16 deltas | `u4_nibbles_to_adjacent_delta(32)` | 760 | 64-item peak; 31 output nibbles; no hints |
 | 32 checked nibbles cyclically rotated left | `u4_nibbles_rotate_left(32)` | 432 | 64-item peak; no hints; stack permutation |
 | 32-wide checked u4 vector interleave | `u4_nibbles_interleave(32)` | 954 | 128-item peak; 129-byte witness; no hints |
+| 32 checked nibbles to reflected Gray codes | `u4_nibbles_to_gray(32)` | 440 | 50-item peak; 65-byte witness; no hints |
 | u32 population count | `u32_popcount()` | 455 | 262-item peak; 256-item byte table |
 | u32 per-byte population counts | `u32_byte_popcounts()` | 452 | 262-item peak; four numeric outputs; 256-item byte table |
 | u32 leading zero-byte count | `u32_leading_zero_bytes()` | 159 | 7-item peak; table-free; validates all four byte limbs |

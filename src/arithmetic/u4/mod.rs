@@ -5,6 +5,7 @@ pub mod bit_reverse;
 pub mod bits;
 pub mod compare;
 pub mod interleave;
+pub mod gray;
 pub mod logic;
 pub mod lsb;
 pub mod mul_constant;

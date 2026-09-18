@@ -24,6 +24,8 @@ these operations, but this module contains no hash-specific round logic.
   size in `1..=499` and cyclically moves the first nibble to the top.
 - `interleave::u4_nibbles_interleave(width)` takes two checked vectors of equal
   width in `1..=249` and alternates their items.
+- `gray::u4_nibbles_to_gray(nibble_count)` takes a checked batch size in
+  `1..=982` and projects each nibble to reflected Gray code.
 - `lsb::u4_nibbles_to_lsb(nibble_count)` takes a checked batch size in
   `1..=982` and returns one bit per input nibble.
 - `sum::u4_nibbles_to_sum_mod16(nibble_count)` takes a checked batch size in
@@ -99,6 +101,7 @@ each input with the same output-restoration boundary.
 | Checked adjacent modulo-16 delta batch, 32 nibbles | <!-- metric:u4_adjacent_delta_batch32 -->806<!-- /metric:u4_adjacent_delta_batch32 --> bytes | <!-- metric:u4_adjacent_delta_batch32_stack -->65<!-- /metric:u4_adjacent_delta_batch32_stack --> items | <!-- metric:u4_adjacent_delta_batch32_opcodes -->547<!-- /metric:u4_adjacent_delta_batch32_opcodes --> |
 | Checked cyclic left rotation, 32 nibbles | <!-- metric:u4_vector_rotate_batch32 -->457<!-- /metric:u4_vector_rotate_batch32 --> bytes | <!-- metric:u4_vector_rotate_batch32_stack -->64<!-- /metric:u4_vector_rotate_batch32_stack --> items | <!-- metric:u4_vector_rotate_batch32_opcodes -->303<!-- /metric:u4_vector_rotate_batch32_opcodes --> |
 | Checked 32-wide vector interleave | <!-- metric:u4_interleave_batch32 -->954<!-- /metric:u4_interleave_batch32 --> bytes | <!-- metric:u4_interleave_batch32_stack -->128<!-- /metric:u4_interleave_batch32_stack --> items | <!-- metric:u4_interleave_batch32_opcodes -->608<!-- /metric:u4_interleave_batch32_opcodes --> |
+| Checked reflected-Gray batch, 32 nibbles | <!-- metric:u4_gray_batch32 -->440<!-- /metric:u4_gray_batch32 --> bytes | <!-- metric:u4_gray_batch32_stack -->50<!-- /metric:u4_gray_batch32_stack --> items | <!-- metric:u4_gray_batch32_opcodes -->328<!-- /metric:u4_gray_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -129,6 +132,8 @@ The square row measures only the checked reusable query; its generated
 <!-- metric:u4_exact_sum_batch32_witness -->65<!-- /metric:u4_exact_sum_batch32_witness --> serialized witness bytes for the representative exact-sum batch.
 
 <!-- metric:u4_pack_batch32_witness -->65<!-- /metric:u4_pack_batch32_witness --> serialized witness bytes for the representative packed batch.
+
+<!-- metric:u4_gray_batch32_witness -->65<!-- /metric:u4_gray_batch32_witness --> serialized witness bytes for the representative Gray-code batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -238,6 +243,11 @@ The vector interleave range-checks two equal-width vectors, stages the alternati
 copies on the altstack, consumes both inputs, and restores the paired order. It
 uses no lookup table or witness hints. Since both input and output vectors are
 live during staging, the standalone width ceiling is 249.
+
+The reflected-Gray projection uses the same 16-item checked lookup schedule as
+the other one-nibble projections. It maps `x` to `x ^ (x >> 1)`, so adjacent
+integer codes differ in one bit; the table is generated in the locking script
+and requires no witness hints.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
@@ -300,6 +310,10 @@ provide a terminal predicate.
 
 Interleave range-checks every hostile source nibble before copying. It changes
 ordering only; it does not bind vector length or provide a terminal predicate.
+
+Gray-code output is a numeric ScriptNum nibble, not a raw bitstring or a
+terminal predicate. Numeric range checking does not prove byte-unique ScriptNum
+encoding.
 
 ## Script compatibility and standardness
 
@@ -372,6 +386,11 @@ For `interleave::u4_nibbles_interleave(n)`, the input is
 `left[0], right[0], ..., left[n-1], right[n-1]`. The standalone schedule keeps
 both vectors and all staged outputs live, so callers must reduce the 249-wide
 generator ceiling for unrelated state.
+
+For `gray::u4_nibbles_to_gray(n)`, the same input ordering is consumed and
+replaced one-for-one by reflected Gray-code nibbles. The standalone peak is
+`n + 18` during table queries; callers must reduce the 982-item ceiling for
+unrelated live state.
 For `bit_planes::u4_nibbles_to_bit_planes(n, ...)`, the same input contract is
 used, but the output is grouped as `plane0[0..n]`, then `plane1`, `plane2`, and
 `plane3`, with the final plane-3 bit on top. A sentinel keeps unrelated main
