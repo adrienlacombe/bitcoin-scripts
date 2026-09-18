@@ -25,6 +25,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u32 trailing zero-byte count](u32-trailing-zero-bytes.md)
 - [Checked u32 byte extraction](u32-extract-byte.md)
 - [Checked u32 bit-plane transpose](u32-bit-planes.md)
+- [Checked u32 byte-equality mask](u32-byte-eq-mask.md)
 - [u31 prime-field arithmetic](u31.md)
 - [Native secp256k1 base-field arithmetic](secp256k1-field.md)
 - [Ed25519 base-field multiplication](ed25519-field.md)

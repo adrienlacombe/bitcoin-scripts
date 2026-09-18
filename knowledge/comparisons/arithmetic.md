@@ -38,6 +38,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | 32 checked nibbles to 128 little-endian bits | u4 mirrored staggered table | 924 | 65-byte witness; 189-item peak; same table cost, no per-nibble reversal |
 | u32 zero predicate | direct four-limb `OP_0NOTEQUAL`/`OP_BOOLAND` fold | 4 | 5-byte four-limb witness; 4-item peak; canonical byte limbs required |
 | u32 zero-byte mask | `u32_to_zero_byte_mask()` | 67 | 13-byte witness; 8-item peak; four-bit per-byte mask |
+| u32 per-byte equality mask | `u32_byte_eq_mask()` | 149 | 17-byte eight-item witness; 11-item peak; four lane predicates; no hints |
 | Wide add | U254 add | 176 | Nine limbs |
 | Wide add with bounded limbs | U254 carry-free add | 142 | Nine limbs; each corresponding sum must stay below radix |
 | Wide subtract | U254 sub | 190 | Nine limbs; propagates borrows |
