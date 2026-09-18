@@ -7527,3 +7527,45 @@ fn u4_adjacent_delta_metrics_are_current() {
         },
     ]);
 }
+
+/// This isolated fixture measures only the checked u4 cyclic vector rotation.
+#[test]
+fn u4_vector_rotate_metrics_are_current() {
+    const NIBBLE_COUNT: u32 = 32;
+    let fragment = u4::vector_rotate::u4_nibbles_rotate_left(NIBBLE_COUNT);
+    let witness = vec![scriptnum(15); NIBBLE_COUNT as usize];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..NIBBLE_COUNT {
+                OP_DROP
+            }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), NIBBLE_COUNT as usize);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_vector_rotate_batch32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_vector_rotate_batch32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_vector_rotate_batch32_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_vector_rotate_batch32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}

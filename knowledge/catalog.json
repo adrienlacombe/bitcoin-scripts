@@ -10501,6 +10501,73 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/u4-vector-rotation",
+      "name": "Checked u4 cyclic vector rotation",
+      "class": "arithmetic/word",
+      "summary": "Range-checked one-position cyclic permutation of a contiguous u4 vector.",
+      "status": "active",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-09-17",
+      "knowledge_page": "knowledge/primitives/u4-vector-rotation.md",
+      "implementation": "src/arithmetic/u4/vector_rotate.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "src/arithmetic/u4/vector_rotate.rs",
+        "tests/primitive_metrics.rs"
+      ],
+      "references": [
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-locked"
+      ],
+      "techniques": [
+        "stack-scheduling",
+        "permutation",
+        "digit-arithmetic"
+      ],
+      "security": "Every hostile source nibble is range-checked before copying; the permutation does not authenticate ordering, prove byte-unique ScriptNum encodings, or provide a terminal predicate.",
+      "stack_contract": "Consumes preserved | nibble[0] ... nibble[n-1] and returns preserved | nibble[1] ... nibble[n-1] nibble[0], with the rotated final item on top; staged outputs temporarily occupy the altstack.",
+      "configurations": [
+        {
+          "id": "checked-batch32",
+          "label": "u4_nibbles_rotate_left(32)",
+          "parameters": {
+            "nibble_count": 32,
+            "output_items": 32,
+            "data_items": 32,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: 32 numeric range checks, 32 direct stack copies, altstack output staging, input cleanup, and output restoration; excludes input pushes, witness serialization from the script, terminal predicate, unrelated live state, and transaction context",
+          "script_bytes": 457,
+          "witness_bytes": 65,
+          "witness_bytes_max": 65,
+          "max_stack_items": 64,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": 457,
+          "metric_keys": [
+            "u4_vector_rotate_batch32",
+            "u4_vector_rotate_batch32_witness",
+            "u4_vector_rotate_batch32_stack",
+            "u4_vector_rotate_batch32_opcodes"
+          ],
+          "static_non_push_opcodes": 303
+        }
+      ],
+      "limitations": [
+        "The operation only changes item order and does not bind a protocol-specific vector length",
+        "The 499-input standalone ceiling must be reduced when unrelated stack state is live",
+        "Static non-push opcode count is not an executed-opcode measurement",
+        "No Bitcoin Core consensus or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-001",
+        "OP-002",
+        "OP-003"
+      ]
     }
   ]
 }
