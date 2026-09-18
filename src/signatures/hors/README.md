@@ -17,6 +17,7 @@ Serialized witness size includes the witness count and item-length prefixes.
 | Configuration | Locking script | Unlocking witness |
 | --- | ---: | ---: |
 | `n=32`, `t=8`, 32-byte preimages | <!-- metric:hors_lock_n32_t8 -->809<!-- /metric:hors_lock_n32_t8 --> bytes | <!-- metric:hors_witness_n32_t8 -->280<!-- /metric:hors_witness_n32_t8 --> bytes |
+| `n=129`, `t=1`, index 127/128 boundary | <!-- metric:hors_lock_n129_t1 -->2792<!-- /metric:hors_lock_n129_t1 --> bytes | <!-- metric:hors_witness_n129_t1_index127 -->36<!-- /metric:hors_witness_n129_t1_index127 --> / <!-- metric:hors_witness_n129_t1_index128 -->37<!-- /metric:hors_witness_n129_t1_index128 --> bytes; 2 data items, 0 hints; <!-- metric:hors_stack_n129_t1 -->133<!-- /metric:hors_stack_n129_t1 -->-item peak |
 
 Maximum depth scales approximately with `n + 2t`; the executable tests include
 the documented `n=32,t=8` case and boundary/malformed cases.
@@ -40,3 +41,8 @@ for the exact documented witness.
 No hints beyond the required signature data. The witness contains `t`
 `(index, preimage)` pairs in reverse pair order so pair zero is nearest the top;
 see `hors_unlocking_witness` for canonical construction.
+
+The host serializer crosses a byte boundary at index 128: `[7f]` becomes
+`[80,00]`. The verifier clamps an out-of-range index with `OP_MIN` and does
+not independently enforce canonical index bytes; message binding and one-time
+key obligations remain caller responsibilities.

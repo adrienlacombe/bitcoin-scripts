@@ -203,7 +203,9 @@ fn encode_script_int(v: i64) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::execution::{execute_script, execute_script_with_inputs};
+    use crate::support::execution::{
+        execute_script, execute_script_with_inputs, execute_script_with_inputs_strict,
+    };
     use crate::support::script::script;
 
     fn make_preimages(n: usize) -> Vec<Vec<u8>> {
@@ -246,6 +248,33 @@ mod tests {
             "witness ordering check failed: {:?}",
             result
         );
+    }
+
+    #[test]
+    fn index_serialization_boundary_at_128_is_canonical() {
+        let preimages = (0..129).map(|i| vec![i as u8; 32]).collect::<Vec<_>>();
+        let public_keys = hors_public_keys(&preimages);
+        let locking = hors_locking_script(&public_keys, 1);
+        for index in [127usize, 128] {
+            let result = execute_script_with_inputs_strict(
+                locking.clone(),
+                hors_unlocking_witness(&preimages, &[index]),
+            );
+            assert!(result.success, "index {index} failed: {result}");
+            assert_eq!(result.final_stack.len(), 1);
+            assert_eq!(result.final_stack.get(0), vec![1]);
+        }
+    }
+
+    #[test]
+    fn index_129_is_clamped_to_the_last_commitment() {
+        let preimages = (0..129).map(|i| vec![i as u8; 32]).collect::<Vec<_>>();
+        let public_keys = hors_public_keys(&preimages);
+        let result = execute_script_with_inputs_strict(
+            hors_locking_script(&public_keys, 1),
+            vec![encode_script_int(129), preimages[128].clone()],
+        );
+        assert!(result.success, "clamped index was rejected: {result}");
     }
 
     /// Check exact stack layout as locking script starts.
