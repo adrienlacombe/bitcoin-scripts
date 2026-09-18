@@ -56,6 +56,8 @@ they do not use BN254 or any other field modulus.
   numeric parity bit per byte, with the least-significant byte's bit on top.
 - Stack helpers use whole-word offsets. Rotation helpers additionally take a
   rotation count. There are no implicit parameter defaults.
+- `u32_rrot8_checked()` validates four canonical byte limbs before the
+  byte-aligned eight-bit rotation.
 - `u32_uncompress_canonical()` consumes one minimally encoded signed ScriptNum
   representing a u32 and returns its four MSB-first bytes. It rejects raw
   aliases and accepts five bytes only for `-2^31`.
@@ -109,6 +111,7 @@ as less-than-or-equal.
 | `u32_rshift8_checked()` | <!-- metric:u32_rshift8_checked -->62<!-- /metric:u32_rshift8_checked --> bytes | <!-- metric:u32_rshift8_checked_witness -->9<!-- /metric:u32_rshift8_checked_witness --> bytes (<!-- metric:u32_rshift8_checked_witness_max -->13<!-- /metric:u32_rshift8_checked_witness_max --> max), 4 data items, 0 hints | <!-- metric:u32_rshift8_checked_stack -->7<!-- /metric:u32_rshift8_checked_stack --> items; <!-- metric:u32_rshift8_checked_opcodes -->41<!-- /metric:u32_rshift8_checked_opcodes --> static non-push opcodes |
 | `u32_lshift8_checked()` | <!-- metric:u32_lshift8_checked -->56<!-- /metric:u32_lshift8_checked --> bytes | <!-- metric:u32_lshift8_checked_witness -->9<!-- /metric:u32_lshift8_checked_witness --> bytes (<!-- metric:u32_lshift8_checked_witness_max -->13<!-- /metric:u32_lshift8_checked_witness_max --> max), 4 data items, 0 hints | <!-- metric:u32_lshift8_checked_stack -->7<!-- /metric:u32_lshift8_checked_stack --> items; <!-- metric:u32_lshift8_checked_opcodes -->35<!-- /metric:u32_lshift8_checked_opcodes --> static non-push opcodes |
 | `u32_rrot7_checked()` | <!-- metric:u32_rrot7_checked -->130<!-- /metric:u32_rrot7_checked --> bytes | <!-- metric:u32_rrot7_checked_witness -->9<!-- /metric:u32_rrot7_checked_witness --> bytes (<!-- metric:u32_rrot7_checked_witness_max -->13<!-- /metric:u32_rrot7_checked_witness_max --> max), 4 data items | <!-- metric:u32_rrot7_checked_stack -->8<!-- /metric:u32_rrot7_checked_stack --> items; <!-- metric:u32_rrot7_checked_opcodes -->87<!-- /metric:u32_rrot7_checked_opcodes --> static non-push opcodes |
+| `u32_rrot8_checked()` | <!-- metric:u32_rrot8_checked -->57<!-- /metric:u32_rrot8_checked --> bytes | <!-- metric:u32_rrot8_checked_witness -->9<!-- /metric:u32_rrot8_checked_witness --> bytes (<!-- metric:u32_rrot8_checked_witness_max -->13<!-- /metric:u32_rrot8_checked_witness_max --> max), 4 data items | <!-- metric:u32_rrot8_checked_stack -->7<!-- /metric:u32_rrot8_checked_stack --> items; <!-- metric:u32_rrot8_checked_opcodes -->36<!-- /metric:u32_rrot8_checked_opcodes --> static non-push opcodes |
 | `u32_popcount()` | <!-- metric:u32_popcount -->455<!-- /metric:u32_popcount --> bytes | <!-- metric:u32_popcount_witness -->13<!-- /metric:u32_popcount_witness --> bytes | <!-- metric:u32_popcount_stack -->262<!-- /metric:u32_popcount_stack --> items; <!-- metric:u32_popcount_opcodes -->171<!-- /metric:u32_popcount_opcodes --> static non-push opcodes |
 | `u32_byte_popcounts()` | <!-- metric:u32_byte_popcounts -->452<!-- /metric:u32_byte_popcounts --> bytes | <!-- metric:u32_byte_popcounts_witness -->13<!-- /metric:u32_byte_popcounts_witness --> bytes | <!-- metric:u32_byte_popcounts_stack -->262<!-- /metric:u32_byte_popcounts_stack --> items; <!-- metric:u32_byte_popcounts_opcodes -->168<!-- /metric:u32_byte_popcounts_opcodes --> static non-push opcodes |
 | `u32_byte_parity()` | <!-- metric:u32_byte_parity -->452<!-- /metric:u32_byte_parity --> bytes | <!-- metric:u32_byte_parity_witness -->13<!-- /metric:u32_byte_parity_witness --> bytes, 4 data items | <!-- metric:u32_byte_parity_stack -->262<!-- /metric:u32_byte_parity_stack --> items; <!-- metric:u32_byte_parity_opcodes -->168<!-- /metric:u32_byte_parity_opcodes --> static non-push opcodes |
@@ -186,6 +189,9 @@ The conditional selector normalizes any numeric truthy/falsy condition before
 `u32_popcount` performs the byte range checks itself because unchecked values
 would address outside the popcount table. Its output is a numeric ScriptNum,
 not a four-byte word or a terminal predicate.
+`u32_rrot8_checked()` adds the raw ScriptNum boundary for hostile byte limbs
+and then reuses the three-opcode byte rotation; it does not add a cryptographic
+security claim or a terminal predicate.
 
 `u32_rshift8_checked()` is the byte-aligned member of the logical right-shift
 frontier. It reuses canonical byte validation, moves only three retained bytes

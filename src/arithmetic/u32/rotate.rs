@@ -16,6 +16,20 @@ pub fn u32_rrot8() -> Script {
     }
 }
 
+/// Checked right rotation of a four-byte u32 word by eight bits.
+pub fn u32_rrot8_checked() -> Script {
+    script! {
+        for _ in 0..4 {
+            { verify_canonical_byte() }
+            OP_TOALTSTACK
+        }
+        for _ in 0..4 {
+            OP_FROMALTSTACK
+        }
+        { u32_rrot8() }
+    }
+}
+
 /// Right rotation of the i-th u8 element by 7 bits
 pub fn u8_rrot7(i: u32) -> Script {
     let roll_script = match i {
@@ -275,6 +289,56 @@ mod tests {
                 run_with_witness(script, word_witness(rrot(x, i)).chain(word_witness(x)));
             }
         }
+    }
+
+    #[test]
+    fn test_canonical_rrot8() {
+        let script = script! {
+            { u32_rrot8_checked() }
+            { u32_equal() }
+        }
+        .compile_with_policy()
+        .to_bytes();
+        for x in [0, 1, 0x0102_0304, 0x8000_0000, u32::MAX] {
+            run_with_witness(&script, word_witness(rrot(x, 8)).chain(word_witness(x)));
+        }
+    }
+
+    #[test]
+    fn test_canonical_rrot8_rejects_malformed_bytes() {
+        let script = script! {
+            { u32_rrot8_checked() }
+            OP_2DROP OP_2DROP
+            OP_TRUE
+        };
+        for position in 0..4 {
+            for replacement in [vec![1, 0], vec![0, 1], vec![0x80]] {
+                let mut witness = vec![vec![1]; 4];
+                witness[position] = replacement;
+                let result =
+                    crate::support::execution::execute_script_with_inputs(script.clone(), witness);
+                assert!(
+                    !result.success,
+                    "accepted malformed byte at {position}: {result}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_canonical_rrot8_preserves_surrounding_stacks() {
+        let result = crate::support::execution::execute_script_with_inputs_strict(
+            script! {
+                99 OP_TOALTSTACK
+                { u32_rrot8_checked() }
+                OP_2DROP OP_2DROP
+                77 OP_EQUALVERIFY
+                OP_FROMALTSTACK 99 OP_EQUALVERIFY
+                OP_TRUE
+            },
+            vec![vec![77], vec![1], vec![2], vec![3], vec![4]],
+        );
+        assert!(result.success, "stack preservation failed: {result}");
     }
     #[test]
     fn test_extract_hbit() {

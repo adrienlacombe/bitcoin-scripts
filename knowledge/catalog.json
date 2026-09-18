@@ -933,7 +933,7 @@
         "digit-arithmetic",
         "lookup-table"
       ],
-      "security": "No independent cryptographic claim; every byte item must be canonical and in range.",
+      "security": "No independent cryptographic claim; every byte item must be canonical and in range. The canonical rrot8 adapter performs that byte boundary before rotation.",
       "stack_contract": "A u32 occupies four byte-valued items; ordering varies only through documented stack helpers. The zero predicate consumes four limbs and returns one boolean. The checked byte-equality mask consumes two words and returns one four-bit numeric mask with bit 3 for the most-significant lane and bit 0 for the least-significant lane. The checked MSB mask consumes one word and returns a four-bit numeric mask with bit 3 for the most-significant lane and bit 0 for the least-significant lane.",
       "configurations": [
         {
@@ -1315,6 +1315,35 @@
             "u32_compress_canonical_opcodes"
           ],
           "static_non_push_opcodes": 102
+        },
+        {
+          "id": "rrot8-checked-canonical",
+          "label": "Canonical checked u32 right rotation by 8 bits",
+          "parameters": {
+            "rotation": 8,
+            "word_width_bits": 32,
+            "input_bytes": 4,
+            "canonical_input_check": true,
+            "data_items": 4,
+            "hint_items": 0
+          },
+          "includes": "fragment-only: four canonical byte boundary checks followed by the existing byte-aligned eight-bit rotation; excludes input pushes, terminal predicate, unrelated live state, and transaction context; static non-push opcode count is 36, dynamic count is unavailable",
+          "script_bytes": 57,
+          "witness_bytes": 9,
+          "witness_bytes_max": 13,
+          "max_stack_items": 7,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 0,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u32_rrot8_checked",
+            "u32_rrot8_checked_witness",
+            "u32_rrot8_checked_witness_max",
+            "u32_rrot8_checked_stack",
+            "u32_rrot8_checked_opcodes"
+          ],
+          "static_non_push_opcodes": 36
         }
       ],
       "limitations": [

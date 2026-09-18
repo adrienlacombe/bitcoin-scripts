@@ -14,6 +14,7 @@ differ. Follow each catalog configuration before comparing numbers.
 | Checked u32 logical right shift by eight | `u32_rshift8_checked()` | <!-- metric:u32_rshift8_checked -->62<!-- /metric:u32_rshift8_checked --> | <!-- metric:u32_rshift8_checked_stack -->7<!-- /metric:u32_rshift8_checked_stack -->-item peak; 9-byte representative witness; no shared table or hints; generic `u32_shr(8, 2)` is 561 bytes and 272 items with table setup/cleanup |
 | Checked u32 logical left shift by eight | `u32_lshift8_checked()` | <!-- metric:u32_lshift8_checked -->56<!-- /metric:u32_lshift8_checked --> | <!-- metric:u32_lshift8_checked_stack -->7<!-- /metric:u32_lshift8_checked_stack -->-item peak; 9-byte witness; no hints or shared table; generic table-backed boundary is 561 bytes and 272 items |
 | Checked u32 seven-bit rotation | `u32_rrot7_checked()` | 130 | 8-item peak; 9-byte representative/13-byte maximum witness; rejects raw aliases |
+| Canonical checked u32 rotate-right by 8 | `u32_rrot8_checked()` | 57 | 7-item peak; 9-byte witness; reuses byte rotation |
 | 32 checked nibbles to 128 bits | u4 staggered batch table | 924 | 189-item peak; tapscript-oriented |
 | 32 canonical checked nibbles to 128 bits | u4 canonical big-endian table adapter | 1,306 | 189-item peak; 65-byte witness; rejects raw aliases |
 | 32 canonical checked nibbles to 128 big-endian bits on altstack | u4 canonical altstack table adapter | 1,178 | 189-item peak; 65-byte witness; rejects raw aliases |
