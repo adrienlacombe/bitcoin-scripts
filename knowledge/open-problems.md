@@ -877,3 +877,10 @@ pinned Bitcoin Core revision in each claimed script context. Report pinning,
 signature and binding costs, complete witness items (including zero or explicit
 hint counts), combined stack peak, static legacy opcodes and policy results.
 State the remaining cryptographic assumptions separately from execution tests.
+## OP-024 — BLAKE3 XOF output frontier
+
+Price a reusable BLAKE3 root-output continuation beyond the first 32-byte
+digest. **Complete when:** a generation-time output length supports at least a
+64-byte XOF vector, matches the independent BLAKE3 implementation, records the
+additional output-block compression/routing/cleanup and witness shape, and
+passes the combined 1,000-item stack check for the documented composition.

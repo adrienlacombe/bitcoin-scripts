@@ -18,6 +18,8 @@ Two input profiles are public:
 The profiles implement unkeyed BLAKE3 with either the standard 32-byte output
 or its short-input 128-bit prefix. Keyed mode, derive-key mode, XOF output, and
 the multi-chunk tree API are not implemented.
+The independent [XOF boundary result](../../../knowledge/negative-results/blake3-xof-output.md)
+records the 64-byte reference boundary and the missing output-block schedule.
 
 The experimental `ed25519_challenge` module also exposes custom-signature
 transcript shapes. These are not stable hash APIs and do not implement RFC

@@ -1536,3 +1536,14 @@ multi-chunk tree. The existing boundary tests reproduce acceptance at exactly
 1,024 bytes and rejection at 1,025 bytes. This is a
 `locally-reproduced` API boundary and `inspected` missing-construction result,
 not an impossibility claim; the follow-up criterion is recorded in OP-023.
+## NR-060: BLAKE3 XOF output is outside the current generator contract
+
+The local BLAKE3 generators stop at the unkeyed 32-byte digest and do not
+implement the root-output block counter needed for XOF continuation. A
+deterministic probe over the 32-byte message `00 01 ... 1f` obtains 64 bytes
+from the independent `blake3` crate while the local generator exposes only the
+32-byte output contract. The existing 32-byte compute profile remains the
+priced baseline; this is a missing-composition boundary, not an impossibility
+proof. Reproducing a longer output requires pricing the extra compression,
+routing, cleanup, and combined stack peak. Evidence is `locally-reproduced`;
+see [the probe](../../examples/blake3_xof_boundary.rs) and [OP-024](../open-problems.md#op-022--blake3-xof-output-frontier).
