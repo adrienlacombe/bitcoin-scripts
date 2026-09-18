@@ -5225,6 +5225,55 @@ fn u4_lexicographic_metrics_are_current() {
     ]);
 }
 
+/// This isolated fixture measures a fixed right-hand u4 comparison vector.
+#[test]
+fn u4_lexicographic_constant_metrics_are_current() {
+    const NIBBLE_COUNT: usize = 128;
+    const CONSTANT: [u8; NIBBLE_COUNT] = [15; NIBBLE_COUNT];
+    let fragment = u4::compare::lexicographic_le_constant(&CONSTANT);
+    let witness = vec![scriptnum(15); NIBBLE_COUNT];
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            OP_DROP
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_lexicographic_le_constant_128",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_lexicographic_le_constant_128_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_lexicographic_le_constant_128_witness_items",
+            value: witness.len(),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_lexicographic_le_constant_128_hints",
+            value: 0,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_lexicographic_le_constant_128_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_lexicographic_le_constant_128_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
 /// This isolated fixture measures only the checked u4 parity projection.
 #[test]
 fn u4_parity_metrics_are_current() {

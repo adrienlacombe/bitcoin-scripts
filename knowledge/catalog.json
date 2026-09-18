@@ -187,7 +187,11 @@
         "arithmetic::u4::compare::tests::compares_all_two_nibble_values",
         "arithmetic::u4::compare::tests::rejects_an_out_of_range_nibble",
         "arithmetic::u4::compare::tests::rejects_zero_width",
-        "primitive_metrics::u4_lexicographic_metrics_are_current"
+        "arithmetic::u4::compare::tests::compares_against_embedded_constant",
+        "arithmetic::u4::compare::tests::preserves_surrounding_main_and_alt_stack_items",
+        "arithmetic::u4::compare::tests::rejects_out_of_range_constant",
+        "primitive_metrics::u4_lexicographic_metrics_are_current",
+        "primitive_metrics::u4_lexicographic_constant_metrics_are_current"
       ],
       "references": [
         "bip-342",
@@ -195,12 +199,13 @@
         "bitcoin-script-locked"
       ],
       "techniques": [
+        "constant-embedding",
         "digit-arithmetic",
         "lexicographic-comparison",
         "range-check"
       ],
       "security": "No independent cryptographic claim. Hostile inputs are numerically range-checked before comparison; raw byte-unique ScriptNum canonicality remains a separate protocol obligation.",
-      "stack_contract": "left[0] ... left[n-1] right[0] ... right[n-1] -> result, with each vector big-endian and each item in 0..=15",
+      "stack_contract": "left[0] ... left[n-1] right[0] ... right[n-1] -> result, or left[0] ... left[n-1] -> result with the right vector embedded; vectors are big-endian and each item is in 0..=15",
       "configurations": [
         {
           "id": "two-128-nibble-vectors",
@@ -225,6 +230,33 @@
             "u4_lexicographic_le_128_witness",
             "u4_lexicographic_le_128_stack"
           ]
+        },
+        {
+          "id": "one-128-nibble-vector-embedded-right",
+          "label": "One 128-nibble vector plus embedded right vector",
+          "parameters": {
+            "nibble_count": 128,
+            "input_items": 128,
+            "ordering": "most-significant nibble first",
+            "hints": 0,
+            "constant_nibbles": "0f repeated 128 times"
+          },
+          "includes": "fragment-only: embedded right-vector pushes, 128 numeric range checks for the hostile left vector, first-difference state machine, operand cleanup, and complete 128-item witness boundary; excludes hash composition, terminal predicate, and transaction context",
+          "script_bytes": 7628,
+          "witness_bytes": 257,
+          "witness_bytes_max": 257,
+          "max_stack_items": 259,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 128,
+          "per_use_script_bytes": 7500,
+          "metric_keys": [
+            "u4_lexicographic_le_constant_128",
+            "u4_lexicographic_le_constant_128_witness",
+            "u4_lexicographic_le_constant_128_stack",
+            "u4_lexicographic_le_constant_128_opcodes"
+          ],
+          "static_non_push_opcodes": 4354
         }
       ],
       "limitations": [

@@ -60,6 +60,22 @@ pub fn lexicographic_le(nibble_count: u32) -> Script {
     }
 }
 
+/// Return whether a fixed-width u4 vector is less than or equal to an embedded
+/// big-endian constant vector.
+pub fn lexicographic_le_constant(constant: &[u8]) -> Script {
+    assert!(!constant.is_empty(), "comparison constant must be nonempty");
+    assert!(
+        constant.iter().all(|&nibble| nibble < 16),
+        "comparison constant must contain only u4 nibbles"
+    );
+    script! {
+        for &nibble in constant {
+            { nibble }
+        }
+        { lexicographic_le(constant.len() as u32) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +118,50 @@ mod tests {
     #[should_panic(expected = "comparison width must be nonzero")]
     fn rejects_zero_width() {
         let _ = lexicographic_le(0);
+    }
+
+    #[test]
+    fn compares_against_embedded_constant() {
+        let constant = [0x0a, 0x0b];
+        for value in 0..=0xffu16 {
+            let left = [(value >> 4) as u8, (value & 0x0f) as u8];
+            let result = execute_script(script! {
+                for nibble in left {
+                    { nibble }
+                }
+                { lexicographic_le_constant(&constant) }
+                { (left <= constant) as u32 }
+                OP_EQUAL
+            });
+            assert!(
+                result.success,
+                "embedded comparison failed for {left:02x?} <= {constant:02x?}: {result}"
+            );
+        }
+    }
+
+    #[test]
+    fn preserves_surrounding_main_and_alt_stack_items() {
+        let constant = [0x0a, 0x0b];
+        let result = execute_script(script! {
+            77 OP_TOALTSTACK
+            99
+            10 10
+            { lexicographic_le_constant(&constant) }
+            OP_1 OP_EQUALVERIFY
+            99 OP_EQUALVERIFY
+            OP_FROMALTSTACK 77 OP_EQUALVERIFY
+            OP_TRUE
+        });
+        assert!(
+            result.success,
+            "embedded comparison changed surrounding state: {result}"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "comparison constant must contain only u4 nibbles")]
+    fn rejects_out_of_range_constant() {
+        let _ = lexicographic_le_constant(&[0x10]);
     }
 }
