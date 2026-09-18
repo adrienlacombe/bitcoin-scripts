@@ -8,7 +8,9 @@
 use bitcoin::{
     opcodes::{
         all::{
-            OP_2DROP, OP_2DUP, OP_2OVER, OP_3DUP, OP_ADD, OP_DUP, OP_EQUALVERIFY, OP_FROMALTSTACK, OP_GREATERTHAN, OP_OVER, OP_PICK, OP_ROLL, OP_SUB, OP_SWAP, OP_TOALTSTACK, OP_VERIFY, OP_WITHIN,
+            OP_2DROP, OP_2DUP, OP_2OVER, OP_3DUP, OP_ADD, OP_DUP, OP_EQUALVERIFY, OP_FROMALTSTACK,
+            OP_GREATERTHAN, OP_OVER, OP_PICK, OP_ROLL, OP_SUB, OP_SWAP, OP_TOALTSTACK, OP_VERIFY,
+            OP_WITHIN,
         },
         Opcode,
     },
@@ -660,8 +662,8 @@ pub fn aes128_add_round_key(round_key: [u8; 16]) -> Script {
 mod tests {
     use super::*;
     use crate::support::{
+        execution::execute_raw_script_with_inputs_strict,
         execution::{execute_script, execute_script_with_inputs_strict},
-        execution::{execute_raw_script_with_inputs_strict, execute_script},
         script::{script, ScriptCompilation},
     };
 
