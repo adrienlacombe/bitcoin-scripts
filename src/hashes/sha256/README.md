@@ -9,13 +9,14 @@ the concrete algorithm to SHA-256.
 - Message length is supplied at script-generation time.
 - `sha2_u32`: one byte per stack item internally; optimized paths exist for 32
   and 80 bytes. `sha256_80bytes_from_midstate` continues a fixed 64-byte
-  prefix from its caller-supplied chaining state using a 16-byte suffix. The
-  documented default is 32 bytes.
+  prefix from its caller-supplied chaining state using a 16-byte suffix and a
+  final SHA-256 length field of 640 bits. The documented default is 32 bytes.
 - `sha2_u4`: two nibbles per input byte and optional addition-table use chosen
   from the block count. The documented default is 32 bytes.
 - `sha256_80bytes_from_midstate`: one fixed 64-byte prefix is represented by a
   caller-supplied chaining state; the u4 fragment consumes the remaining 16
-  bytes as 32 nibble witness items.
+  bytes as 32 nibble witness items. Both backends require exactly the 16-byte
+  suffix; the fragment does not authenticate the supplied state.
 - `sha2_u4_stack`: the tracked-stack generator additionally selects addition
   tables and full/half XOR tables; defaults in its size tests are enabled.
 
@@ -50,11 +51,13 @@ The SHA-256 midstate continuation is a separate fixed-shape fragment:
 
 | Configuration | Locking script | Unlocking witness | Maximum stack items |
 | --- | ---: | ---: | ---: |
-| 64-byte prefix midstate + 16-byte suffix | <!-- metric:sha2_u32_80_midstate -->530631<!-- /metric:sha2_u32_80_midstate --> bytes | <!-- metric:sha2_u32_80_midstate_witness -->33<!-- /metric:sha2_u32_80_midstate_witness --> bytes | <!-- metric:sha2_u32_80_midstate_stack -->856<!-- /metric:sha2_u32_80_midstate_stack --> |
+| 64-byte prefix midstate + 16-byte suffix | <!-- metric:sha2_u32_80_midstate -->530686<!-- /metric:sha2_u32_80_midstate --> bytes | <!-- metric:sha2_u32_80_midstate_witness -->33<!-- /metric:sha2_u32_80_midstate_witness --> bytes | <!-- metric:sha2_u32_80_midstate_stack -->856<!-- /metric:sha2_u32_80_midstate_stack --> |
 
-The midstate stack figure includes the 32-item digest cleanup and terminal
-predicate shown in the composition wrapper. The caller must bind the supplied
-chaining state to the fixed prefix; the fragment does not prove that relation.
+The representative u32 witness is 16 one-byte items (33 serialized bytes); the
+canonical maximum is 49 bytes when each byte uses a two-byte ScriptNum. The
+stack figure uses empty zero-value suffix items in the composition wrapper. The
+caller must bind the supplied chaining state to the fixed prefix; the fragment
+does not prove that relation.
 
 The u4 midstate continuation has a separate fixed-shape boundary:
 
@@ -62,9 +65,11 @@ The u4 midstate continuation has a separate fixed-shape boundary:
 | --- | ---: | ---: | ---: | ---: |
 | 64-byte prefix midstate + 16-byte suffix | <!-- metric:sha2_u4_80_midstate -->332830<!-- /metric:sha2_u4_80_midstate --> bytes | <!-- metric:sha2_u4_80_midstate_witness -->48<!-- /metric:sha2_u4_80_midstate_witness --> bytes | <!-- metric:sha2_u4_80_midstate_stack -->969<!-- /metric:sha2_u4_80_midstate_stack --> items | <!-- metric:sha2_u4_80_midstate_opcodes -->195219<!-- /metric:sha2_u4_80_midstate_opcodes --> |
 
-The u4 row is a research boundary: its state is not authenticated against the
-fixed prefix by the fragment. Strict local execution passes at the measured
-969-item peak; complete deployment remains unclassified.
+The representative u4 witness is 32 nibble items (48 serialized bytes); the
+canonical maximum is 65 bytes. The stack figure uses empty zero-value suffix
+items in the strict composition wrapper. No auxiliary hint items are used.
+The row is a research boundary: its state is not authenticated against the
+fixed prefix by the fragment, and complete deployment remains unclassified.
 
 Maximum stack depth depends on input length and implementation. The
 `sha2_u4_stack` generator records it with `StackTracker`; executable hash tests

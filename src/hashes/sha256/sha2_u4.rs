@@ -478,7 +478,9 @@ fn sha256_with_state(num_bytes: u32, total_num_bytes: u32, initial_state: [u32; 
 /// Continue SHA-256 from a caller-supplied midstate over a 16-byte suffix.
 ///
 /// The midstate must be the chaining value after the fixed 64-byte prefix.
-/// This fragment does not authenticate that relationship.
+/// The suffix occupies the complete input stack as 32 canonical nibble items;
+/// the fragment consumes them and leaves the 64-nibble digest. It does not
+/// authenticate the midstate-to-prefix relationship.
 pub fn sha256_80bytes_from_midstate(midstate: [u32; 8]) -> Script {
     sha256_with_state(16, 80, midstate)
 }
@@ -643,6 +645,54 @@ mod tests {
         };
         let result = execute_script_with_inputs(script, vec![vec![1]; 34]);
         assert!(!result.success);
+    }
+
+    #[test]
+    fn test_sha256_80bytes_from_midstate_rejects_short_suffix() {
+        let script = script! {
+            { sha256_80bytes_from_midstate([0; 8]) }
+            { u4_drop(64) }
+            OP_TRUE
+        };
+        let result = execute_script_with_inputs(script, vec![Vec::new(); 30]);
+        assert!(!result.success);
+    }
+
+    fn assert_sha256_bytes(data: &[u8]) {
+        let input = data.to_lower_hex_string();
+        let expected = Sha256::digest(data).to_lower_hex_string();
+        let script = script! {
+            { u4_hex_to_nibbles(&input) }
+            { sha256(data.len() as u32) }
+            { u4_hex_to_nibbles(&expected) }
+            for _ in 0..64 {
+                OP_TOALTSTACK
+            }
+            for i in 1..64 {
+                {i}
+                OP_ROLL
+            }
+            for _ in 0..64 {
+                OP_FROMALTSTACK
+                OP_EQUALVERIFY
+            }
+            OP_TRUE
+        };
+        assert!(
+            execute_script(script).success,
+            "length {} failed",
+            data.len()
+        );
+    }
+
+    #[test]
+    fn test_sha256_padding_boundary_lengths() {
+        for length in [55usize, 56, 63, 64, 65, 80] {
+            let data = (0..length)
+                .map(|index| index.wrapping_mul(37).wrapping_add(3) as u8)
+                .collect::<Vec<_>>();
+            assert_sha256_bytes(&data);
+        }
     }
 
     #[test]

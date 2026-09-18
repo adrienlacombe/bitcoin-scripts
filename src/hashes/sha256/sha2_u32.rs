@@ -153,6 +153,10 @@ fn sha256_80bytes_with_table(push_table: bool, drop_table: bool, move_input: boo
 }
 
 /// Continue SHA-256 from a midstate over a 16-byte suffix.
+///
+/// The suffix occupies the complete input stack as 16 byte-valued items; the
+/// fragment consumes them and leaves the 32-byte digest. The caller must
+/// authenticate the midstate against the fixed 64-byte prefix.
 pub fn sha256_80bytes_from_midstate(midstate: [u32; 8]) -> Script {
     let mut state = midstate;
     state.reverse();
@@ -1093,6 +1097,57 @@ mod tests {
         };
         let result = execute_script_with_inputs(script, vec![vec![0x42]; 17]);
         assert!(!result.success);
+    }
+
+    #[test]
+    fn test_sha256_80bytes_from_midstate_rejects_short_suffix() {
+        let script = script! {
+            {sha256_80bytes_from_midstate([0; 8])}
+            for _ in 0..32 {
+                OP_DROP
+            }
+            OP_TRUE
+        };
+        let result = execute_script_with_inputs(script, vec![vec![0x42]; 15]);
+        assert!(!result.success);
+    }
+
+    fn assert_sha256_bytes(data: &[u8]) {
+        let expected = Sha256::digest(data).to_lower_hex_string();
+        let script = script! {
+            for byte in data.iter().rev() {
+                { *byte }
+            }
+            {sha256(data.len())}
+            {push_bytes_hex(&expected)}
+            for _ in 0..32 {
+                OP_TOALTSTACK
+            }
+            for i in 1..32 {
+                {i}
+                OP_ROLL
+            }
+            for _ in 0..32 {
+                OP_FROMALTSTACK
+                OP_EQUALVERIFY
+            }
+            OP_TRUE
+        };
+        assert!(
+            execute_script(script).success,
+            "length {} failed",
+            data.len()
+        );
+    }
+
+    #[test]
+    fn test_sha256_padding_boundary_lengths() {
+        for length in [55usize, 56, 63, 64, 65, 80] {
+            let data = (0..length)
+                .map(|index| index.wrapping_mul(37).wrapping_add(3) as u8)
+                .collect::<Vec<_>>();
+            assert_sha256_bytes(&data);
+        }
     }
 
     #[test]
