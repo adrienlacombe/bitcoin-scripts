@@ -22,3 +22,10 @@ and integer reconstruction. A freely chosen starting preimage permits first-bit
 substitution (NR-056). All three measured commitment witnesses use **0 hints**.
 Binary/four-way metrics are `locally-reproduced`, `research-unlimited` tapscript
 runs with the stack check disabled, excluding input pushes and terminal checks.
+
+Taproot Merkle branches are intentionally absent from this cost table. The
+native-byte adapter search is an inspected negative result: current Script
+cannot bind two hostile 32-byte nodes into the tagged `TapBranch` SHA256
+preimage without an enabled concatenation/splitting operation. See
+[NR-057](../negative-results/index.md#nr-047-native-taproot-merkle-branch-adapter-is-not-available)
+and [OP-021](../open-problems.md#op-020--taproot-merkle-path-verifier).

@@ -1509,3 +1509,13 @@ The older binary path with explicit selector checks is also opcode-dominated:
 its 9/11 counted opcodes per bit can be replaced by 5/7 with changed digests.
 Keeping its old hash function permits 7 counted opcodes for saved normalized
 bits, plus the old terminal hash. These alternatives must not share digests.
+
+## NR-057: Native Taproot Merkle-branch adapter is not available
+
+Taproot `TapBranch` requires tagged SHA256 over the lexicographically ordered
+concatenation of two hostile 32-byte nodes. Current Script can hash one stack
+item but has no enabled native byte concatenation/splitting boundary, so a
+compact adapter cannot bind separately supplied nodes to a 64-byte witness
+blob. The repository's mixed-hash path commits to nested SHA256/RIPEMD160
+outputs and is not TapBranch. A full u4 SHA256 circuit remains possible but is
+not a compact native primitive; this inspected result is tracked under OP-021.
