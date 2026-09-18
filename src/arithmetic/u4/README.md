@@ -22,6 +22,8 @@ these operations, but this module contains no hash-specific round logic.
   `1..=965` and returns the batch sum modulo 16.
 - `zero_bitmask::u4_nibbles_to_zero_bitmasks(nibble_count)` takes a checked
   multiple of eight in `8..=992` and returns one byte mask per eight nibbles.
+- `nondecreasing::u4_nibbles_nondecreasing(nibble_count)` takes a checked
+  batch size in `1..=997` and returns one monotonicity bit.
 - `bit_planes::u4_nibbles_to_bit_planes(nibble_count, check_inputs)` reuses
   checked nibble decomposition and transposes batches up to 234 nibbles.
 - `bit_planes::u4_nibbles_to_bit_planes_canonical(nibble_count)` additionally
@@ -81,6 +83,7 @@ each input with the same output-restoration boundary.
 | `lexicographic_le_constant(128)` | <!-- metric:u4_lexicographic_le_constant_128 -->7628<!-- /metric:u4_lexicographic_le_constant_128 --> bytes | <!-- metric:u4_lexicographic_le_constant_128_stack -->259<!-- /metric:u4_lexicographic_le_constant_128_stack --> items | <!-- metric:u4_lexicographic_le_constant_128_opcodes -->4354<!-- /metric:u4_lexicographic_le_constant_128_opcodes --> |
 | Checked parity batch, 32 nibbles | <!-- metric:u4_parity_batch32 -->440<!-- /metric:u4_parity_batch32 --> bytes | <!-- metric:u4_parity_batch32_stack -->50<!-- /metric:u4_parity_batch32_stack --> items | <!-- metric:u4_parity_batch32_opcodes -->328<!-- /metric:u4_parity_batch32_opcodes --> |
 | Checked XOR reduction, 16 nibbles | <!-- metric:u4_xor_reduce_batch16 -->740<!-- /metric:u4_xor_reduce_batch16 --> bytes | <!-- metric:u4_xor_reduce_batch16_stack -->273<!-- /metric:u4_xor_reduce_batch16_stack --> items | <!-- metric:u4_xor_reduce_batch16_opcodes -->438<!-- /metric:u4_xor_reduce_batch16_opcodes --> |
+| Checked nondecreasing batch, 32 nibbles | <!-- metric:u4_nondecreasing_batch32 -->588<!-- /metric:u4_nondecreasing_batch32 --> bytes | <!-- metric:u4_nondecreasing_batch32_stack -->35<!-- /metric:u4_nondecreasing_batch32_stack --> items | <!-- metric:u4_nondecreasing_batch32_opcodes -->391<!-- /metric:u4_nondecreasing_batch32_opcodes --> |
 | Checked LSB batch, 32 nibbles | <!-- metric:u4_lsb_batch32 -->440<!-- /metric:u4_lsb_batch32 --> bytes | <!-- metric:u4_lsb_batch32_stack -->50<!-- /metric:u4_lsb_batch32_stack --> items | <!-- metric:u4_lsb_batch32_opcodes -->328<!-- /metric:u4_lsb_batch32_opcodes --> |
 | Checked zero-mask batch, 32 nibbles | <!-- metric:u4_zero_mask_batch32 -->414<!-- /metric:u4_zero_mask_batch32 --> bytes | <!-- metric:u4_zero_mask_batch32_stack -->35<!-- /metric:u4_zero_mask_batch32_stack --> items | <!-- metric:u4_zero_mask_batch32_opcodes -->318<!-- /metric:u4_zero_mask_batch32_opcodes --> |
 | Checked popcount batch, 32 nibbles | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> bytes | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack --> items | <!-- metric:u4_popcount_batch32_opcodes -->328<!-- /metric:u4_popcount_batch32_opcodes --> |
@@ -105,6 +108,8 @@ The square row measures only the checked reusable query; its generated
 | Canonical checked 32-nibble bit reversal | <!-- metric:u4_bit_reverse_canonical_batch32 -->504<!-- /metric:u4_bit_reverse_canonical_batch32 --> bytes | <!-- metric:u4_bit_reverse_canonical_batch32_stack -->51<!-- /metric:u4_bit_reverse_canonical_batch32_stack --> items | <!-- metric:u4_bit_reverse_canonical_batch32_opcodes -->360<!-- /metric:u4_bit_reverse_canonical_batch32_opcodes --> |
 
 <!-- metric:u4_parity_batch32_witness -->65<!-- /metric:u4_parity_batch32_witness --> serialized witness bytes for the representative parity batch.
+
+<!-- metric:u4_nondecreasing_batch32_witness -->65<!-- /metric:u4_nondecreasing_batch32_witness --> serialized witness bytes for the representative nondecreasing batch.
 
 <!-- metric:u4_lsb_batch32_witness -->65<!-- /metric:u4_lsb_batch32_witness --> serialized witness bytes for the representative LSB batch.
 
@@ -180,6 +185,10 @@ returns one numeric byte mask per group, with bit `i` set when nibble `i` is
 zero. The representative 32-nibble batch is 482 bytes and peaks at 36 combined
 items: 42 bytes larger than the per-nibble table projection, but with four
 output items instead of 32 and no resident table.
+The nondecreasing predicate range-checks each nibble, compares each adjacent
+pair directly, and folds the results into one bit. It has no table, hints, or
+bit expansion, so it is useful when a caller needs a sortedness predicate
+rather than the complete adjacent mask.
 The bit-plane transpose reuses the 61-item checked bit table and adds a static
 stack permutation. It has no new witness or hint items; the representative
 16-nibble row above includes the reused decomposition and the transpose.
