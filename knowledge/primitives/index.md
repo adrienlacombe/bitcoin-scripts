@@ -74,6 +74,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [AES-128 over u4 digits](aes128-u4.md)
 - [Checked AES-128 AddRoundKey boundary](aes128-add-round-key.md)
 - [Checked AES-128 SubBytes](aes-subbytes.md)
+- [Checked AES-128 MixColumns](aes-mixcolumns.md)
 - [PRINCEv2 over u4 digits](princev2-u4.md)
 
 ## Signatures and one-time authentication

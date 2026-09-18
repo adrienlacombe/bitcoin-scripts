@@ -4262,6 +4262,7 @@ fn metrics() -> Vec<Metric> {
     .chain(commitment_metrics())
     .chain(prince_metrics())
     .chain(aes_sub_bytes_metrics())
+    .chain(aes_mix_columns_metrics())
     .chain(winternitz_metrics())
     .chain(winternitz_sha256_metrics())
     .chain(winternitz_preimage16_metrics())
@@ -6833,4 +6834,54 @@ fn u4_zero_bitmask_metrics_are_current() {
             value: static_non_push_opcodes(fragment),
         },
     ]);
+}
+
+fn aes_mix_columns_metrics() -> Vec<Metric> {
+    let fragment = aes::aes128_mix_columns();
+    let witness = vec![scriptnum(7); 32];
+    let stack = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            for _ in 0..32 { OP_DROP }
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+    vec![
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_mix_columns",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_mix_columns_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_mix_columns_witness_max",
+            value: witness_size(&vec![scriptnum(15); 32]),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_mix_columns_stack",
+            value: stack,
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_mix_columns_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+        Metric {
+            readme: "src/ciphers/aes/README.md",
+            key: "aes128_mix_columns_table_items",
+            value: 832,
+        },
+    ]
+}
+
+#[test]
+fn aes_mix_columns_metrics_are_current() {
+    check_readme_metrics(aes_mix_columns_metrics());
 }

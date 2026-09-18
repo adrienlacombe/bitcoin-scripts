@@ -19,6 +19,8 @@ a generation-time key.
 - `aes128_sub_bytes` applies the checked AES S-box to one 128-bit block without
   a key or ShiftRows/MixColumns.
 
+- `aes128_mix_columns` applies the checked AES linear MixColumns layer without a key or the other round layers.
+
 ## Script metrics
 
 The locking-fragment metric excludes plaintext pushes and output comparison.
@@ -44,6 +46,12 @@ and Script-number push widths vary.
 | SubBytes maximum combined main/alt-stack depth | <!-- metric:aes128_sub_bytes_stack -->897<!-- /metric:aes128_sub_bytes_stack --> items |
 | SubBytes static non-push opcodes | <!-- metric:aes128_sub_bytes_opcodes -->1031<!-- /metric:aes128_sub_bytes_opcodes --> |
 | SubBytes shared lookup items | <!-- metric:aes128_sub_bytes_table_items -->832<!-- /metric:aes128_sub_bytes_table_items --> |
+| `aes128_mix_columns` | <!-- metric:aes128_mix_columns -->3738<!-- /metric:aes128_mix_columns --> bytes |
+| MixColumns witness, canonical 7 nibbles | <!-- metric:aes128_mix_columns_witness -->65<!-- /metric:aes128_mix_columns_witness --> bytes |
+| MixColumns witness, canonical 15 nibbles | <!-- metric:aes128_mix_columns_witness_max -->65<!-- /metric:aes128_mix_columns_witness_max --> bytes |
+| MixColumns maximum combined main/alt-stack depth | <!-- metric:aes128_mix_columns_stack -->908<!-- /metric:aes128_mix_columns_stack --> items |
+| MixColumns static non-push opcodes | <!-- metric:aes128_mix_columns_opcodes -->1959<!-- /metric:aes128_mix_columns_opcodes --> |
+| MixColumns shared lookup items | <!-- metric:aes128_mix_columns_table_items -->832<!-- /metric:aes128_mix_columns_table_items --> |
 
 The generator uses one 832-item shared lookup memory. It fuses the initial
 AddRoundKey into the first SubBytes pass, SubBytes with ShiftRows, and
@@ -74,7 +82,7 @@ state order and requires no hints.
 
 Tests execute the FIPS-197 known-answer vector and the all-zero vector, compare
 the native reference against three published vectors, and pin the zero-key
-size and maximum stack depth. SubBytes tests cover boundary/random vectors,
+size and maximum stack depth. SubBytes and MixColumns tests cover boundary/random vectors,
 non-canonical and out-of-range nibbles, and preservation of surrounding stack
 state.
 
@@ -97,12 +105,12 @@ the 1,000-item combined-stack limit, which this implementation satisfies.
 The fragment alone does not satisfy Tapscript's cleanstack rule because it
 intentionally returns 32 state nibbles. A caller must compare or consume
 all outputs and leave exactly one truthy stack item. Standalone AddRoundKey
-and SubBytes validate canonical integer encoding and the `0..=15` range for
+SubBytes, and MixColumns validate canonical integer encoding and the `0..=15` range for
 every input nibble; `aes128_encrypt` retains its caller-validated contract.
 
 ## Witness and hints
 
-No hints are required. Both fragments consume 32 witness nibbles, with nibble 0
+No hints are required. These fragments consume 32 witness nibbles, with nibble 0
 (byte 0's high nibble) on top and nibble 31 (byte 15's low nibble) deepest.
 `aes128_encrypt` returns ciphertext in the same order and embeds its key in the
-script; `aes128_sub_bytes` returns the substituted state and has no key.
+script; `aes128_sub_bytes` and `aes128_mix_columns` return transformed states without keys.
