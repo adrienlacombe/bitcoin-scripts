@@ -12,6 +12,8 @@ a generation-time key.
 - Encryption only. No public decryption or block-cipher mode is exposed.
 - `aes128_expand_key`, `aes128_encrypt_ref`, and `bytes_to_nibbles` are provided
   for key expansion, native reference checks, and stack encoding.
+- `aes128_shift_rows` exposes the zero-memory state permutation used inside the
+  fused encryptor. It moves 32 nibble items and does not validate their range.
 
 ## Script metrics
 
@@ -25,12 +27,25 @@ and Script-number push widths vary.
 | Plaintext witness, all-zero block | <!-- metric:aes128_witness_min -->33<!-- /metric:aes128_witness_min --> bytes |
 | Plaintext witness, no zero nibbles | <!-- metric:aes128_witness_max -->65<!-- /metric:aes128_witness_max --> bytes |
 | Maximum combined main/alt-stack depth | <!-- metric:aes128_stack -->908<!-- /metric:aes128_stack --> items |
+| `aes128_shift_rows()` | <!-- metric:aes128_shift_rows -->117<!-- /metric:aes128_shift_rows --> bytes |
+| ShiftRows witness, 32 data items | <!-- metric:aes128_shift_rows_witness -->65<!-- /metric:aes128_shift_rows_witness --> bytes |
+| ShiftRows maximum combined depth | <!-- metric:aes128_shift_rows_stack -->33<!-- /metric:aes128_shift_rows_stack --> items; <!-- metric:aes128_shift_rows_opcodes -->88<!-- /metric:aes128_shift_rows_opcodes --> static non-push opcodes |
 
 The generator uses one 832-item shared lookup memory. It fuses the initial
 AddRoundKey into the first SubBytes pass, SubBytes with ShiftRows, and
 MixColumns with each following AddRoundKey. Each column's `xtime` values are
 computed once and reused by adjacent output rows. The most frequently accessed
 tables occupy the shallowest stack positions.
+
+`aes128_shift_rows()` is the extracted stack-only permutation: it uses the
+existing column-major nibble order, moves no lookup memory, and preserves raw
+item encodings byte-for-byte. Its fragment boundary excludes input pushes,
+output checks, transaction context, and any nibble-range validation; callers
+must establish canonical `0..=15` nibbles when the state is witness-backed.
+It measures <!-- metric:aes128_shift_rows -->117<!-- /metric:aes128_shift_rows -->
+locking bytes, a <!-- metric:aes128_shift_rows_witness -->65<!-- /metric:aes128_shift_rows_witness -->-byte
+32-item witness, and <!-- metric:aes128_shift_rows_stack -->33<!-- /metric:aes128_shift_rows_stack -->
+combined stack items with no auxiliary hints.
 
 Tests execute the FIPS-197 known-answer vector and the all-zero vector, compare
 the native reference against three published vectors, and pin the zero-key

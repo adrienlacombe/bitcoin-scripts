@@ -9,7 +9,7 @@ use bitcoin::{
     opcodes::{
         all::{
             OP_2DROP, OP_2DUP, OP_2OVER, OP_3DUP, OP_ADD, OP_DUP, OP_FROMALTSTACK, OP_GREATERTHAN,
-            OP_OVER, OP_PICK, OP_SUB, OP_SWAP, OP_TOALTSTACK,
+            OP_OVER, OP_PICK, OP_ROLL, OP_SUB, OP_SWAP, OP_TOALTSTACK,
         },
         Opcode,
     },
@@ -148,6 +148,37 @@ pub fn bytes_to_nibbles(bytes: [u8; 16]) -> [u8; 32] {
             byte & 0xf
         }
     })
+}
+
+/// Permute one AES state from column-major order into the ShiftRows order.
+///
+/// The input and output are 32 nibbles with byte 0's high nibble on top. The
+/// caller must supply canonical nibbles in `0..=15`; this fragment only moves
+/// stack items and does not validate their numeric values.
+pub fn aes128_shift_rows() -> Script {
+    let desired: Vec<usize> = SHIFT_ROWS
+        .into_iter()
+        .flat_map(|byte| [2 * byte, 2 * byte + 1])
+        .collect();
+    let mut remaining: Vec<usize> = (0..STATE_NIBBLES).collect();
+    let mut out = Program::default();
+
+    for source in desired.into_iter().rev() {
+        let position = remaining
+            .iter()
+            .position(|&item| item == source)
+            .expect("every AES state nibble is selected once");
+        if position > 0 {
+            out.push(position as i32);
+            out.op(OP_ROLL);
+        }
+        out.op(OP_TOALTSTACK);
+        remaining.remove(position);
+    }
+    for _ in 0..STATE_NIBBLES {
+        out.op(OP_FROMALTSTACK);
+    }
+    out.into_script("AES-128 ShiftRows")
 }
 
 #[derive(Clone, Copy)]
@@ -577,7 +608,7 @@ pub fn aes128_encrypt(key: [u8; 16]) -> Script {
 mod tests {
     use super::*;
     use crate::support::{
-        execution::execute_script,
+        execution::{execute_script, execute_script_with_inputs_strict},
         script::{script, ScriptCompilation},
     };
 
@@ -673,5 +704,59 @@ mod tests {
         assert_eq!(zero_key_size, 25_388);
         assert_eq!(max_stack, 908);
         assert_eq!(zero_stack, 908);
+    }
+
+    #[test]
+    fn shift_rows_reorders_state_and_preserves_stacks() {
+        let witness = std::iter::once(vec![99])
+            .chain((0..STATE_NIBBLES).rev().map(|value| vec![value as u8]))
+            .collect();
+        let result = execute_script_with_inputs_strict(
+            script! {
+                77 OP_TOALTSTACK
+                { aes128_shift_rows() }
+                for byte in SHIFT_ROWS.into_iter().rev() {
+                    { vec![(2 * byte + 1) as u8] } OP_EQUALVERIFY
+                    { vec![(2 * byte) as u8] } OP_EQUALVERIFY
+                }
+                99 OP_EQUALVERIFY
+                OP_FROMALTSTACK 77 OP_EQUALVERIFY
+                OP_TRUE
+            },
+            witness,
+        );
+        assert!(result.success, "ShiftRows permutation failed: {result}");
+    }
+
+    #[test]
+    fn shift_rows_preserves_malformed_items_for_caller_validation() {
+        let mut state: Vec<Vec<u8>> = (0..STATE_NIBBLES).map(|value| vec![value as u8]).collect();
+        state[0] = vec![0x80];
+        state[5] = vec![1, 0];
+        state[10] = vec![0, 1];
+        let expected = SHIFT_ROWS
+            .into_iter()
+            .flat_map(|byte| [state[2 * byte].clone(), state[2 * byte + 1].clone()])
+            .collect::<Vec<_>>();
+        let witness = std::iter::once(vec![99])
+            .chain(state.into_iter().rev())
+            .collect();
+        let result = execute_script_with_inputs_strict(
+            script! {
+                77 OP_TOALTSTACK
+                { aes128_shift_rows() }
+                for item in expected.into_iter().rev() {
+                    { item } OP_EQUALVERIFY
+                }
+                99 OP_EQUALVERIFY
+                OP_FROMALTSTACK 77 OP_EQUALVERIFY
+                OP_TRUE
+            },
+            witness,
+        );
+        assert!(
+            result.success,
+            "ShiftRows changed hostile raw items: {result}"
+        );
     }
 }
