@@ -13,5 +13,5 @@ offset as a small integer.
   preimage bytes and leaks the length when opened.
 - **Limitation:** the value range is coupled to Bitcoin's 520-byte item limit.
 
-See the [implementation README](../../src/commitments/README.md) and catalog
+See the [implementation README](../../src/commitments/preimage_length/README.md) and catalog
 record `commitment/preimage-length`.
