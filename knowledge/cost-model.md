@@ -102,7 +102,9 @@ Every measured result must identify:
 - script context (legacy, P2WSH, or tapscript);
 - enabled consensus checks;
 - policy rules, if claimed;
-- transaction context, if signature or validation-weight behavior matters.
+- transaction context, if signature, timelock or validation-weight behavior matters.
+  For CSV, record transaction version, selected input `nSequence`, and whether
+  relative height/median-time maturity is checked or delegated to Core.
 
 New Rust experiment generators should obtain resolved Git identities from
 [`support::provenance`](../src/support/provenance.rs), which embeds `Cargo.lock`

@@ -26,10 +26,10 @@ rand_chacha = "0.3.1"
 sha2 = "0.10"
 
 # Apply the same repaired interpreter to this crate and bitcoin-script-stack.
-# Temporary immutable integration of resource, signature and witness-budget repairs.
+# Temporary immutable integration of resource, signature, witness-budget and CSV repairs.
 # See src/support/README.md for provenance and the criterion to return upstream.
 [patch."https://github.com/BitVM/rust-bitcoin-scriptexec"]
-bitcoin-scriptexec = { git = "https://github.com/adrienlacombe/rust-bitcoin-scriptexec", rev = "f678467784475b1072557de70166514e52753f66" }
+bitcoin-scriptexec = { git = "https://github.com/adrienlacombe/rust-bitcoin-scriptexec", rev = "a09e87af444034698697f0a2267e755cf72f9aed" }
 
 [[bench]]
 name = "winternitz"

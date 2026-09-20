@@ -2,7 +2,7 @@
 
 The lab and `bitcoin-script-stack` use the same repaired `bitcoin-scriptexec`
 revision, selected by an immutable Cargo patch:
-[`f678467784475b1072557de70166514e52753f66`](https://github.com/adrienlacombe/rust-bitcoin-scriptexec/commit/f678467784475b1072557de70166514e52753f66).
+[`a09e87af444034698697f0a2267e755cf72f9aed`](https://github.com/adrienlacombe/rust-bitcoin-scriptexec/commit/a09e87af444034698697f0a2267e755cf72f9aed).
 It retains three resource repairs on upstream `ba96bc2`: entry/per-step
 resource checks ([PR #18](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/18)),
 `OP_PICK`/`OP_ROLL` bounds ([PR #19](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/19)),
@@ -14,7 +14,9 @@ with extended regression tests, preserves empty signatures for unknown key types
 and returns script errors for invalid x-only keys, missing SIGHASH_SINGLE outputs
 and executed Tapscript multisig. It adds complete-witness budget accounting
 ([PR #23](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/23), standalone
-commit `9b1eddeb4735d1c607fc066aa5290c23b9d8baa1`). All **66 upstream tests**
+commit `9b1eddeb4735d1c607fc066aa5290c23b9d8baa1`). It also repairs five-byte
+`OP_CHECKSEQUENCEVERIFY` operands ([PR #24](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/24),
+standalone commit `6bb5e342fabc3780bd2b83cba237275892844bcc`). All **74 upstream tests**
 pass at this integration revision. The [signature experiment](../../knowledge/tapscript-signature-validation.md)
 records the exact comparison scope and original commits. The fork is temporary
 while the upstream PRs are reviewed; compiler and other dependency pins remain
@@ -167,12 +169,19 @@ input validation. Its 20 funded cases and 40 local profile comparisons pass,
 with three exact valid spends accepted by default Core policy. This adds
 primitive-specific evidence without widening the context-free API's claims.
 
+The [funded CSV experiment](../../knowledge/tapscript-csv-validation.md) checks
+19 exact leaves with five-byte operands, high and reserved bits, height/time
+comparisons, disabled inputs, numeric boundaries and a CLTV control. All local
+consensus and numeric-policy comparisons match Core. The local helper still
+checks only script execution; Core independently enforces relative maturity
+under BIP68.
+
 The [complete-witness budget experiment](../../knowledge/tapscript-budget-validation.md)
 adds 32 funded cases with exact exhaustion, empty signatures, annexes, control
 paths and CompactSize boundaries. All local verdicts and rejection categories
 match Core; 15 spends pass consensus and 10 pass default policy. Two fresh nodes
 produce identical reports. All 84 earlier resource/signature/PRINCE cases also
-pass at `f6784677`. All seven stored historical data artifacts are unchanged.
+pass at the CSV integration pin. All seven stored historical data artifacts are unchanged.
 
 Return to an immutable upstream revision when it contains all adopted repairs or
 equivalent implementations and passes these regressions, Core comparisons,

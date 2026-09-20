@@ -355,6 +355,13 @@ Accepts 5-byte operands.
   65,535 × 512 s (~388 days).
 - Requires transaction `nVersion ≥ 2` `[C]`.
 
+CSV accepts nonnegative ScriptNums of up to five bytes. The operand's bits above
+bit 31 and the reserved bits between bit 22 and the low 16 bits do not affect
+the comparison. Bit 31 in the **operand** makes CSV a no-op after numeric
+validation, even when the transaction version or input sequence would otherwise
+fail. A local interpreter that narrows the whole five-byte operand to `u32`
+can panic on valid scripts; see the [funded CSV comparison](tapscript-csv-validation.md).
+
 The corresponding transaction-level rules are BIP-68 (`nSequence` semantics) and `nLockTime` itself;
 the opcodes make those fields *enforceable by the script* rather than merely settable by the spender.
 

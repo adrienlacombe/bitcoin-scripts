@@ -120,6 +120,17 @@ input handling in older research helpers, and configuration-by-configuration
 migration and revalidation. Signature operations, CODESEPARATOR, CLTV/CSV and
 policy's upgradeable NOP handling are currently refused conservatively by the
 context-free profiles, including when their opcodes appear in dead branches.
+The [funded CSV comparison](tapscript-csv-validation.md) repairs a five-byte
+operand panic and checks 19 complete spends against Core. The local executor
+compares transaction version and `nSequence`; it does not know the funding
+height or median-time history needed for BIP68 transaction finality.
+**Remaining acceptance criterion:** a transaction-aware wrapper must either
+check the relevant funding height/MTP against the spend block and match pinned
+Core on both sides of each relative-maturity boundary, or return an explicit
+unsupported outcome when that chain context is absent. This remains under
+OP-001; the funded Core harness supplies complete-spend verdicts for the
+recorded CSV fixtures.
+
 The current [44-fixture Core experiment](core-validation.md) reproduces every
 consensus/policy expectation and rejection diagnostic, with 86 applicable
 local/Core verdict comparisons. Its separate control-block mutation still

@@ -40,6 +40,7 @@ python3 tools/kb.py validate
 - [Pinned Bitcoin Core validation](core-validation.md)
 - [Taproot signature differential experiment](tapscript-signature-validation.md)
 - [Complete-witness signature-budget experiment](tapscript-budget-validation.md)
+- [Five-byte CSV differential experiment](tapscript-csv-validation.md)
 - [Checked PRINCEv2 complete-leaf experiment](prince-core-validation.md)
 - [Primitive entries](primitives/index.md)
 - [Reusable implementation techniques](techniques/index.md)

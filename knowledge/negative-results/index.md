@@ -1613,3 +1613,29 @@ control block and annex when pricing repeated signature checks. Reusing a
 signature does not remove its per-check charge. The additive constructor fixes
 this boundary while legacy fragment APIs intentionally retain compatibility;
 commitment and complete-transaction validation remain separate obligations.
+
+
+## NR-065: Narrowing five-byte CSV operands before masking panics
+
+BIP112 accepts a positive five-byte ScriptNum even when it exceeds `u32`. The
+original `bitcoin-scriptexec` converted that full operand to `u32` with `expect`
+in `check_sequence`, after which a valid `2^32` operand panicked. This was
+`locally-reproduced` on upstream `ba96bc2` with transaction version 2 and
+input sequence zero. Under BIP68 the operand's type bit and low 16 bits are
+zero, and the high bit 32 has no meaning. Pinned Core v30.3 accepts the funded
+spend under consensus and default policy.
+
+The [funded CSV experiment](../tapscript-csv-validation.md) measures the fixed
+interpreter integration `a09e87af444034698697f0a2267e755cf72f9aed` on 19
+cases: all local consensus/numeric-policy results and rejection categories
+match Core. The smallest direct counterexample has a three-byte locking leaf,
+one five-byte data item, three complete witness items, a 45-byte serialized
+complete witness and a combined one-item stack peak. It uses zero hint items
+per invocation and in total; all data coexist at entry under the 1,000-item
+limit. Evidence for this exact spend is `differentially-validated`; deployment
+is `policy-validated` for the pinned funded transaction.
+
+Mask the type bit and low 16 bits in a wide integer before narrowing. Do not
+mask before checking the negative, overlong or operand-disable cases. A local
+leaf verdict still does not establish BIP68 maturity or complete transaction
+validity.

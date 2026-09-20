@@ -46,13 +46,20 @@ invalid-key/multisig errors (`2efd48f`) and SIGHASH_SINGLE error ordering
 preserves a `4b7269a4` baseline separately from the repaired integration.
 Older catalog configurations and report artifacts retain their recorded pins.
 
-The current interpreter uses `bitcoin-scriptexec-witness-budget-20260920` at
+The budget experiment uses `bitcoin-scriptexec-witness-budget-20260920` at
 `f678467784475b1072557de70166514e52753f66`. It retains the signature integration
 and adds the standalone complete-witness constructor repair `9b1eddeb`
 ([upstream PR #23](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/23)).
 The [budget experiment](../tapscript-budget-validation.md) compares this explicit
 API with Core and with the preserved legacy data-only constructor on the same
 revision. It does not relabel historical evidence.
+
+The current interpreter uses `bitcoin-scriptexec-csv-20260920` at
+`a09e87af444034698697f0a2267e755cf72f9aed`. It retains the budget integration and adds the CSV
+mask-before-narrowing repair `6bb5e342` ([upstream PR #24](https://github.com/BitVM/rust-bitcoin-scriptexec/pull/24)).
+The [funded CSV comparison](../tapscript-csv-validation.md) ties the repair to
+BIP112 and pinned Core v30.3. Older budget, signature and PRINCE reports remain
+at their original interpreter revisions.
 
 The [checked PRINCE experiment](../prince-core-validation.md) records
 `bitcoin-core-v30.3-regtest` and the historical
