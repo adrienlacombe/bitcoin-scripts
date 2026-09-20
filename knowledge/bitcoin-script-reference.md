@@ -1040,9 +1040,11 @@ witness Merkle root in the coinbase. This is what makes chains of pre-signed tra
 **Tapscript's validation-weight budget** replaces sigop counting: each script-path input starts with
 `50 + witness_size_in_bytes` of budget, using the complete serialized witness including script,
 control block and any annex. Every signature opcode with a **nonempty signature** costs 50,
-before public-key validation; empty signatures cost nothing. Effectively this allows roughly one signature check per
-50 bytes of witness — self-limiting, since a script with many checks needs many signatures, which
-are themselves witness bytes.
+before public-key validation; empty signatures cost nothing. The complete serialization includes
+its item count and all CompactSize item-length prefixes. A signature can be duplicated and checked
+repeatedly, but each executed nonempty check consumes another 50 units. The
+[funded budget experiment](tapscript-budget-validation.md) covers exact exhaustion, repeated checks,
+annexes, control paths and CompactSize boundaries against pinned Core.
 
 **`OP_CHECKSIGADD`** replaces threshold multisig: it pops a pubkey, a number, and a signature, and
 pushes `number + 1` on success or `number` unchanged on failure (with an empty signature). A

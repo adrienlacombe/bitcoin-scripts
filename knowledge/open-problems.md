@@ -3,9 +3,11 @@
 Each problem has a falsifiable completion criterion. Update comparisons and
 negative results when closing one.
 
-**Next priority (2026-09-10): OP-001, transaction-aware Taproot execution.**
+**Next priority (2026-09-20): OP-001, Taproot commitment validation.**
 The interpreter repairs and explicit context-free consensus/policy profiles
-are adopted. Next, close the missing commitment and signature context:
+are adopted. Complete-witness budgeting and annex signature context now have
+an explicit constructor and a [funded comparison](tapscript-budget-validation.md).
+Next, validate the commitment and remaining transaction context:
 **complete when** valid and mutated Taproot commitments, annexes and Schnorr
 signatures produce supported local verdicts that agree with pinned Core,
 including budgets initialized from the full serialized witness. Unsupported
@@ -27,6 +29,13 @@ All 20 local/Core comparisons agree after adopting `702544c9`, with zero panics
 and two identical reports. These focused repairs are prerequisites to the full
 transaction API; fixing them does not itself implement commitment, annex or
 full-witness budget checks. The context-free profiles retain their guard.
+
+The [budget follow-up](tapscript-budget-validation.md) adds `Exec::new_tapscript`
+and a fallible dry-run helper, deriving the script, annex and initial signature
+budget from the complete selected-input witness. Structurally invalid contexts
+return constructor errors. Commitment verification, full transaction and policy
+validation remain open; accepting the leaf or its budget cannot close OP-001.
+
 ## OP-025 — BLAKE3 derive-key boundary
 
 Add a mode-correct derive-key construction to the tracked-stack BLAKE3 backend.
@@ -105,8 +114,8 @@ and unsupported contexts; unsupported cases return no verdict. Existing
 research helpers retain their defaults and explicit stack-limit distinction.
 Local evidence is `locally-reproduced`, deployment `unclassified` by itself.
 
-Remaining criteria include legacy/P2WSH modes, transaction/commitment and annex
-validation, complete signature context/budget, full relay policy, malformed
+Remaining criteria include legacy/P2WSH modes, transaction/commitment
+validation, broader signature-context coverage, full relay policy, malformed
 input handling in older research helpers, and configuration-by-configuration
 migration and revalidation. Signature operations, CODESEPARATOR, CLTV/CSV and
 policy's upgradeable NOP handling are currently refused conservatively by the

@@ -1586,3 +1586,30 @@ peaking at 5 instead of 7, with the same one-item witness. The construction is
 retained as a stack-shape primitive and a complete-width correctness result,
 not as a general script-byte optimization. Evidence is `locally-reproduced`;
 deployment is `unclassified`; OP-026 remains open.
+
+
+## NR-064: Data-only signature budgets falsely reject complete spends
+
+The [complete-witness budget experiment](../tapscript-budget-validation.md)
+compares `Exec::new` and `Exec::new_tapscript` at the same immutable interpreter
+revision `f678467784475b1072557de70166514e52753f66`, against funded Bitcoin Core
+v30.3 spends. Data-only initialization disagrees on 16 of 32 cases: 15 false
+rejections and one wrong rejection category. The full-witness path agrees on
+all 32. This is a same-revision constructor counterexample, not a historical
+before/after report.
+
+An 11-byte leaf repeats CHECKSIGVERIFY four times. It has three data items,
+five complete witness items, zero hint items/bytes per invocation and across all
+four checks, and a measured combined stack peak of four. All data coexist at
+entry under the 1,000-item limit. Data serialize to 104 bytes; script and control
+raise the full witness to 150 bytes. The legacy budget is 154, below the 200-unit
+cost; the complete-witness budget is exactly 200. Core accepts this spend under
+consensus and default policy. Evidence is `differentially-validated`; the exact
+funded fixture is `policy-validated`. Legacy local rejection does not establish
+consensus incompatibility of the transaction.
+
+Composition lesson: include the complete witness count, item prefixes, script,
+control block and annex when pricing repeated signature checks. Reusing a
+signature does not remove its per-check charge. The additive constructor fixes
+this boundary while legacy fragment APIs intentionally retain compatibility;
+commitment and complete-transaction validation remain separate obligations.
