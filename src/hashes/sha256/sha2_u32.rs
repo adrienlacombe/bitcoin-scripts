@@ -10,6 +10,7 @@ use crate::arithmetic::u32::{
 };
 use crate::support::script::{script, Script};
 use crate::support::script_ops::push_to_stack;
+use bitcoin::hashes::HashEngine;
 
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -152,25 +153,27 @@ fn sha256_80bytes_with_table(push_table: bool, drop_table: bool, move_input: boo
     }
 }
 
-/// Continue SHA-256 from a midstate over a 16-byte suffix.
-///
-/// The suffix occupies the complete input stack as 16 byte-valued items; the
-/// fragment consumes them and leaves the 32-byte digest. The caller must
-/// authenticate the midstate against the fixed 64-byte prefix.
-pub fn sha256_80bytes_from_midstate(midstate: [u32; 8]) -> Script {
+fn sha256_from_midstate(midstate: [u32; 8], suffix_bytes: usize, total_bytes: usize) -> Script {
+    assert_eq!(total_bytes, 64 + suffix_bytes);
+    let remainder = total_bytes % 64;
+    let padding_bytes = if remainder < 56 {
+        55 - remainder
+    } else {
+        119 - remainder
+    };
     let mut state = midstate;
     state.reverse();
     script! {
-        {push_reverse_bytes_to_alt(16)}
+        {push_reverse_bytes_to_alt(suffix_bytes)}
         {u8_push_xor_table()}
         {sha256_k()}
-        for _ in 0..16 {
+        for _ in 0..suffix_bytes {
             OP_FROMALTSTACK
         }
         {0x80}
-        {push_to_stack(0, 39)}
+        {push_to_stack(0, padding_bytes)}
         {u32_push(0)}
-        {u32_push(640)}
+        {u32_push((total_bytes * 8) as u32)}
         for i in 1..16 {
             {u32_roll(i)}
         }
@@ -190,6 +193,33 @@ pub fn sha256_80bytes_from_midstate(midstate: [u32; 8]) -> Script {
             {u32_fromaltstack()}
         }
     }
+}
+
+/// Continue SHA-256 from a midstate over a 16-byte suffix.
+///
+/// The suffix occupies the complete input stack as 16 byte-valued items; the
+/// fragment consumes them and leaves the 32-byte digest. The caller must
+/// authenticate the midstate against the fixed 64-byte prefix.
+pub fn sha256_80bytes_from_midstate(midstate: [u32; 8]) -> Script {
+    sha256_from_midstate(midstate, 16, 80)
+}
+
+fn tagged_hash_midstate(tag_hash: [u8; 32]) -> [u32; 8] {
+    let mut block = [0u8; 64];
+    block[..32].copy_from_slice(&tag_hash);
+    block[32..].copy_from_slice(&tag_hash);
+
+    let mut engine = bitcoin::hashes::sha256::HashEngine::default();
+    engine.input(&block);
+    let bytes = engine.midstate().to_byte_array();
+    std::array::from_fn(|index| {
+        u32::from_be_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap())
+    })
+}
+
+/// Compute `SHA256(tag_hash || tag_hash || message)` for a 32-byte message.
+pub fn sha256_tagged_hash_32bytes(tag_hash: [u8; 32]) -> Script {
+    sha256_from_midstate(tagged_hash_midstate(tag_hash), 32, 96)
 }
 
 /// reorder bytes for u32
@@ -981,9 +1011,12 @@ mod tests {
     use super::*;
     use crate::arithmetic::u32::stack::{u32_equal, u32_equalverify};
     use crate::support::{
-        execution::{execute_script, execute_script_with_inputs},
+        execution::{
+            execute_script, execute_script_with_inputs, execute_script_with_inputs_strict,
+        },
         script::script,
     };
+    use bitcoin::hashes::{sha256, Hash};
     use bitcoin::hex::{DisplayHex, FromHex};
     use sha2::{compress256, Digest, Sha256};
 
@@ -1110,6 +1143,66 @@ mod tests {
         };
         let result = execute_script_with_inputs(script, vec![vec![0x42]; 15]);
         assert!(!result.success);
+    }
+
+    fn assert_tagged_hash(tag: &[u8], message: &[u8]) {
+        assert_eq!(message.len(), 32);
+        let tag_hash = sha256::Hash::hash(tag).to_byte_array();
+        let mut preimage = tag_hash.to_vec();
+        preimage.extend_from_slice(&tag_hash);
+        preimage.extend_from_slice(message);
+        let expected = Sha256::digest(preimage).to_lower_hex_string();
+        let script = script! {
+            for byte in message.iter().rev() {
+                { *byte }
+            }
+            { sha256_tagged_hash_32bytes(tag_hash) }
+            { push_bytes_hex(&expected) }
+            for _ in 0..32 {
+                OP_TOALTSTACK
+            }
+            for i in 1..32 {
+                { i }
+                OP_ROLL
+            }
+            for _ in 0..32 {
+                OP_FROMALTSTACK
+                OP_EQUALVERIFY
+            }
+            OP_TRUE
+        };
+        assert!(execute_script(script).success);
+    }
+
+    #[test]
+    fn test_sha256_tagged_hash_matches_multiple_vectors() {
+        let mut first = [0u8; 32];
+        for (index, byte) in first.iter_mut().enumerate() {
+            *byte = index as u8;
+        }
+        first[1] = 0x7f;
+        first[2] = 0x80;
+        first[3] = 0xff;
+        assert_tagged_hash(b"BIP0340/challenge", &first);
+
+        let second = [0xa5; 32];
+        assert_tagged_hash(b"bitcoin-scripts/test", &second);
+    }
+
+    #[test]
+    fn test_sha256_tagged_hash_rejects_wrong_message_count() {
+        let tag_hash = sha256::Hash::hash(b"BIP0340/challenge").to_byte_array();
+        let script = script! {
+            { sha256_tagged_hash_32bytes(tag_hash) }
+            for _ in 0..32 {
+                OP_DROP
+            }
+            OP_DEPTH
+            OP_0
+            OP_EQUAL
+        };
+        assert!(!execute_script_with_inputs_strict(script.clone(), vec![Vec::new(); 31]).success);
+        assert!(!execute_script_with_inputs_strict(script, vec![Vec::new(); 33]).success);
     }
 
     fn assert_sha256_bytes(data: &[u8]) {
