@@ -1632,3 +1632,55 @@ four-byte `u32_bytes_rshift()` API. That remains an open comparison under
 for an identified byte-oriented caller, compare direct byte shifting with
 compression, PR #8's shift, and conversion back, including validation,
 table setup/cleanup, routing, and the same output checks on both sides.
+
+## NR-064: Data-only signature budgets falsely reject complete spends
+
+The [complete-witness budget experiment](../tapscript-budget-validation.md)
+compares `Exec::new` and `Exec::new_tapscript` at the same immutable interpreter
+revision `f678467784475b1072557de70166514e52753f66`, against funded Bitcoin Core
+v30.3 spends. Data-only initialization disagrees on 16 of 32 cases: 15 false
+rejections and one wrong rejection category. The full-witness path agrees on
+all 32. This is a same-revision constructor counterexample, not a historical
+before/after report.
+
+An 11-byte leaf repeats CHECKSIGVERIFY four times. It has three data items,
+five complete witness items, zero hint items/bytes per invocation and across all
+four checks, and a measured combined stack peak of four. All data coexist at
+entry under the 1,000-item limit. Data serialize to 104 bytes; script and control
+raise the full witness to 150 bytes. The legacy budget is 154, below the 200-unit
+cost; the complete-witness budget is exactly 200. Core accepts this spend under
+consensus and default policy. Evidence is `differentially-validated`; the exact
+funded fixture is `policy-validated`. Legacy local rejection does not establish
+consensus incompatibility of the transaction.
+
+Composition lesson: include the complete witness count, item prefixes, script,
+control block and annex when pricing repeated signature checks. Reusing a
+signature does not remove its per-check charge. The additive constructor fixes
+this boundary while legacy fragment APIs intentionally retain compatibility;
+commitment and complete-transaction validation remain separate obligations.
+
+
+## NR-065: Narrowing five-byte CSV operands before masking panics
+
+BIP112 accepts a positive five-byte ScriptNum even when it exceeds `u32`. The
+original `bitcoin-scriptexec` converted that full operand to `u32` with `expect`
+in `check_sequence`, after which a valid `2^32` operand panicked. This was
+`locally-reproduced` on upstream `ba96bc2` with transaction version 2 and
+input sequence zero. Under BIP68 the operand's type bit and low 16 bits are
+zero, and the high bit 32 has no meaning. Pinned Core v30.3 accepts the funded
+spend under consensus and default policy.
+
+The [funded CSV experiment](../tapscript-csv-validation.md) measures the fixed
+interpreter integration `a09e87af444034698697f0a2267e755cf72f9aed` on 19
+cases: all local consensus/numeric-policy results and rejection categories
+match Core. The smallest direct counterexample has a three-byte locking leaf,
+one five-byte data item, three complete witness items, a 45-byte serialized
+complete witness and a combined one-item stack peak. It uses zero hint items
+per invocation and in total; all data coexist at entry under the 1,000-item
+limit. Evidence for this exact spend is `differentially-validated`; deployment
+is `policy-validated` for the pinned funded transaction.
+
+Mask the type bit and low 16 bits in a wide integer before narrowing. Do not
+mask before checking the negative, overlong or operand-disable cases. A local
+leaf verdict still does not establish BIP68 maturity or complete transaction
+validity.
