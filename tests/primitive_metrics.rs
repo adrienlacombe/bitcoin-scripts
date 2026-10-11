@@ -4931,6 +4931,95 @@ fn blake3_short_truncated_128_metrics_are_current() {
     ]);
 }
 
+/// Generation-time BLAKE3 modes and the 64-byte XOF prefix over the same
+/// 32-byte direct-u4 input profile. Each fragment consumes exactly 64 checked
+/// u4 witness items with zero hints; stack peaks include the output verifier.
+#[test]
+fn blake3_short_mode_metrics_are_current() {
+    let message: [u8; 32] = std::array::from_fn(|index| index as u8);
+    let key: [u8; 32] = *b"whats the Elvish word for friend";
+    let context = "BLAKE3 2019-12-27 16:29:52 test vectors context";
+    let reference = |mut hasher: ::blake3::Hasher| {
+        let mut output = [0_u8; 64];
+        hasher.update(&message).finalize_xof().fill(&mut output);
+        output
+    };
+    let cases = [
+        (
+            [
+                "blake3_short_keyed_32",
+                "blake3_short_keyed_32_opcodes",
+                "blake3_short_keyed_32_stack",
+            ],
+            blake3::Blake3Mode::KeyedHash(key),
+            reference(::blake3::Hasher::new_keyed(&key)),
+            32,
+        ),
+        (
+            [
+                "blake3_short_derive_key_32",
+                "blake3_short_derive_key_32_opcodes",
+                "blake3_short_derive_key_32_stack",
+            ],
+            blake3::Blake3Mode::derive_key(context),
+            reference(::blake3::Hasher::new_derive_key(context)),
+            32,
+        ),
+        (
+            [
+                "blake3_short_xof64_32",
+                "blake3_short_xof64_32_opcodes",
+                "blake3_short_xof64_32_stack",
+            ],
+            blake3::Blake3Mode::Hash,
+            reference(::blake3::Hasher::new()),
+            64,
+        ),
+        (
+            [
+                "blake3_short_keyed_xof64_32",
+                "blake3_short_keyed_xof64_32_opcodes",
+                "blake3_short_keyed_xof64_32_stack",
+            ],
+            blake3::Blake3Mode::KeyedHash(key),
+            reference(::blake3::Hasher::new_keyed(&key)),
+            64,
+        ),
+    ];
+    let mut metrics = Vec::new();
+    for (keys, mode, expected, output_len) in cases {
+        let compute = blake3::blake3_short_mode_compute_script(32, mode, output_len);
+        let verify = if output_len == 64 {
+            blake3::blake3_verify_extended_output_script(expected)
+        } else {
+            blake3::blake3_verify_output_script(expected[..32].try_into().unwrap())
+        };
+        let complete = script! {
+            { blake3::blake3_push_short_message_script(&message) }
+            { compute.clone() }
+            { verify }
+        };
+        metrics.extend([
+            Metric {
+                readme: "src/hashes/blake3/README.md",
+                key: keys[0],
+                value: script_len(compute.clone()),
+            },
+            Metric {
+                readme: "src/hashes/blake3/README.md",
+                key: keys[1],
+                value: static_non_push_opcodes(compute),
+            },
+            Metric {
+                readme: "src/hashes/blake3/README.md",
+                key: keys[2],
+                value: max_stack_items_strict(complete, vec![]),
+            },
+        ]);
+    }
+    check_readme_metrics(metrics);
+}
+
 /// Check or intentionally refresh only the PRINCEv2 metric markers, without
 /// generating scripts for the full-repository metric suite.
 #[test]
