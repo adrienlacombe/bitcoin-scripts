@@ -6,6 +6,8 @@ Measured fragments exclude input pushes and output comparison.
 | --- | --- | ---: | --- | --- |
 | BLAKE3 sparse direct u4 | 32-byte input | 59,534 | differentially-validated | Fixed length at generation time; at most 32 bytes |
 | BLAKE3 sparse direct u4, low 128 bits | 32-byte input | 59,105 | differentially-validated | Fixed length at generation time; standard digest prefix only |
+| BLAKE3 sparse direct u4, keyed / derive-key | 32-byte input | 59,532 / 59,521 | differentially-validated | Key or context fixed at generation time; size varies slightly with the key |
+| BLAKE3 sparse direct u4, 64-byte XOF | 32-byte input | 60,131 | differentially-validated | Complete root output; no extra compression; 128 output nibbles |
 | BLAKE3 limb29 | 64-byte input | 72,293 | differentially-validated | Single 1,024-byte chunk only; includes table memory |
 | SHA-1 u32 | 32-byte input | 205,558 | differentially-validated | Collision-broken compatibility hash |
 | SHA-1 u32 midstate | 64-byte prefix + 16-byte suffix | 205,489 | differentially-validated | Requires authenticated H0..H4 after the prefix; collision-broken |

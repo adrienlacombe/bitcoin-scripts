@@ -50,6 +50,18 @@ multi-block context; records both `DERIVE_KEY_CONTEXT` and
 witness shape, and combined stack peak; and either executes under the 1,000-item
 limit or records a measured negative result. See [NR-061](negative-results/index.md).
 
+**Closed (2026-10-11).** `Blake3Mode::derive_key` runs the
+`DERIVE_KEY_CONTEXT` phase on the host, because BLAKE3 requires a hardcoded
+context. The context key becomes the generation-time chaining value of the
+in-Script `DERIVE_KEY_MATERIAL` root compression. The short direct-u4 profile
+matches the official derive-key vectors up to 8 bytes, plus every length up
+to 32 for empty, short, and 150-byte (three-block) contexts against the
+`blake3` crate. For the 32-byte message it measures 59,521 script bytes, a
+111-byte representative witness of 64 data items, zero hints, and a 527-item
+strict peak. Evidence is `differentially-validated`; deployment is
+`unclassified`. Contexts over 1,024 bytes are rejected by the host helper.
+See the corrected [NR-061](negative-results/index.md#nr-061-blake3-derive-key-mode-is-not-a-drop-in-unkeyed-extension).
+
 ## OP-019 — PRINCEv2 M-hat circuit frontier
 
 Find a smaller repeated M-hat circuit for generation-time-key encryption.
@@ -952,6 +964,18 @@ digest. **Complete when:** a generation-time output length supports at least a
 additional output-block compression/routing/cleanup and witness shape, and
 passes the combined 1,000-item stack check for the documented composition.
 
+**Closed (2026-10-11) for 64 bytes.** The first 64 XOF bytes are the
+complete root compression output, so no output-block compression is needed.
+`blake3_short_mode_compute_script(.., 64)` copies `v[8..16]`, XORs it with
+the constant chaining value through fixed XOR-table rows, and returns 128 u4
+items. For the 32-byte message it measures 60,131 script bytes (+597 over the
+digest), 64 data items, zero hints, and a 527-item strict peak including the
+verifier. It matches the `blake3` crate in all three modes for every length up
+to 32. Output beyond 64 bytes, which needs a counter-1 root compression, and
+a multi-block limb-API XOF remain unimplemented. Neither is tracked as an open
+problem until a caller needs it. See the corrected
+[XOF record](negative-results/blake3-xof-output.md).
+
 ## OP-027 — Integrate signed-window decoding into a complete scalar schedule
 
 The signed radix-32 decoder is only a representation bridge. A deterministic
@@ -985,3 +1009,12 @@ Price a keyed BLAKE3 construction for the existing 32-byte input profile.
 independent BLAKE3 implementation, records the eight key words and
 `KEYED_HASH` flag handling, reports witness and combined-stack costs, and
 compares the result with the unkeyed profile under the same compilation policy.
+
+**Closed (2026-10-11).** Keyed mode with a key fixed when the script is
+generated replaces the IV with the key words and adds `KEYED_HASH`. Witness
+shape and routing are unchanged. For the 32-byte message and official key, it
+measures 59,532 script bytes versus 59,534 unkeyed, under the same compilation
+policy and the same 527-item strict peak, with zero hints. Script size varies
+slightly with the key; the all-`0x42` key gives 59,557. A key supplied in the
+witness is not implemented. See the retracted
+[keyed record](negative-results/blake3-keyed-mode.md).

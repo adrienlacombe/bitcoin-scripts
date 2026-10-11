@@ -2,7 +2,7 @@
 
 ## Question and comparison objective
 
-For an unkeyed BLAKE3 message fixed at generation time and no longer than 32
+For a BLAKE3 message length fixed at generation time and no longer than 32
 bytes, minimize the locking-script fragment while keeping the combined
 main/altstack peak at or below 1,000 items. Compare against the previously
 checked 32-byte, 4-bit-limb generator on the same
@@ -44,6 +44,32 @@ so the representative witness is 111 bytes (129 bytes at the valid maximum),
 with zero auxiliary hint items. The output is 32 u4 items in standard BLAKE3
 little-endian byte order; `blake3_verify_output_prefix_script` supplies the
 matching terminal comparison fragment.
+
+### Modes and 64-byte XOF output
+
+`blake3_short_mode_compute_script` adds `keyed_hash`, `derive_key`, and the
+first 64 bytes of the XOF stream to the same input profile. A mode changes only
+the root compression's input chaining value (IV, key, or context key) and one
+flag. The key and context are fixed when the script is generated. BLAKE3
+requires derive-key contexts to be hardcoded, so the context phase runs on the
+host and only the material phase is in Script. For 32-byte input, keyed output
+is 59,532 bytes and derive-key output is 59,521 bytes, at the same 527-item
+strict composition peak. The small differences come from the different
+constants folded into lookup addresses. Each mode uses the same 64 checked
+input items and zero hint items.
+
+The 64-byte XOF prefix is the complete root compression output. Its second
+half is `v[i+8] ^ cv[i]`, where `cv` is a generation-time constant in this
+single-block profile. It needs no extra compression. It measures 60,131 bytes
+(597 bytes more than the 32-byte digest) and 41,442 static non-push opcodes,
+at the same 527-item peak including the 64-byte verifier. Keyed 64-byte output
+measures 60,133 bytes. The output is 128 u4 items, with the first byte deepest.
+Output beyond 64 bytes needs another root compression with an incremented
+counter. That is not implemented.
+
+A key fixed when the script is generated is visible to anyone who sees the
+revealed leaf. Keyed mode is therefore a domain-separation or public-key MAC
+tool, not a way to hide a secret key in Script.
 
 ## Construction
 
@@ -92,6 +118,17 @@ pairs and all 48 addition sums; a subset-DP test proves the 171-item fixed-row
 packing bound. Symbolic and exhaustive tests prove both added stack identities,
 and a runtime/tracker-shape test covers destructive final-table cleanup. The
 generated script is checked as a peephole optimizer fixed point.
+
+`test_short_modes_match_official_extended_vectors` checks all 27 official
+hash, keyed-hash, and derive-key vectors with input length 0 to 8 against their
+64-byte extended outputs.
+`test_short_modes_match_reference_all_lengths_and_outputs` checks every
+length from 0 to 32 in every mode at 16-, 32-, and 64-byte output against the
+`blake3` crate. `test_derive_key_contexts_match_reference` covers empty,
+short, and 150-byte (three-block) contexts. All three tests use strict-stack
+witness execution. Mode scripts reject malformed nibbles, extra items, missing
+items, and another mode's digest. The existing unkeyed profiles call the
+same generator in `Hash` mode. Their metric snapshots are unchanged.
 
 These results are `differentially-validated` locally. They remain
 `research-unlimited`: no pinned Bitcoin Core consensus run or relay-policy

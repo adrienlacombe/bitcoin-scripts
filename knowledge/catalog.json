@@ -5381,30 +5381,26 @@
       "limitations": [
         "Messages limited to one 1,024-byte chunk",
         "No parent-node compression or multi-chunk tree API",
-        "Only unkeyed 32-byte output is implemented",
-        "Keyed and derive-key modes are not implemented",
+        "Only unkeyed 32-byte output is implemented; keyed, derive-key and 64-byte XOF output exist only in the single-block hash/blake3-short-u4 profile, and a multi-block XOF would also need to retain the final block's input chaining value",
         "Local witness-input and peak-metric execution disables the stack-limit check; Bitcoin Core consensus and policy validation were not performed",
-        "A wholly padded final second input group is ignored and not bound",
-        "BLAKE3 XOF output-block counter is not implemented"
+        "A wholly padded final second input group is ignored and not bound"
       ],
       "open_problems": [
         "OP-001",
         "OP-003",
         "OP-013",
-        "OP-023",
-        "OP-024",
-        "OP-028"
+        "OP-023"
       ]
     },
     {
       "id": "hash/blake3-short-u4",
       "name": "BLAKE3 sparse direct-u4 short-input construction",
       "class": "hash/fixed",
-      "summary": "Length-specialized unkeyed BLAKE3 for at most 32 witness-backed bytes, with checked u4 input and compile-time omission of zero padding words.",
+      "summary": "Length-specialized BLAKE3 for at most 32 witness-backed bytes, with checked u4 input, compile-time omission of zero padding words, generation-time hash/keyed/derive-key modes, and 16-, 32-, or 64-byte output.",
       "status": "active",
       "evidence": "differentially-validated",
       "execution": "research-unlimited",
-      "as_of": "2026-09-01",
+      "as_of": "2026-10-11",
       "knowledge_page": "knowledge/primitives/blake3-short-u4.md",
       "implementation": "src/hashes/blake3/mod.rs",
       "documentation": "src/hashes/blake3/README.md",
@@ -5413,6 +5409,12 @@
         "hashes::blake3::tests::test_short_direct_nibbles_reject_malformed_inputs",
         "hashes::blake3::tests::test_short_truncated_128_all_lengths",
         "hashes::blake3::tests::test_short_truncated_128_rejects_malformed_inputs",
+        "hashes::blake3::tests::test_short_modes_match_official_extended_vectors",
+        "hashes::blake3::tests::test_short_modes_match_reference_all_lengths_and_outputs",
+        "hashes::blake3::tests::test_derive_key_contexts_match_reference",
+        "hashes::blake3::tests::test_short_hash_mode_preserves_existing_scripts",
+        "hashes::blake3::tests::test_short_modes_are_domain_separated",
+        "hashes::blake3::tests::test_short_modes_reject_malformed_inputs",
         "hashes::blake3::tests::test_compute_script_is_optimizer_fixed_point",
         "hashes::blake3::tests::stack_identity_peepholes_are_exact",
         "hashes::blake3::utils::tests::destructive_final_xor_query_cleanup_matches_runtime_shape",
@@ -5431,8 +5433,8 @@
         "constant-folding",
         "sparse-state"
       ],
-      "security": "Security is inherited from BLAKE3 for the supported unkeyed output modes; the truncated mode is a prefix of the standard digest, all witness-backed nibbles are numerically checked in [0,16), omitted words are fixed zero padding, and raw-byte canonicality plus digest binding remain caller obligations.",
-      "stack_contract": "Consumes exactly two numeric nibble items per declared message byte from an otherwise empty main stack and returns either 64 full-digest nibbles or 32 nibbles for the standard low-128-bit prefix; the 32-byte configuration uses the documented physical word and digit permutations.",
+      "security": "Security is inherited from BLAKE3 for the supported modes; the truncated mode is a prefix of the standard digest and the 64-byte mode is the first 64 bytes of the standard XOF stream. Keys and derive-key contexts are generation-time constants folded into the script, so a revealed leaf must be treated as disclosing its key. All witness-backed nibbles are numerically checked in [0,16), omitted words are fixed zero padding, and raw-byte canonicality plus digest binding remain caller obligations.",
+      "stack_contract": "Consumes exactly two numeric nibble items per declared message byte from an otherwise empty main stack and returns 32, 64, or 128 output nibbles (16-, 32-, or 64-byte output, first byte deepest); the 32-byte configuration uses the documented physical word and digit permutations.",
       "configurations": [
         {
           "id": "message32-direct-u4",
@@ -5513,22 +5515,143 @@
             "blake3_short_truncated_128_32_opcodes",
             "blake3_short_truncated_128_32_stack"
           ]
+        },
+        {
+          "id": "message32-direct-u4-keyed",
+          "label": "32-byte input, checked direct u4, keyed_hash",
+          "parameters": {
+            "message_bytes": 32,
+            "input_nibbles": 64,
+            "metric_message": "00 01 ... 1f",
+            "optimizer": "bitcoin-script-stack plus proved local stack identities, fixed point",
+            "mode": "keyed_hash",
+            "key": "whats the Elvish word for friend (ASCII)",
+            "output_bytes": 32,
+            "static_non_push_opcodes": 41135,
+            "stack_measurement": "combined main/alt peak from strict local execution of the host-push and output-verifier composition"
+          },
+          "includes": "fragment-with-memory: exact-count u4 input range validation, packed lookup-table setup and cleanup, sparse length-specialized root compression with a generation-time chaining value and mode flag, and output restoration; excludes input witness serialization and output verification; zero hint items",
+          "script_bytes": 59532,
+          "witness_bytes": 111,
+          "witness_bytes_max": 129,
+          "max_stack_items": 527,
+          "static_non_push_opcodes": 41135,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 353,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "blake3_short_keyed_32",
+            "blake3_short_keyed_32_opcodes",
+            "blake3_short_keyed_32_stack"
+          ]
+        },
+        {
+          "id": "message32-direct-u4-derive-key",
+          "label": "32-byte input, checked direct u4, derive_key material phase",
+          "parameters": {
+            "message_bytes": 32,
+            "input_nibbles": 64,
+            "metric_message": "00 01 ... 1f",
+            "optimizer": "bitcoin-script-stack plus proved local stack identities, fixed point",
+            "mode": "derive_key",
+            "context": "BLAKE3 2019-12-27 16:29:52 test vectors context",
+            "context_phase": "host, generation time",
+            "output_bytes": 32,
+            "static_non_push_opcodes": 41131,
+            "stack_measurement": "combined main/alt peak from strict local execution of the host-push and output-verifier composition"
+          },
+          "includes": "fragment-with-memory: exact-count u4 input range validation, packed lookup-table setup and cleanup, sparse length-specialized root compression with a generation-time chaining value and mode flag, and output restoration; excludes input witness serialization and output verification; zero hint items",
+          "script_bytes": 59521,
+          "witness_bytes": 111,
+          "witness_bytes_max": 129,
+          "max_stack_items": 527,
+          "static_non_push_opcodes": 41131,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 353,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "blake3_short_derive_key_32",
+            "blake3_short_derive_key_32_opcodes",
+            "blake3_short_derive_key_32_stack"
+          ]
+        },
+        {
+          "id": "message32-direct-u4-xof64",
+          "label": "32-byte input, checked direct u4, 64-byte XOF",
+          "parameters": {
+            "message_bytes": 32,
+            "input_nibbles": 64,
+            "metric_message": "00 01 ... 1f",
+            "optimizer": "bitcoin-script-stack plus proved local stack identities, fixed point",
+            "mode": "hash",
+            "output_bytes": 64,
+            "output_nibbles": 128,
+            "extra_compressions": 0,
+            "static_non_push_opcodes": 41442,
+            "stack_measurement": "combined main/alt peak from strict local execution of the host-push and output-verifier composition"
+          },
+          "includes": "fragment-with-memory: exact-count u4 input range validation, packed lookup-table setup and cleanup, sparse length-specialized root compression with a generation-time chaining value and mode flag, and output restoration; excludes input witness serialization and output verification; zero hint items",
+          "script_bytes": 60131,
+          "witness_bytes": 111,
+          "witness_bytes_max": 129,
+          "max_stack_items": 527,
+          "static_non_push_opcodes": 41442,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 353,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "blake3_short_xof64_32",
+            "blake3_short_xof64_32_opcodes",
+            "blake3_short_xof64_32_stack"
+          ]
+        },
+        {
+          "id": "message32-direct-u4-keyed-xof64",
+          "label": "32-byte input, checked direct u4, keyed_hash, 64-byte XOF",
+          "parameters": {
+            "message_bytes": 32,
+            "input_nibbles": 64,
+            "metric_message": "00 01 ... 1f",
+            "optimizer": "bitcoin-script-stack plus proved local stack identities, fixed point",
+            "mode": "keyed_hash",
+            "key": "whats the Elvish word for friend (ASCII)",
+            "output_bytes": 64,
+            "output_nibbles": 128,
+            "extra_compressions": 0,
+            "static_non_push_opcodes": 41443,
+            "stack_measurement": "combined main/alt peak from strict local execution of the host-push and output-verifier composition"
+          },
+          "includes": "fragment-with-memory: exact-count u4 input range validation, packed lookup-table setup and cleanup, sparse length-specialized root compression with a generation-time chaining value and mode flag, and output restoration; excludes input witness serialization and output verification; zero hint items",
+          "script_bytes": 60133,
+          "witness_bytes": 111,
+          "witness_bytes_max": 129,
+          "max_stack_items": 527,
+          "static_non_push_opcodes": 41443,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": 353,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "blake3_short_keyed_xof64_32",
+            "blake3_short_keyed_xof64_32_opcodes",
+            "blake3_short_keyed_xof64_32_stack"
+          ]
         }
       ],
       "limitations": [
         "Messages are limited to 32 bytes and the length is fixed when the script is generated",
-        "Only unkeyed 32-byte output and its 128-bit prefix are implemented",
-        "Keyed and derive-key modes are not implemented",
+        "Keys and derive-key contexts are fixed when the script is generated; a witness-supplied key is not implemented",
+        "XOF output is limited to the first 64 bytes; later output blocks need another root compression",
         "The direct u4 layout uses up to 64 witness items and differs from the selected-limb API",
-        "Bitcoin Core consensus and policy validation were not performed",
-        "BLAKE3 XOF output-block counter is not implemented"
+        "Bitcoin Core consensus and policy validation were not performed"
       ],
       "open_problems": [
         "OP-001",
         "OP-003",
-        "OP-013",
-        "OP-024",
-        "OP-028"
+        "OP-013"
       ]
     },
     {

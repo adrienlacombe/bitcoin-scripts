@@ -3,13 +3,16 @@
 These records prevent repeated dead ends. They are scoped observations, not
 universal impossibility proofs.
 
-## NR-071: u4 MSB lookup table is dominated by a direct threshold at n=32
+## NR-071: u4 MSB lookup table trades six bytes for 16 stack items at n=32
 
 The former 16-entry lookup implementation measured 440 locking-script bytes
 and a 50-item peak, while the direct range-checked `nibble >= 8` implementation
-measures 446 bytes and a 34-item peak at the same 32-nibble boundary. This is
-scoped to `n=32` and does not claim dominance for other batch sizes. Evidence
-is `locally-reproduced`; deployment is `unclassified`.
+measures 446 bytes and a 34-item peak at the same 32-nibble boundary. The
+lookup is six bytes smaller, so neither layout dominates. The retained
+threshold was chosen for stack headroom. An earlier version of this entry
+called the lookup "dominated"; that title was incorrect (corrected
+2026-10-11). This is scoped to `n=32`. Evidence is `locally-reproduced`;
+deployment is `unclassified`.
 
 ## NR-049: Signature opcodes still diverge after resource repairs
 
@@ -194,6 +197,22 @@ these checks to the repaired dependency; see
 [NR-048](#nr-048-minimal-push-policy-must-follow-execution). Earlier measurements
 keep their original tool provenance and evidence classes.
 ## NR-061: BLAKE3 derive-key mode is not a drop-in unkeyed extension
+
+**Status (2026-10-11): reasoning retracted; derive-key is implemented.** The
+two-phase observation below is correct. The conclusion that a port must
+"duplicate the full compression schedule" is not. BLAKE3 requires the
+derive-key context to be a hardcoded string. The context phase therefore runs
+on the host when the script is generated, and only the material phase runs in
+Script. That phase is one root compression from a constant context key with
+`DERIVE_KEY_MATERIAL`, priced like keyed mode. For the 32-byte `00 01 ... 1f`
+message and the official context, it measures 59,521 bytes, 41,131 static
+non-push opcodes, a 527-item strict peak, 64 data items, and zero hints. It
+matches the official vectors and the `blake3` crate for empty, short, and
+three-block contexts. Evidence is `differentially-validated`; deployment is
+`unclassified`. This closes
+[OP-025](../open-problems.md#op-025--blake3-derive-key-boundary). See the
+[short-profile page](../primitives/blake3-short-u4.md). The original text
+follows.
 
 The local BLAKE3 backend implements the unkeyed mode with the fixed BLAKE3 IV,
 unkeyed flags, and one message-hashing schedule. The reference specification
@@ -1453,12 +1472,6 @@ leaf. Negative and larger positive indices are tested separately. Repaired
 pin `4b7269a` addresses the executor bounds bug; see
 [NR-048](#nr-048-minimal-push-policy-must-follow-execution). Historical measurements
 retain their original evidence; complete-protocol validation remains under OP-009.
-the remaining pool length, pinned `bitcoin-scriptexec`
-`ba96bc2bd76774c9d1b011461cb79d983c2c43a1` checks bounds before removing the
-selector and then unwrap-panics. A dedicated test reproduces that panic;
-it must not be counted as a clean local rejection or Core validation.
-Negative and larger positive indices are tested separately. This executor
-limitation and missing complete-protocol validation remain under OP-009.
 
 ## NR-050: Signed-window lookup tables lose short batches
 
@@ -1568,6 +1581,15 @@ multi-chunk tree. The existing boundary tests reproduce acceptance at exactly
 `locally-reproduced` API boundary and `inspected` missing-construction result,
 not an impossibility claim; the follow-up criterion is recorded in OP-023.
 ## NR-060: BLAKE3 XOF output is outside the current generator contract
+
+**Status (2026-10-11): corrected; 64-byte output is implemented.** The text
+below says that a longer output requires "the extra compression". That is
+wrong for the first 64 bytes. They are the complete root compression output:
+the second half is `v[i+8] ^ cv[i]`, which needs no new compression. The
+short profile now returns them for 60,131 bytes, versus 59,534 for the
+digest, at the same 527-item peak. See the corrected
+[XOF record](blake3-xof-output.md). Output beyond 64 bytes, and a 64-byte XOF
+in the multi-block limb API, remain unimplemented. The original text follows.
 
 The local BLAKE3 generators stop at the unkeyed 32-byte digest and do not
 implement the root-output block counter needed for XOF continuation. A
@@ -1736,6 +1758,13 @@ result is not a consensus or policy deployment claim. Reproduce it with:
 `cargo test --locked 'signatures::schnorr::csfs::tests::generator_window_width5_probe' --lib -- --ignored`.
 
 ## NR-069: BLAKE3 keyed mode is outside the current generator contract
+
+**Status (2026-10-11): retracted; keyed mode is implemented.** With a key
+fixed when the script is generated, keyed mode changes only constants: the key
+replaces the IV, and the flags gain `KEYED_HASH`. Witness shape and stack
+routing do not change. The keyed hash measures 59,532 bytes with the official
+test key, versus 59,534 unkeyed, at the same 527-item peak and zero hints. See
+the [retracted keyed record](blake3-keyed-mode.md). The original text follows.
 
 The local BLAKE3 generators accept no key and set no `KEYED_HASH` mode flag.
 A deterministic probe over `00 01 ... 1f` with a 32-byte `0x42` key produces a
