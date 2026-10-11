@@ -14362,12 +14362,13 @@
       "status": "active",
       "evidence": "locally-reproduced",
       "execution": "unclassified",
-      "as_of": "2026-09-18",
+      "as_of": "2026-10-11",
       "knowledge_page": "knowledge/primitives/u4-msb.md",
       "implementation": "src/arithmetic/u4/msb.rs",
       "documentation": "src/arithmetic/u4/README.md",
       "tests": [
         "arithmetic::u4::msb::tests::projects_asymmetric_boundary_values_in_order",
+        "arithmetic::u4::msb::tests::projects_every_nibble_and_rejects_neighbors",
         "arithmetic::u4::msb::tests::rejects_invalid_nibbles_at_each_position",
         "arithmetic::u4::msb::tests::respects_direct_threshold_stack_frontier",
         "primitive_metrics::u4_msb_metrics_are_current"
@@ -14393,26 +14394,26 @@
             "output_items": 32,
             "hint_items": 0
           },
-          "includes": "fragment-only: 32 range checks, direct >=8 threshold comparisons, output staging/restoration, and no hints; excludes input pushes, witness serialization, terminal predicate, unrelated state, and transaction context",
-          "script_bytes": 446,
+          "includes": "fragment-only: 32 OP_WITHIN range checks, direct >=8 threshold comparisons, output staging/restoration, and no hints; excludes input pushes, witness serialization, terminal predicate, unrelated state, and transaction context",
+          "script_bytes": 286,
           "witness_bytes": 65,
           "witness_bytes_max": 65,
-          "max_stack_items": 34,
+          "max_stack_items": 35,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
-          "per_use_script_bytes": 446,
+          "per_use_script_bytes": 286,
           "metric_keys": [
             "u4_msb_batch32",
             "u4_msb_batch32_witness",
             "u4_msb_batch32_stack",
             "u4_msb_batch32_opcodes"
           ],
-          "static_non_push_opcodes": 350
+          "static_non_push_opcodes": 190
         }
       ],
       "limitations": [
-        "Widths are limited to 1..=998 because the direct standalone peak is n+2",
+        "Widths are limited to 1..=997 because the standalone peak is n+3",
         "Preserved main- or alt-stack state reduces the maximum width",
         "Numeric outputs are ScriptNum bits, not raw bytes",
         "No Bitcoin Core consensus or relay-policy validation"

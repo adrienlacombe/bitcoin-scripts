@@ -6,10 +6,14 @@ universal impossibility proofs.
 ## NR-071: u4 MSB lookup table is dominated by a direct threshold at n=32
 
 The former 16-entry lookup implementation measured 440 locking-script bytes
-and a 50-item peak, while the direct range-checked `nibble >= 8` implementation
-measures 446 bytes and a 34-item peak at the same 32-nibble boundary. This is
-scoped to `n=32` and does not claim dominance for other batch sizes. Evidence
-is `locally-reproduced`; deployment is `unclassified`.
+and a 50-item peak. The first direct range-checked `nibble >= 8`
+implementation measured 446 bytes and a 34-item peak at the same 32-nibble
+boundary. That was a bytes-for-stack tradeoff, not domination: the lookup was
+six bytes smaller. The current `OP_WITHIN` threshold measures 286 bytes and a
+35-item peak, so it dominates the lookup on both counts. A 382-byte schedule
+keeps the 34-item peak. See the [primitive page](../primitives/u4-msb.md#schedule-comparison).
+This is scoped to `n=32`. Evidence is `locally-reproduced` for the retained
+and lookup rows; deployment is `unclassified`.
 
 ## NR-049: Signature opcodes still diverge after resource repairs
 

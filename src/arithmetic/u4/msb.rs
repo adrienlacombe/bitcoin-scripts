@@ -2,8 +2,10 @@
 
 use crate::support::script::*;
 
-/// Largest direct-threshold batch before unrelated stack state.
-pub const U4_MSB_MAX_BATCH: u32 = 998;
+/// Largest direct-threshold batch before unrelated stack state. Each step
+/// holds the nibble, its copy, and both `OP_WITHIN` bounds, so the standalone
+/// peak is `n + 3`.
+pub const U4_MSB_MAX_BATCH: u32 = 997;
 
 /// Consume range-checked nibbles and replace each with its most-significant bit.
 pub fn u4_nibbles_to_msb(nibble_count: u32) -> Script {
@@ -15,11 +17,9 @@ pub fn u4_nibbles_to_msb(nibble_count: u32) -> Script {
 
     script! {
         for _ in 0..nibble_count {
-            OP_DUP OP_0 OP_GREATERTHANOREQUAL OP_VERIFY
-            OP_DUP OP_16 OP_LESSTHAN OP_VERIFY
-            OP_DUP 8 OP_GREATERTHANOREQUAL
+            OP_DUP 0 16 OP_WITHIN OP_VERIFY
+            8 OP_GREATERTHANOREQUAL
             OP_TOALTSTACK
-            OP_DROP
         }
         for _ in 0..nibble_count {
             OP_FROMALTSTACK
@@ -49,6 +49,19 @@ mod tests {
             0 OP_EQUAL
         });
         assert!(result.success, "MSB projection failed: {result}");
+    }
+
+    #[test]
+    fn projects_every_nibble_and_rejects_neighbors() {
+        for nibble in -1..=16_i64 {
+            let result = execute_script(script! {
+                { nibble }
+                { u4_nibbles_to_msb(1) }
+                { i64::from(nibble >= 8) }
+                OP_EQUAL
+            });
+            assert_eq!(result.success, (0..16).contains(&nibble), "nibble {nibble}");
+        }
     }
 
     #[test]
@@ -92,12 +105,12 @@ mod tests {
         assert_eq!(maximum.stats.max_nb_stack_items, 1000);
 
         let mut preserved = vec![vec![7]];
-        preserved.extend(vec![Vec::new(); 996]);
+        preserved.extend(vec![Vec::new(); 995]);
         let with_state = execute_script_with_inputs_strict(
             script! {
                 OP_9 OP_TOALTSTACK
-                { u4_nibbles_to_msb(996) }
-                { crate::arithmetic::u4::stack::u4_drop(996) }
+                { u4_nibbles_to_msb(995) }
+                { crate::arithmetic::u4::stack::u4_drop(995) }
                 7 OP_EQUALVERIFY
                 OP_FROMALTSTACK 9 OP_EQUALVERIFY
                 OP_TRUE
@@ -107,9 +120,9 @@ mod tests {
         assert!(with_state.success, "preserved state failed: {with_state}");
 
         let mut over_budget = vec![vec![7]];
-        over_budget.extend(vec![Vec::new(); 997]);
+        over_budget.extend(vec![Vec::new(); 996]);
         let rejected = execute_script_with_inputs_strict(
-            script! { OP_9 OP_TOALTSTACK { u4_nibbles_to_msb(997) } },
+            script! { OP_9 OP_TOALTSTACK { u4_nibbles_to_msb(996) } },
             over_budget,
         );
         assert_eq!(rejected.error, Some(ExecError::StackSize));
