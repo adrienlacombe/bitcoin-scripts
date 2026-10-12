@@ -14367,8 +14367,10 @@
       "implementation": "src/arithmetic/u4/msb.rs",
       "documentation": "src/arithmetic/u4/README.md",
       "tests": [
+        "arithmetic::u4::msb::tests::batch32_stays_within_three_scratch_items",
         "arithmetic::u4::msb::tests::projects_asymmetric_boundary_values_in_order",
-        "arithmetic::u4::msb::tests::projects_every_nibble_and_rejects_neighbors",
+        "arithmetic::u4::msb::tests::projects_every_value_at_every_position_for_all_schedules",
+        "arithmetic::u4::msb::tests::rejects_every_invalid_value_at_every_position_for_all_schedules",
         "arithmetic::u4::msb::tests::rejects_invalid_nibbles_at_each_position",
         "arithmetic::u4::msb::tests::respects_direct_threshold_stack_frontier",
         "primitive_metrics::u4_msb_metrics_are_current"
@@ -14394,26 +14396,26 @@
             "output_items": 32,
             "hint_items": 0
           },
-          "includes": "fragment-only: 32 OP_WITHIN range checks, direct >=8 threshold comparisons, output staging/restoration, and no hints; excludes input pushes, witness serialization, terminal predicate, unrelated state, and transaction context",
-          "script_bytes": 286,
+          "includes": "fragment-only: 32 range checks in groups of up to three, direct >=8 threshold comparisons, output staging/restoration, and no hints; excludes input pushes, witness serialization, terminal predicate, unrelated state, and transaction context",
+          "script_bytes": 250,
           "witness_bytes": 65,
           "witness_bytes_max": 65,
           "max_stack_items": 35,
           "executed_opcodes": null,
           "validation_weight": null,
           "setup_script_bytes": 0,
-          "per_use_script_bytes": 286,
+          "per_use_script_bytes": 250,
           "metric_keys": [
             "u4_msb_batch32",
             "u4_msb_batch32_witness",
             "u4_msb_batch32_stack",
             "u4_msb_batch32_opcodes"
           ],
-          "static_non_push_opcodes": 190
+          "static_non_push_opcodes": 202
         }
       ],
       "limitations": [
-        "Widths are limited to 1..=997 because the standalone peak is n+3",
+        "Widths are limited to 1..=998; batches up to 995 peak at n+3 and larger ones at n+2",
         "Preserved main- or alt-stack state reduces the maximum width",
         "Numeric outputs are ScriptNum bits, not raw bytes",
         "No Bitcoin Core consensus or relay-policy validation"

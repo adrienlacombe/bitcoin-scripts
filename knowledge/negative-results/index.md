@@ -9,9 +9,11 @@ The former 16-entry lookup implementation measured 440 locking-script bytes
 and a 50-item peak. The first direct range-checked `nibble >= 8`
 implementation measured 446 bytes and a 34-item peak at the same 32-nibble
 boundary. That was a bytes-for-stack tradeoff, not domination: the lookup was
-six bytes smaller. The current `OP_WITHIN` threshold measures 286 bytes and a
-35-item peak, so it dominates the lookup on both counts. A 382-byte schedule
-keeps the 34-item peak. See the [primitive page](../primitives/u4-msb.md#schedule-comparison).
+six bytes smaller. A per-nibble `OP_WITHIN` threshold measured 286 bytes and a
+35-item peak, and the current schedule, which range-checks nibbles in groups of
+three, measures 250 bytes and a 35-item peak, so the threshold dominates the
+lookup on both counts. Its two-nibble-group variant keeps the 34-item peak at
+277 bytes. See the [primitive page](../primitives/u4-msb.md#schedule-comparison).
 This is scoped to `n=32`. Evidence is `locally-reproduced` for the retained
 and lookup rows; deployment is `unclassified`.
 
