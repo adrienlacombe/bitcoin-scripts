@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn preserves_surrounding_state_and_detects_stack_overflow() {
         let leaf = script! {
-            99 OP_TOALTSTACK
+            1 OP_ROLL OP_TOALTSTACK
             { decode_rank(4) }
             0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 2 OP_EQUALVERIFY 3 OP_EQUALVERIFY
             77 OP_EQUALVERIFY
@@ -253,7 +253,7 @@ mod tests {
         .compile_with_policy();
         assert_clean_true(&run_tapscript(
             leaf,
-            vec![scriptnum(77), vec![]],
+            vec![scriptnum(77), scriptnum(99), vec![]],
             TapscriptProfile::Consensus,
         ));
         let leaf = script! { { decode_rank(12) } }.compile_with_policy();
@@ -279,21 +279,24 @@ mod tests {
             ] {
                 let preserved = 1000 - peak;
                 let leaf = script! {
-                    99 OP_TOALTSTACK
+                    { payload.len() } OP_ROLL OP_TOALTSTACK
                     { fragment.clone() }
                     for value in (0..width).rev() { { value } OP_EQUALVERIFY }
-                    for _ in 0..preserved-1 { OP_DROP }
+                    for _ in 0..preserved-1 { 77 OP_EQUALVERIFY }
                     OP_FROMALTSTACK 99 OP_EQUAL
                 }
                 .compile_with_policy();
                 let mut witness = vec![scriptnum(77); (preserved - 1) as usize];
+                witness.push(scriptnum(99));
                 witness.extend(payload.clone());
                 let result = run_tapscript(leaf, witness, TapscriptProfile::Consensus);
                 assert_clean_true(&result);
                 assert_eq!(result.stats.max_nb_stack_items, 1000);
                 let mut overflowing = vec![scriptnum(77); preserved as usize];
+                overflowing.push(scriptnum(99));
+                let leaf = script! { { payload.len() } OP_ROLL OP_TOALTSTACK { fragment } }
+                    .compile_with_policy();
                 overflowing.extend(payload);
-                let leaf = script! { 99 OP_TOALTSTACK { fragment } }.compile_with_policy();
                 let result = run_tapscript(leaf, overflowing, TapscriptProfile::Consensus);
                 assert!(matches!(
                     result.error,
