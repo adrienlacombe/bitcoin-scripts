@@ -309,6 +309,13 @@
       "kind": "reference-implementation",
       "url": "https://github.com/bitcoin/bitcoin/tree/49faec4f87f5cd19c88db01a82e5c68b087c8227",
       "revision": "49faec4f87f5cd19c88db01a82e5c68b087c8227 (v30.3); official archive SHA256 pins in tools/bitcoin_core_release.json; 24 deterministic complete Taproot regtest comparisons recorded 2026-09-10"
+    },
+    {
+      "id": "tarau-factoradic-2008",
+      "title": "Ranking and Unranking of Hereditarily Finite Functions and Permutations",
+      "kind": "paper",
+      "url": "https://arxiv.org/html/0808.0554v1",
+      "revision": "arXiv:0808.0554v1, 2008-08-05; sections 7.1 and 7.2"
     }
   ]
 }

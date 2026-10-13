@@ -1757,3 +1757,12 @@ integer objective and is not retained as a byte-efficiency improvement. The
 result does not rule out a ternary path when protocol state is naturally
 three-valued or when a different consumer amortizes its dispatcher; see
 [OP-030](../open-problems.md#op-030--ternary-commitment-composition-frontier).
+
+## NR-075: Packed permutation ranks lose combined bytes
+
+Canonical, hint-free factoradic decoding saves data witness items and stack peak,
+but loses complete-leaf script plus data-witness bytes to separate Lehmer digits
+at widths 4/8/12 (105/317/639 versus 64/144/224). Both explicitly check hostile
+encodings, clean up their trusted symbol pool and compare every output. This
+`locally-reproduced`, `unclassified` tapscript result uses strict stack checks
+and zero hints. See [the measurements](factoradic-permutation.md) and OP-032.

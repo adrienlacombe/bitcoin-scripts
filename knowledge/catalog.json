@@ -14564,6 +14564,252 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/factoradic-permutation",
+      "name": "Canonical bounded permutation rank decoding",
+      "class": "arithmetic/scriptnum",
+      "summary": "Decode one canonical ScriptNum rank into a small public-alphabet lexicographic permutation without witness hints.",
+      "status": "experimental",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-10-13",
+      "knowledge_page": "knowledge/primitives/factoradic-permutation.md",
+      "implementation": "src/arithmetic/permutation/mod.rs",
+      "documentation": "src/arithmetic/permutation/README.md",
+      "tests": [
+        "arithmetic::permutation::tests",
+        "primitive_metrics::permutation_rank_metrics_are_current"
+      ],
+      "references": [
+        "tarau-factoradic-2008",
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-csv-20260920"
+      ],
+      "techniques": [
+        "digit-arithmetic",
+        "constant-embedding",
+        "range-check",
+        "tracked-stack"
+      ],
+      "security": "Hostile rank/digits are canonical and bounded before pool selection; outputs are exact public symbols, without authentication or hiding. Caller must consume outputs and provide a terminal predicate.",
+      "stack_contract": "Rank or reverse-stage Lehmer digits are consumed; output p[width-1] ... p[0] has the first permutation symbol on top; unrelated main and alt items are preserved.",
+      "configurations": [
+        {
+          "id": "rank-width4-descending",
+          "label": "rank decoder, width 4, descending permutation",
+          "parameters": {
+            "width": 4,
+            "encoding": "rank",
+            "permutation": "descending",
+            "data_items": 1,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, trusted pool setup and cleanup, decoding, every descending-permutation output equality and clean truthy result; data witness serialization includes item count and length prefixes; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated live state",
+          "script_bytes": 102,
+          "witness_bytes": 3,
+          "witness_bytes_max": 3,
+          "max_stack_items": 8,
+          "executed_opcodes": 70,
+          "static_non_push_opcodes": 74,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "permutation_rank_4_script",
+            "permutation_rank_4_witness",
+            "permutation_rank_4_stack",
+            "permutation_rank_4_executed"
+          ]
+        },
+        {
+          "id": "digits-width4-descending",
+          "label": "digits decoder, width 4, descending permutation",
+          "parameters": {
+            "width": 4,
+            "encoding": "digits",
+            "permutation": "descending",
+            "data_items": 3,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, trusted pool setup and cleanup, decoding, every descending-permutation output equality and clean truthy result; data witness serialization includes item count and length prefixes; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated live state",
+          "script_bytes": 57,
+          "witness_bytes": 7,
+          "witness_bytes_max": 7,
+          "max_stack_items": 10,
+          "executed_opcodes": 37,
+          "static_non_push_opcodes": 37,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "permutation_digits_4_script",
+            "permutation_digits_4_witness",
+            "permutation_digits_4_stack",
+            "permutation_digits_4_executed"
+          ]
+        },
+        {
+          "id": "rank-width8-descending",
+          "label": "rank decoder, width 8, descending permutation",
+          "parameters": {
+            "width": 8,
+            "encoding": "rank",
+            "permutation": "descending",
+            "data_items": 1,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, trusted pool setup and cleanup, decoding, every descending-permutation output equality and clean truthy result; data witness serialization includes item count and length prefixes; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated live state",
+          "script_bytes": 312,
+          "witness_bytes": 5,
+          "witness_bytes_max": 5,
+          "max_stack_items": 12,
+          "executed_opcodes": 178,
+          "static_non_push_opcodes": 198,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "permutation_rank_8_script",
+            "permutation_rank_8_witness",
+            "permutation_rank_8_stack",
+            "permutation_rank_8_executed"
+          ]
+        },
+        {
+          "id": "digits-width8-descending",
+          "label": "digits decoder, width 8, descending permutation",
+          "parameters": {
+            "width": 8,
+            "encoding": "digits",
+            "permutation": "descending",
+            "data_items": 7,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, trusted pool setup and cleanup, decoding, every descending-permutation output equality and clean truthy result; data witness serialization includes item count and length prefixes; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated live state",
+          "script_bytes": 129,
+          "witness_bytes": 15,
+          "witness_bytes_max": 15,
+          "max_stack_items": 18,
+          "executed_opcodes": 85,
+          "static_non_push_opcodes": 85,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "permutation_digits_8_script",
+            "permutation_digits_8_witness",
+            "permutation_digits_8_stack",
+            "permutation_digits_8_executed"
+          ]
+        },
+        {
+          "id": "rank-width12-descending",
+          "label": "rank decoder, width 12, descending permutation",
+          "parameters": {
+            "width": 12,
+            "encoding": "rank",
+            "permutation": "descending",
+            "data_items": 1,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, trusted pool setup and cleanup, decoding, every descending-permutation output equality and clean truthy result; data witness serialization includes item count and length prefixes; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated live state",
+          "script_bytes": 633,
+          "witness_bytes": 6,
+          "witness_bytes_max": 6,
+          "max_stack_items": 16,
+          "executed_opcodes": 302,
+          "static_non_push_opcodes": 354,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "permutation_rank_12_script",
+            "permutation_rank_12_witness",
+            "permutation_rank_12_stack",
+            "permutation_rank_12_executed"
+          ]
+        },
+        {
+          "id": "digits-width12-descending",
+          "label": "digits decoder, width 12, descending permutation",
+          "parameters": {
+            "width": 12,
+            "encoding": "digits",
+            "permutation": "descending",
+            "data_items": 11,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, trusted pool setup and cleanup, decoding, every descending-permutation output equality and clean truthy result; data witness serialization includes item count and length prefixes; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated live state",
+          "script_bytes": 201,
+          "witness_bytes": 23,
+          "witness_bytes_max": 23,
+          "max_stack_items": 26,
+          "executed_opcodes": 133,
+          "static_non_push_opcodes": 133,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "permutation_digits_12_script",
+            "permutation_digits_12_witness",
+            "permutation_digits_12_stack",
+            "permutation_digits_12_executed"
+          ]
+        }
+      ],
+      "limitations": [
+        "Width is limited to 1..=12 by the four-byte positive ScriptNum rank domain",
+        "Packed ranks lose combined script plus data-witness bytes to separate digits at the measured widths",
+        "Output expansion still requires width stack items",
+        "No Core complete-spend or relay-policy validation",
+        "Not an onchain decoder for the existing 49-key Winternitz multiset scheme"
+      ],
+      "open_problems": [
+        "OP-032"
+      ]
     }
   ]
 }

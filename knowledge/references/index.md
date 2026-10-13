@@ -116,3 +116,8 @@ The binary hash-path optimization also inspects `bitcoin-core-v29-hashes`
 (Bitcoin Core v29.0 interpreter.cpp) for CastToBool, static opcode counting and
 MINIMALIF. Executable local results use rust-bitcoin-scriptexec revision
 `702544c9a045ac4fc14846da6da6559e2b7cd9d1`, not Bitcoin Core execution.
+
+The bounded permutation decoder cites `tarau-factoradic-2008`,
+[arXiv:0808.0554v1](https://arxiv.org/html/0808.0554v1), for factoradic and Lehmer
+permutation encoding. Its Script threshold subtraction, hostile-witness checks
+and complete-leaf comparison are local results, not claims from that paper.

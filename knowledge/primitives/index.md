@@ -91,6 +91,8 @@ the source. Read a page together with its comparison page and evidence record.
 - [Residue-number arithmetic](rns.md)
 - [Prime logarithmic residue-number arithmetic](prime-rns.md)
 
+- [Canonical bounded permutation decoding](factoradic-permutation.md)
+
 ## Commitments
 
 - [Mixed-hash path commitment](hash-path-integer.md)

@@ -85,3 +85,10 @@ preserves unrelated main state and peaks at 120. Neither method reconstructs
 bytes or checks the host's rank bound. BitVM3 can use the assignment subject
 to integration that binds its meaning and handles unused ranks; an onchain
 byte consumer remains a separate measured cost.
+
+A [bounded factoradic rank](../primitives/factoradic-permutation.md) represents
+a permutation of at most twelve public symbols as one canonical ScriptNum.
+Unlike the signature encoders above, it reconstructs the symbols on chain.
+At width 8 it reduces seven separate Lehmer data items to one and a measured
+18-item peak to 12, but its equal complete leaf grows from 129 to 312 bytes.
+Both have zero hints; output expansion still needs eight live items.

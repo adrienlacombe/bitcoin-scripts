@@ -10861,3 +10861,156 @@ fn u32_or_constant_metrics() -> Vec<Metric> {
 fn u32_or_constant_metrics_are_current() {
     check_readme_metrics(u32_or_constant_metrics());
 }
+
+/// Compare equal complete leaves for packed-rank and separate-digit witnesses.
+#[test]
+fn permutation_rank_metrics_are_current() {
+    use bitcoin::{absolute, transaction, TapLeafHash, Transaction};
+    use bitcoin_lab::{arithmetic::permutation, support::provenance};
+    use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate};
+
+    fn measure(script: bitcoin::ScriptBuf, witness: Vec<Vec<u8>>) -> (usize, usize) {
+        let mut exec = Exec::new(
+            ExecCtx::Tapscript,
+            Options {
+                require_minimal: false,
+                enforce_stack_limit: true,
+                ..Default::default()
+            },
+            TxTemplate {
+                tx: Transaction {
+                    version: transaction::Version::TWO,
+                    lock_time: absolute::LockTime::ZERO,
+                    input: vec![],
+                    output: vec![],
+                },
+                prevouts: vec![],
+                input_idx: 0,
+                taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+            },
+            script,
+            witness,
+        )
+        .unwrap();
+        let mut executed = 0;
+        loop {
+            let instruction = exec.remaining_script().instructions().next();
+            let active = exec.cond_stack().all_true();
+            let counted = matches!(instruction, Some(Ok(Instruction::Op(op))) if op.to_u8() > 0x60 && (active || (0x63..=0x68).contains(&op.to_u8())));
+            if exec.exec_next().is_err() {
+                break;
+            }
+            executed += usize::from(counted);
+        }
+        assert!(exec.result().unwrap().success);
+        assert_eq!(exec.stack().len(), 1);
+        (exec.stats().max_nb_stack_items, executed)
+    }
+
+    let mut report = Vec::new();
+    for width in [4, 8, 12] {
+        for (encoding, fragment, witness) in [
+            (
+                "rank",
+                permutation::decode_rank(width),
+                vec![scriptnum(i64::from(
+                    permutation::permutation_count(width) - 1,
+                ))],
+            ),
+            (
+                "digits",
+                permutation::decode_digits(width),
+                (1..width)
+                    .map(|digit| scriptnum(i64::from(digit)))
+                    .collect(),
+            ),
+        ] {
+            let leaf = script! {
+                { fragment }
+                for value in (0..width).rev() {
+                    { value } OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+            let compiled = leaf.clone().compile_with_policy();
+            let (peak, executed) = measure(compiled.clone(), witness.clone());
+            let keys = match (width, encoding) {
+                (4, "rank") => [
+                    "permutation_rank_4_script",
+                    "permutation_rank_4_witness",
+                    "permutation_rank_4_items",
+                    "permutation_rank_4_stack",
+                    "permutation_rank_4_executed",
+                ],
+                (4, "digits") => [
+                    "permutation_digits_4_script",
+                    "permutation_digits_4_witness",
+                    "permutation_digits_4_items",
+                    "permutation_digits_4_stack",
+                    "permutation_digits_4_executed",
+                ],
+                (8, "rank") => [
+                    "permutation_rank_8_script",
+                    "permutation_rank_8_witness",
+                    "permutation_rank_8_items",
+                    "permutation_rank_8_stack",
+                    "permutation_rank_8_executed",
+                ],
+                (8, "digits") => [
+                    "permutation_digits_8_script",
+                    "permutation_digits_8_witness",
+                    "permutation_digits_8_items",
+                    "permutation_digits_8_stack",
+                    "permutation_digits_8_executed",
+                ],
+                (12, "rank") => [
+                    "permutation_rank_12_script",
+                    "permutation_rank_12_witness",
+                    "permutation_rank_12_items",
+                    "permutation_rank_12_stack",
+                    "permutation_rank_12_executed",
+                ],
+                (12, "digits") => [
+                    "permutation_digits_12_script",
+                    "permutation_digits_12_witness",
+                    "permutation_digits_12_items",
+                    "permutation_digits_12_stack",
+                    "permutation_digits_12_executed",
+                ],
+                _ => unreachable!("fixed metric configurations"),
+            };
+            let row = serde_json::json!({
+                "width": width, "encoding": encoding, "script_bytes": compiled.len(),
+                "witness_bytes": witness_size(&witness), "data_items": witness.len(), "hint_items": 0,
+                "max_stack_items": peak, "executed_opcodes": executed,
+                "static_non_push_opcodes": static_non_push_opcodes(leaf),
+            });
+            let mut metrics = Vec::new();
+            for (key, field) in keys.into_iter().zip([
+                "script_bytes",
+                "witness_bytes",
+                "data_items",
+                "max_stack_items",
+                "executed_opcodes",
+            ]) {
+                metrics.push(Metric {
+                    readme: "src/arithmetic/permutation/README.md",
+                    key,
+                    value: row[field].as_u64().unwrap() as usize,
+                });
+            }
+            check_readme_metrics(metrics);
+            report.push(row);
+        }
+    }
+    println!(
+        "{}",
+        serde_json::json!({
+            "interpreter": provenance::interpreter().unwrap().commit,
+            "compiler": provenance::compiler().unwrap().commit,
+            "context": "tapscript", "stack_limit_enforced": true,
+            "require_minimal": false,
+            "execution": "unclassified", "rows": report,
+        })
+    );
+}

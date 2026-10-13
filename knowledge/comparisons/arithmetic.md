@@ -302,3 +302,15 @@ All carry verifiers are table-free. Their bytes are arithmetic, validation,
 binding, and routing rather than reusable lookup setup. The composable profile
 amortizes certificate work, not static tables; its multi-gate witness scheduling
 and certificate duplication/reordering costs remain outside the measured gate.
+
+## Small permutation witnesses
+
+The [factoradic decoder](../primitives/factoradic-permutation.md) compares equal
+complete leaves at width 8: packed rank 312 script bytes + 5 serialized data
+witness bytes, 1 data item, 0 hints, 12 combined stack items, 178 executed
+non-push opcodes; separate Lehmer digits 129 + 15 bytes, 7 data items, 0 hints,
+18 items, 85 executed opcodes. Both include canonical checks, pool setup/cleanup,
+all output equalities and clean success. Their `unclassified` local tapscript
+runs enforce the stack limit. Packed wins witness and live items but loses total
+bytes (NR-075); these rows are not directly comparable with fragment-only u4
+projections or offchain signature multiset ranking.

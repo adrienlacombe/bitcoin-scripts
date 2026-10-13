@@ -77,3 +77,12 @@ branch bits for downstream authentication. A path has zero hints and `n+1`
 input data items; a retained path peaks at `n+2` combined items before unrelated
 protocol state. This bound does not include a surrounding pinning/signature
 wrapper (OP-020).
+
+The [bounded permutation decoder](../primitives/factoradic-permutation.md)
+is an example of entry compression without output compression. Width 8 enters
+with one rank item but emits eight symbols, with a measured 12-item standalone
+peak. Its separate-digit baseline enters with seven items and peaks at 18.
+Both preserve main/alt caller state and require consuming the entire expanded
+vector. Exact 1,000-item tests include that preserved state; preloaded subsequent
+invocations and retained prior outputs must be added at their live boundaries.
+Both use zero hints and remain locally `unclassified`.

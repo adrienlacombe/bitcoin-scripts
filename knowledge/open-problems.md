@@ -985,3 +985,15 @@ Price a keyed BLAKE3 construction for the existing 32-byte input profile.
 independent BLAKE3 implementation, records the eight key words and
 `KEYED_HASH` flag handling, reports witness and combined-stack costs, and
 compares the result with the unkeyed profile under the same compilation policy.
+
+## OP-032 — Permutation decoding consumer frontier
+
+The bounded factoradic decoder reduces witness items and stack peak but loses
+combined bytes to separate Lehmer digits at widths 4/8/12 (NR-075).
+**Accept when:** a concrete consumer uses the decoded permutation, preserves its
+required live main/alt state, and measures both encodings on equal complete-leaf
+boundaries with data bytes/items, exact hint counts, executed non-push opcodes
+and combined peaks; either demonstrate a useful composition enabled by the
+packed representation or record the consumer as dominated. Complete-spend/Core
+validation is required before strengthening deployment claims. The 49-key
+signature multiset representation is outside the present four-byte rank domain.

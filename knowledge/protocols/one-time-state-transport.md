@@ -240,3 +240,10 @@ union codeword but does not reconstruct the source bytes or reject unused ranks.
 The same BitVM3 binding obligations therefore apply. These measurements are
 `locally-reproduced`, `research-unlimited`; strict local execution is
 `unclassified`, and the heuristic parameter search is not an optimum proof.
+
+The [small-alphabet permutation decoder](../primitives/factoradic-permutation.md)
+prices a different representation bridge: one untrusted canonical rank becomes
+a permutation of at most twelve public symbols. It does not authenticate the
+rank and cannot decode the existing 49-key multiset signature representation.
+Any use in state transport needs separate authentication and a measured consumer
+(OP-032); its lower witness/item count alone establishes no protocol advantage.
