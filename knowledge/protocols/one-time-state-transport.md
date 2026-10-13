@@ -240,3 +240,9 @@ union codeword but does not reconstruct the source bytes or reject unused ranks.
 The same BitVM3 binding obligations therefore apply. These measurements are
 `locally-reproduced`, `research-unlimited`; strict local execution is
 `unclassified`, and the heuristic parameter search is not an optimum proof.
+
+[Half-vector reflection witnesses](../primitives/u4-reflection.md) apply only when
+the protocol requires equal or complement-reflected state. Expansion itself
+has no signature or commitment and cannot replace authenticated transport.
+Binding the half-vector, fixing width/rule, and pricing its full output consumer
+remain separate obligations (OP-033); arbitrary messages have no implied symmetry.

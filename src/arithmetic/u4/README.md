@@ -825,3 +825,117 @@ Canonical input witnesses, including the CompactSize item count: nibble packing 
 The checked u12 triplet fixture uses <!-- metric:u4_triplet_to_u12_checked_witness -->7<!-- /metric:u4_triplet_to_u12_checked_witness --> serialized witness bytes across three data items.
 
 The checked u16 quad fixture uses <!-- metric:u4_quad_to_u16_checked_witness -->9<!-- /metric:u4_quad_to_u16_checked_witness --> serialized witness bytes across four data items.
+
+## Canonical reflection witnesses
+
+`reflection::expand_reflection(width, kind)` expands the first `ceil(width/2)`
+canonical nibbles into a constrained vector. `Reflection::Equal` requires equal
+mirrored symbols; `Reflection::Complement` requires their sum to be 15.
+`verify_reflection` is the full-vector baseline: it proves the same constraint
+and leaves the vector in place. This is exact domain-specific witness encoding,
+without authentication or cryptographic security. It does not compress arbitrary
+vectors or identify their reflection orbits.
+
+### Parameters and stack contract
+
+Width is public, `1..=996`, with no default. Complement reflection requires even
+width, since an odd central nibble would require `2*x=15`. Both APIs preserve
+unrelated main and altstack data. The conservative common width ceiling budgets
+four verifier temporaries; unrelated live state must be budgeted separately.
+
+```text
+expand: preserved | h[0] ... h[m-1] -> preserved | v[0] ... v[width-1]
+verify: preserved | v[0] ... v[width-1] -> same vector, after checks
+```
+
+The last item is on top. With equal reflection, `v[i]=v[width-1-i]`; with
+complement reflection, `v[i]+v[width-1-i]=15`. Odd equal reflection retains the
+center once. All source items are canonical ScriptNums in `0..=15`; zero is
+empty. Callers must consume every output and provide a terminal predicate.
+
+### Measured complete leaves
+
+`complete-leaf:` canonical/range checks, expansion or full-vector symmetry
+verification, every output comparison and clean `OP_TRUE` are included. Input
+pushes, unrelated caller state, transaction framing and leaf/control-block
+witness items are excluded. Data-witness bytes include CompactSize item count
+and lengths. The half fixture is `h[i]=(7*i+3)%16`; the full fixture is its
+coordinate-defined reflection. These are representative sizes, not maximum
+witness sizes. Whole leaves are optimized through the repository policy.
+
+| Rule, width, encoding | Script bytes | Data witness bytes | Data items | Combined peak | Executed non-push ops |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| equal, 32, expand | <!-- metric:u4_reflection_equal32_expand_script -->309<!-- /metric:u4_reflection_equal32_expand_script --> | <!-- metric:u4_reflection_equal32_expand_witness -->32<!-- /metric:u4_reflection_equal32_expand_witness --> | <!-- metric:u4_reflection_equal32_expand_items -->16<!-- /metric:u4_reflection_equal32_expand_items --> | <!-- metric:u4_reflection_equal32_expand_stack -->33<!-- /metric:u4_reflection_equal32_expand_stack --> | <!-- metric:u4_reflection_equal32_expand_executed -->192<!-- /metric:u4_reflection_equal32_expand_executed --> |
+| equal, 32, raw | <!-- metric:u4_reflection_equal32_raw_script -->588<!-- /metric:u4_reflection_equal32_raw_script --> | <!-- metric:u4_reflection_equal32_raw_witness -->63<!-- /metric:u4_reflection_equal32_raw_witness --> | <!-- metric:u4_reflection_equal32_raw_items -->32<!-- /metric:u4_reflection_equal32_raw_items --> | <!-- metric:u4_reflection_equal32_raw_stack -->36<!-- /metric:u4_reflection_equal32_raw_stack --> | <!-- metric:u4_reflection_equal32_raw_executed -->368<!-- /metric:u4_reflection_equal32_raw_executed --> |
+| equal, 33, expand | <!-- metric:u4_reflection_equal33_expand_script -->325<!-- /metric:u4_reflection_equal33_expand_script --> | <!-- metric:u4_reflection_equal33_expand_witness -->34<!-- /metric:u4_reflection_equal33_expand_witness --> | <!-- metric:u4_reflection_equal33_expand_items -->17<!-- /metric:u4_reflection_equal33_expand_items --> | <!-- metric:u4_reflection_equal33_expand_stack -->34<!-- /metric:u4_reflection_equal33_expand_stack --> | <!-- metric:u4_reflection_equal33_expand_executed -->202<!-- /metric:u4_reflection_equal33_expand_executed --> |
+| equal, 33, raw | <!-- metric:u4_reflection_equal33_raw_script -->605<!-- /metric:u4_reflection_equal33_raw_script --> | <!-- metric:u4_reflection_equal33_raw_witness -->65<!-- /metric:u4_reflection_equal33_raw_witness --> | <!-- metric:u4_reflection_equal33_raw_items -->33<!-- /metric:u4_reflection_equal33_raw_items --> | <!-- metric:u4_reflection_equal33_raw_stack -->37<!-- /metric:u4_reflection_equal33_raw_stack --> | <!-- metric:u4_reflection_equal33_raw_executed -->378<!-- /metric:u4_reflection_equal33_raw_executed --> |
+| complement, 32, expand | <!-- metric:u4_reflection_complement32_expand_script -->357<!-- /metric:u4_reflection_complement32_expand_script --> | <!-- metric:u4_reflection_complement32_expand_witness -->32<!-- /metric:u4_reflection_complement32_expand_witness --> | <!-- metric:u4_reflection_complement32_expand_items -->16<!-- /metric:u4_reflection_complement32_expand_items --> | <!-- metric:u4_reflection_complement32_expand_stack -->33<!-- /metric:u4_reflection_complement32_expand_stack --> | <!-- metric:u4_reflection_complement32_expand_executed -->224<!-- /metric:u4_reflection_complement32_expand_executed --> |
+| complement, 32, raw | <!-- metric:u4_reflection_complement32_raw_script -->620<!-- /metric:u4_reflection_complement32_raw_script --> | <!-- metric:u4_reflection_complement32_raw_witness -->63<!-- /metric:u4_reflection_complement32_raw_witness --> | <!-- metric:u4_reflection_complement32_raw_items -->32<!-- /metric:u4_reflection_complement32_raw_items --> | <!-- metric:u4_reflection_complement32_raw_stack -->36<!-- /metric:u4_reflection_complement32_raw_stack --> | <!-- metric:u4_reflection_complement32_raw_executed -->384<!-- /metric:u4_reflection_complement32_raw_executed --> |
+
+Every row has **0 hint items and 0 hint bytes**. Runtime stepping counts successful
+non-push instructions in the final compiled leaf; these leaves have no branches.
+Compiler provenance is `124b561ed75ac3ec4c6ad99207d8dcdd3bc67180`; interpreter
+is `a09e87af444034698697f0a2267e755cf72f9aed`, both printed from the embedded
+lockfile. Execution is local tapscript with combined stack checking enabled and
+global minimal-data disabled. The fragments explicitly enforce raw canonicality.
+Evidence is `locally-reproduced`; deployment remains `unclassified`. No Core
+complete-spend or relay-policy validation is claimed.
+
+### Security, witness and composition
+
+The half witness is exactly `ceil(width/2)` data items; the raw baseline uses
+`width`. All data coexist at entry. Hints are **0 per invocation and 0 across k
+invocations**. When k groups are preloaded, count `k*ceil(width/2)` or `k*width`
+initial data items, then include each expanded vector, remaining input groups,
+consumer state, and temporaries in the 1,000-item combined-stack bound.
+Neither a hint count nor a compressed entry count bounds output coexistence.
+
+Canonical checks precede copying; complement subtraction is between 0 and 15.
+Reflection is imposed by the output coordinates, so hostile witnesses cannot
+choose independent values for the omitted half. The raw verifier rejects broken
+pairs and checks the odd center's encoding too. There is no commitment, key,
+collision-resistance, or one-time-use claim.
+
+At width 32, measured complete leaves peak at 33 items for expansion and 36
+for raw verification. Exact 1,000-item tests use observable runtime witness
+items for preserved main/alt state and reject one additional item. Known
+constant markers can optimize away, so they are not used for these frontier
+proofs. These measured formulas apply to these wrappers; changed consumers
+require remeasurement. The maximum common width is also exercised locally.
+
+### Compatibility, limitations and reproduction
+
+Bare scripts use enabled opcodes, but custom-output relay acceptance is untested.
+The three expansion leaves (309/325/357 bytes) fit P2SH's 520-byte
+redeemScript element bound; raw rows (588/605/620) exceed it.
+P2WSH and legacy have a 201 static non-push opcode limit: only the equal-width-32
+expansion row has 192 and fits; the remaining measured rows exceed it.
+Tapscript removes those legacy limits, while stack and element bounds remain.
+See [script types](../../../docs/script-types.md) and
+[standardness](../../../docs/standardness.md). Opcode compatibility is not
+consensus or policy validation.
+
+The compression advantage depends on requiring the reflection relation.
+Existing complement projection `mirror(x)=min(x,15-x)` loses orientation and
+has different semantics. Ordinary vector rotation preserves arbitrary data and
+is likewise not a compression baseline. Odd complement reflection is rejected
+and recorded in NR-076. Actual polynomial evaluation or authenticated state
+transport is a separate consumer, tracked under OP-033.
+
+Tests exhaust all half vectors with one/two symbols, check wider asymmetric
+patterns and every output, reject aliases independently of output predicates,
+exercise missing/extra data and every broken pair, preserve runtime caller state,
+and check resource frontiers. Reproduce:
+
+```sh
+cargo test --locked arithmetic::u4::reflection --lib
+cargo test --locked --test primitive_metrics u4_reflection_metrics_are_current -- --exact --nocapture
+python3 tools/kb.py validate
+cargo test --locked -- --skip fields::
+```
+
+See [the knowledge page](../../../knowledge/primitives/u4-reflection.md),
+[arithmetic comparison](../../../knowledge/comparisons/arithmetic.md), and
+catalog record `arithmetic/u4-reflection`. The palindromic coefficient
+interpretation is reported in [Gao, arXiv:2109.09006v1](https://arxiv.org/abs/2109.09006v1);
+our nibble encoding and cost results are local.

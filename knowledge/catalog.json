@@ -14564,6 +14564,259 @@
         "OP-002",
         "OP-003"
       ]
+    },
+    {
+      "id": "arithmetic/u4-reflection",
+      "name": "Canonical reflection-constrained u4 witness expansion",
+      "class": "arithmetic/word",
+      "summary": "Expand a canonical half-vector into equal or complement-reflected nibble state, with a full-vector checked baseline.",
+      "status": "experimental",
+      "evidence": "locally-reproduced",
+      "execution": "unclassified",
+      "as_of": "2026-10-13",
+      "knowledge_page": "knowledge/primitives/u4-reflection.md",
+      "implementation": "src/arithmetic/u4/reflection.rs",
+      "documentation": "src/arithmetic/u4/README.md",
+      "tests": [
+        "arithmetic::u4::reflection::tests",
+        "primitive_metrics::u4_reflection_metrics_are_current"
+      ],
+      "references": [
+        "gao-palindromic-2021",
+        "bitcoin-script-locked",
+        "bitcoin-scriptexec-csv-20260920"
+      ],
+      "techniques": [
+        "digit-arithmetic",
+        "range-check",
+        "constant-embedding",
+        "tracked-stack"
+      ],
+      "security": "Raw witness nibbles are canonical/range checked before copying. The omitted half is imposed by fixed output coordinates; there is no data authentication or cryptographic security claim.",
+      "stack_contract": "Half-vector expands to a reflection-constrained full vector with its last coordinate on top; raw verification preserves the full vector after checks. Unrelated main/alt items are preserved; callers supply terminal predicates.",
+      "configurations": [
+        {
+          "id": "equal-width32-expand",
+          "label": "equal reflection, width 32, expand",
+          "parameters": {
+            "width": 32,
+            "reflection": "equal",
+            "encoding": "expand",
+            "half_fixture": "h[i]=(7*i+3)%16",
+            "data_items": 16,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, expansion or full-vector reflection verification, every fixture output equality and clean truthy result; serialized data witness includes CompactSize count and item lengths; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated caller state",
+          "script_bytes": 309,
+          "witness_bytes": 32,
+          "witness_bytes_max": null,
+          "max_stack_items": 33,
+          "executed_opcodes": 192,
+          "static_non_push_opcodes": 192,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_reflection_equal32_expand_script",
+            "u4_reflection_equal32_expand_witness",
+            "u4_reflection_equal32_expand_stack",
+            "u4_reflection_equal32_expand_executed"
+          ]
+        },
+        {
+          "id": "equal-width32-raw",
+          "label": "equal reflection, width 32, raw",
+          "parameters": {
+            "width": 32,
+            "reflection": "equal",
+            "encoding": "raw",
+            "half_fixture": "h[i]=(7*i+3)%16",
+            "data_items": 32,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, expansion or full-vector reflection verification, every fixture output equality and clean truthy result; serialized data witness includes CompactSize count and item lengths; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated caller state",
+          "script_bytes": 588,
+          "witness_bytes": 63,
+          "witness_bytes_max": null,
+          "max_stack_items": 36,
+          "executed_opcodes": 368,
+          "static_non_push_opcodes": 368,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_reflection_equal32_raw_script",
+            "u4_reflection_equal32_raw_witness",
+            "u4_reflection_equal32_raw_stack",
+            "u4_reflection_equal32_raw_executed"
+          ]
+        },
+        {
+          "id": "equal-width33-expand",
+          "label": "equal reflection, width 33, expand",
+          "parameters": {
+            "width": 33,
+            "reflection": "equal",
+            "encoding": "expand",
+            "half_fixture": "h[i]=(7*i+3)%16",
+            "data_items": 17,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, expansion or full-vector reflection verification, every fixture output equality and clean truthy result; serialized data witness includes CompactSize count and item lengths; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated caller state",
+          "script_bytes": 325,
+          "witness_bytes": 34,
+          "witness_bytes_max": null,
+          "max_stack_items": 34,
+          "executed_opcodes": 202,
+          "static_non_push_opcodes": 202,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_reflection_equal33_expand_script",
+            "u4_reflection_equal33_expand_witness",
+            "u4_reflection_equal33_expand_stack",
+            "u4_reflection_equal33_expand_executed"
+          ]
+        },
+        {
+          "id": "equal-width33-raw",
+          "label": "equal reflection, width 33, raw",
+          "parameters": {
+            "width": 33,
+            "reflection": "equal",
+            "encoding": "raw",
+            "half_fixture": "h[i]=(7*i+3)%16",
+            "data_items": 33,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, expansion or full-vector reflection verification, every fixture output equality and clean truthy result; serialized data witness includes CompactSize count and item lengths; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated caller state",
+          "script_bytes": 605,
+          "witness_bytes": 65,
+          "witness_bytes_max": null,
+          "max_stack_items": 37,
+          "executed_opcodes": 378,
+          "static_non_push_opcodes": 378,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_reflection_equal33_raw_script",
+            "u4_reflection_equal33_raw_witness",
+            "u4_reflection_equal33_raw_stack",
+            "u4_reflection_equal33_raw_executed"
+          ]
+        },
+        {
+          "id": "complement-width32-expand",
+          "label": "complement reflection, width 32, expand",
+          "parameters": {
+            "width": 32,
+            "reflection": "complement",
+            "encoding": "expand",
+            "half_fixture": "h[i]=(7*i+3)%16",
+            "data_items": 16,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, expansion or full-vector reflection verification, every fixture output equality and clean truthy result; serialized data witness includes CompactSize count and item lengths; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated caller state",
+          "script_bytes": 357,
+          "witness_bytes": 32,
+          "witness_bytes_max": null,
+          "max_stack_items": 33,
+          "executed_opcodes": 224,
+          "static_non_push_opcodes": 224,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_reflection_complement32_expand_script",
+            "u4_reflection_complement32_expand_witness",
+            "u4_reflection_complement32_expand_stack",
+            "u4_reflection_complement32_expand_executed"
+          ]
+        },
+        {
+          "id": "complement-width32-raw",
+          "label": "complement reflection, width 32, raw",
+          "parameters": {
+            "width": 32,
+            "reflection": "complement",
+            "encoding": "raw",
+            "half_fixture": "h[i]=(7*i+3)%16",
+            "data_items": 32,
+            "hint_items": 0,
+            "hint_bytes": 0,
+            "all_data_present_at_entry": true,
+            "context": "tapscript",
+            "enforce_stack_limit": true,
+            "require_minimal": false,
+            "compiler_commit": "124b561ed75ac3ec4c6ad99207d8dcdd3bc67180",
+            "interpreter_commit": "a09e87af444034698697f0a2267e755cf72f9aed"
+          },
+          "includes": "complete-leaf: canonical/range checks, expansion or full-vector reflection verification, every fixture output equality and clean truthy result; serialized data witness includes CompactSize count and item lengths; excludes input pushes, transaction framing, leaf/control-block witness items and unrelated caller state",
+          "script_bytes": 620,
+          "witness_bytes": 63,
+          "witness_bytes_max": null,
+          "max_stack_items": 36,
+          "executed_opcodes": 384,
+          "static_non_push_opcodes": 384,
+          "validation_weight": 0,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [
+            "u4_reflection_complement32_raw_script",
+            "u4_reflection_complement32_raw_witness",
+            "u4_reflection_complement32_raw_stack",
+            "u4_reflection_complement32_raw_executed"
+          ]
+        }
+      ],
+      "limitations": [
+        "Only reflection-constrained vectors are represented; arbitrary state is not compressed",
+        "Odd complement reflection has no integer center and is rejected",
+        "Output expansion still requires width live items",
+        "The common width ceiling is conservative and does not include unrelated live state",
+        "Representative witness bytes are not claimed as a maximum",
+        "No Core complete-spend or relay-policy validation"
+      ],
+      "open_problems": [
+        "OP-033"
+      ]
     }
   ]
 }

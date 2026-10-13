@@ -985,3 +985,14 @@ Price a keyed BLAKE3 construction for the existing 32-byte input profile.
 independent BLAKE3 implementation, records the eight key words and
 `KEYED_HASH` flag handling, reports witness and combined-stack costs, and
 compares the result with the unkeyed profile under the same compilation policy.
+
+## OP-033 — Reflection witness consumer frontier
+
+Half-vector expansion improves complete-leaf bytes and entry items over raw
+symmetry verification for the measured equal/complement domains. **Accept when:**
+a polynomial or authenticated-state consumer requires this precise relation,
+consumes the expanded vector with its live protocol state, and compares both
+encodings on an equal boundary with witness bytes/items, exact hint counts,
+executed opcodes and combined peaks. Record either a consumer-level improvement
+or dominance. A general compression or deployment claim requires its own
+semantics and full-spend/Core validation; odd complement centers remain excluded.

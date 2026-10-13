@@ -116,3 +116,9 @@ The binary hash-path optimization also inspects `bitcoin-core-v29-hashes`
 (Bitcoin Core v29.0 interpreter.cpp) for CastToBool, static opcode counting and
 MINIMALIF. Executable local results use rust-bitcoin-scriptexec revision
 `702544c9a045ac4fc14846da6da6559e2b7cd9d1`, not Bitcoin Core execution.
+
+`gao-palindromic-2021` pins [arXiv:2109.09006v1](https://arxiv.org/abs/2109.09006v1),
+2021-09-18, for the interpretation of equal-reflected coefficients as palindromic.
+The u4 half-witness adapter's complement rule, Script implementation and measured
+costs are local contributions; no polynomial irreducibility or security claim
+is imported from the paper.

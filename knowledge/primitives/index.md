@@ -91,6 +91,8 @@ the source. Read a page together with its comparison page and evidence record.
 - [Residue-number arithmetic](rns.md)
 - [Prime logarithmic residue-number arithmetic](prime-rns.md)
 
+- [Canonical reflection-constrained u4 witnesses](u4-reflection.md)
+
 ## Commitments
 
 - [Mixed-hash path commitment](hash-path-integer.md)

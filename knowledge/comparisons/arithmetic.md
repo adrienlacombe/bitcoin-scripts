@@ -302,3 +302,15 @@ All carry verifiers are table-free. Their bytes are arithmetic, validation,
 binding, and routing rather than reusable lookup setup. The composable profile
 amortizes certificate work, not static tables; its multi-gate witness scheduling
 and certificate duplication/reordering costs remain outside the measured gate.
+
+## Reflection-constrained vectors
+
+Equal-reflection width 32 complete leaves measure 309 + 32 script/data bytes for
+half expansion, versus 588 + 63 for a canonical full-vector symmetry verifier.
+Data items are 16 versus 32; hints are zero; combined peaks are 33 versus 36;
+executed non-push opcodes are 192 versus 368. Complement reflection gives
+357 + 32 versus 620 + 63 and 224 versus 384 opcodes. Both include every output
+comparison and clean success under strict local `unclassified` tapscript rules.
+These are constrained-state encodings, not a general vector compression claim;
+[the primitive](../primitives/u4-reflection.md) is semantically different from
+the per-symbol complement quotient and cyclic vector rotation.

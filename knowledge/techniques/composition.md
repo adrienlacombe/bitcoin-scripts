@@ -77,3 +77,10 @@ branch bits for downstream authentication. A path has zero hints and `n+1`
 input data items; a retained path peaks at `n+2` combined items before unrelated
 protocol state. This bound does not include a surrounding pinning/signature
 wrapper (OP-020).
+
+The [reflection adapter](../primitives/u4-reflection.md) also separates compressed
+entry from expanded output: width 32 enters with 16 data items but emits 32.
+Its measured complete leaf peaks at 33 versus 36 for raw verification, before
+unrelated state; all hints are zero. Exact frontier probes move a runtime witness
+item into the altstack and verify runtime caller data, because known constants
+checked against themselves can optimize away and understate live occupancy.

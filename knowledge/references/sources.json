@@ -284,10 +284,10 @@
     },
     {
       "id": "bitvm3s-2025",
-      "title": "BitVM 3s \u2013 Garbled Circuits for Efficient Computation on Bitcoin",
+      "title": "BitVM 3s – Garbled Circuits for Efficient Computation on Bitcoin",
       "kind": "paper",
       "url": "https://bitvm.org/bitvm3.pdf",
-      "revision": "Robin Linus, July 22, 2025; architectural context only, not validation of this repository\u2019s constant-sum verifier"
+      "revision": "Robin Linus, July 22, 2025; architectural context only, not validation of this repository’s constant-sum verifier"
     },
     {
       "id": "nist-dlmf-multiset-permutations",
@@ -309,6 +309,13 @@
       "kind": "reference-implementation",
       "url": "https://github.com/bitcoin/bitcoin/tree/49faec4f87f5cd19c88db01a82e5c68b087c8227",
       "revision": "49faec4f87f5cd19c88db01a82e5c68b087c8227 (v30.3); official archive SHA256 pins in tools/bitcoin_core_release.json; 24 deterministic complete Taproot regtest comparisons recorded 2026-09-10"
+    },
+    {
+      "id": "gao-palindromic-2021",
+      "title": "Enumeration of self-reciprocal irreducible monic polynomials with prescribed leading coefficients over a finite field",
+      "kind": "paper",
+      "url": "https://arxiv.org/abs/2109.09006v1",
+      "revision": "arXiv:2109.09006v1, 2021-09-18; palindromic coefficient-vector definition only"
     }
   ]
 }

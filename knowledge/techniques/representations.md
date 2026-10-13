@@ -85,3 +85,10 @@ preserves unrelated main state and peaks at 120. Neither method reconstructs
 bytes or checks the host's rank bound. BitVM3 can use the assignment subject
 to integration that binds its meaning and handles unused ranks; an onchain
 byte consumer remains a separate measured cost.
+
+[Reflection-constrained u4 state](../primitives/u4-reflection.md) can be represented
+by the first `ceil(n/2)` canonical nibbles. Equal reflection retains an odd
+center; complement reflection uses `15-x` and requires even width. Fixed-depth
+copies reconstruct the omitted half with zero hints. At width 32, equal
+reflection saves 310 complete-leaf script/data bytes over a full-vector verifier,
+while reducing 32 entry data items to 16; it still emits 32 live output items.

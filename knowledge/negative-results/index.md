@@ -1757,3 +1757,14 @@ integer objective and is not retained as a byte-efficiency improvement. The
 result does not rule out a ternary path when protocol state is naturally
 three-valued or when a different consumer amortizes its dispatcher; see
 [OP-030](../open-problems.md#op-030--ternary-commitment-composition-frontier).
+
+## NR-076: Odd nibble complement reflection has no center
+
+A vector constrained by `v[i]+v[n-1-i]=15` cannot have odd width over integer
+nibbles: its middle coordinate would require `2*x=15`. The half-vector
+[reflection adapter](../primitives/u4-reflection.md) therefore rejects odd
+complement widths at generation time. Odd equal reflection is supported and
+retains its center once. This is a domain-specific algebraic obstruction, not
+a claim that another involution or alphabet cannot have an odd fixed point.
+Local shape-rejection tests reproduce the API boundary; deployment remains
+`unclassified`.

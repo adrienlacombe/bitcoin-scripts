@@ -10861,3 +10861,125 @@ fn u32_or_constant_metrics() -> Vec<Metric> {
 fn u32_or_constant_metrics_are_current() {
     check_readme_metrics(u32_or_constant_metrics());
 }
+
+#[test]
+fn u4_reflection_metrics_are_current() {
+    use bitcoin::{absolute, transaction, TapLeafHash, Transaction};
+    use bitcoin_lab::{
+        arithmetic::u4::reflection::{self, Reflection},
+        support::provenance,
+    };
+    use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate};
+
+    macro_rules! keys {
+        ($prefix:literal) => {
+            [
+                concat!($prefix, "_script"),
+                concat!($prefix, "_witness"),
+                concat!($prefix, "_items"),
+                concat!($prefix, "_stack"),
+                concat!($prefix, "_executed"),
+            ]
+        };
+    }
+    let mut report = Vec::new();
+    for (width, kind) in [
+        (32u32, Reflection::Equal),
+        (33, Reflection::Equal),
+        (32, Reflection::Complement),
+    ] {
+        let half: Vec<_> = (0..width.div_ceil(2))
+            .map(|i| ((i * 7 + 3) % 16) as u32)
+            .collect();
+        let values: Vec<_> = (0..width)
+            .map(|i| {
+                if i < half.len() as u32 {
+                    half[i as usize]
+                } else {
+                    let x = half[(width - 1 - i) as usize];
+                    if kind == Reflection::Equal {
+                        x
+                    } else {
+                        15 - x
+                    }
+                }
+            })
+            .collect();
+        for expanded in [true, false] {
+            let (fragment, data) = if expanded {
+                (reflection::expand_reflection(width, kind), &half)
+            } else {
+                (reflection::verify_reflection(width, kind), &values)
+            };
+            let witness: Vec<_> = data.iter().map(|&x| scriptnum(i64::from(x))).collect();
+            let leaf=script! { { fragment } for value in values.iter().rev() { { *value } OP_EQUALVERIFY } OP_TRUE }.compile_with_policy();
+            let mut exec = Exec::new(
+                ExecCtx::Tapscript,
+                Options {
+                    require_minimal: false,
+                    enforce_stack_limit: true,
+                    ..Default::default()
+                },
+                TxTemplate {
+                    tx: Transaction {
+                        version: transaction::Version::TWO,
+                        lock_time: absolute::LockTime::ZERO,
+                        input: vec![],
+                        output: vec![],
+                    },
+                    prevouts: vec![],
+                    input_idx: 0,
+                    taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+                },
+                leaf.clone(),
+                witness.clone(),
+            )
+            .unwrap();
+            let mut executed = 0;
+            loop {
+                let counted = matches!(exec.remaining_script().instructions().next(),Some(Ok(Instruction::Op(op))) if op.to_u8()>0x60);
+                // These generated leaves contain no conditionals. Every observed
+                // non-push opcode is counted after its successful execution.
+                assert!(exec.cond_stack().all_true());
+                if exec.exec_next().is_err() {
+                    break;
+                }
+                executed += usize::from(counted);
+            }
+            assert!(exec.result().unwrap().success);
+            let metric_keys = match (width, kind, expanded) {
+                (32, Reflection::Equal, true) => keys!("u4_reflection_equal32_expand"),
+                (32, Reflection::Equal, false) => keys!("u4_reflection_equal32_raw"),
+                (33, Reflection::Equal, true) => keys!("u4_reflection_equal33_expand"),
+                (33, Reflection::Equal, false) => keys!("u4_reflection_equal33_raw"),
+                (32, Reflection::Complement, true) => keys!("u4_reflection_complement32_expand"),
+                (32, Reflection::Complement, false) => keys!("u4_reflection_complement32_raw"),
+                _ => unreachable!(),
+            };
+            let peak = exec.stats().max_nb_stack_items;
+            let measures = [
+                leaf.len(),
+                witness_size(&witness),
+                witness.len(),
+                peak,
+                executed,
+            ];
+            check_readme_metrics(
+                metric_keys
+                    .into_iter()
+                    .zip(measures)
+                    .map(|(key, value)| Metric {
+                        readme: "src/arithmetic/u4/README.md",
+                        key,
+                        value,
+                    })
+                    .collect(),
+            );
+            report.push(serde_json::json!({"width":width,"kind":format!("{kind:?}"),"expanded":expanded,"script_bytes":leaf.len(),"witness_bytes":witness_size(&witness),"data_items":witness.len(),"hint_items":0,"max_stack_items":peak,"executed_opcodes":executed}));
+        }
+    }
+    println!(
+        "{}",
+        serde_json::json!({"compiler":provenance::compiler().unwrap().commit,"interpreter":provenance::interpreter().unwrap().commit,"stack_limit_enforced":true,"require_minimal":false,"execution":"unclassified","rows":report})
+    );
+}
