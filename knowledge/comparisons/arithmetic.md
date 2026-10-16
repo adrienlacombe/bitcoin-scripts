@@ -40,6 +40,16 @@ the current byte-oriented and decode/re-encode configurations below.
 | Checked u4 nibble popcount batch, 32 inputs | `u4_nibbles_to_popcount(32)` | <!-- metric:u4_popcount_batch32 -->440<!-- /metric:u4_popcount_batch32 --> | <!-- metric:u4_popcount_batch32_stack -->50<!-- /metric:u4_popcount_batch32_stack -->-item peak; 65-byte witness; 32 data items; no hints; bit-plane expansion is 924 bytes and 189 items |
 | Checked u4 total popcount, 32 inputs | `u4_popcount(32)` | <!-- metric:u4_popcount_total_batch32 -->471<!-- /metric:u4_popcount_total_batch32 --> | <!-- metric:u4_popcount_total_batch32_stack -->50<!-- /metric:u4_popcount_total_batch32_stack -->-item peak; 65-byte witness; one output; no hints |
 | Checked u8 byte to nibble pair | `u8_to_u4_pair(true)` | 62 | 4-item peak; 4-byte witness; two nibble outputs |
+| Checked 16-byte table unpack to nibbles | `u4_bytes_to_nibbles(16)` | 1,168 | 546-item peak; 49-byte witness; 544 static non-push opcodes |
+| Checked 18-byte table unpack to nibbles | `u4_bytes_to_nibbles(18)` | 1,218 | 550-item peak; 55-byte witness; 580 static non-push opcodes |
+| Checked 19-byte table unpack to nibbles | `u4_bytes_to_nibbles(19)` | 1,243 | 552-item peak; 58-byte witness; 598 static non-push opcodes |
+| Checked 32-byte table unpack to nibbles | `u4_bytes_to_nibbles(32)` | 1,568 | 578-item peak; 97-byte witness; 832 static non-push opcodes |
+| Checked 243-byte table unpack to nibbles | `u4_bytes_to_nibbles(243)` | 6,843 | 1,000-item peak; 730-byte witness; 4,630 static non-push opcodes |
+| Fair scalar 16-byte unpack baseline | 16 checked `u8_to_u4_pair(true)` calls with staging | 1,066 | 34-item peak; 49-byte witness; 682 static non-push opcodes |
+| Fair scalar 18-byte unpack baseline | 18 checked `u8_to_u4_pair(true)` calls with staging | 1,200 | 38-item peak; 55-byte witness; 768 static non-push opcodes |
+| Fair scalar 19-byte unpack baseline | 19 checked `u8_to_u4_pair(true)` calls with staging | 1,267 | 40-item peak; 58-byte witness; 811 static non-push opcodes |
+| Fair scalar 32-byte unpack baseline | 32 checked `u8_to_u4_pair(true)` calls with staging | 2,138 | 66-item peak; 97-byte witness; 1,370 static non-push opcodes |
+| Fair scalar 243-byte unpack baseline | 243 checked `u8_to_u4_pair(true)` calls with staging | 16,275 | 488-item peak; 730-byte witness; 10,443 static non-push opcodes |
 | Checked u8 high-bit extraction | `u8_extract_hbit_checked(4)` | 73 | 5-item peak; 4-byte witness; rejects non-byte ScriptNums |
 | Canonical checked nibble boundary | `verify_canonical_nibble()` | 10 | 4-item peak; 3-byte witness; rejects noncanonical ScriptNums |
 | 32 checked signed radix-32 digits to sign/magnitude bits | signed-window staggered table | 1,866 | 348-item peak; wins bytes only after 8–16 digit crossover |
@@ -54,8 +64,12 @@ the current byte-oriented and decode/re-encode configurations below.
 | 32 checked Gray nibbles to binary nibbles | `u4_nibbles_from_gray(32)` | 440 | 50-item peak; one decoded nibble per input |
 | 32 checked nibbles to nonzero-power-of-two bits | `u4_nibbles_to_power_of_two(32)` | 440 | 50-item peak; one predicate bit per input |
 | 32 checked nibbles to modulo-three residues | `u4_nibbles_to_mod3(32)` | 440 | 50-item peak; one residue per input |
+| 16 nibbles from two canonical runs | `u4_expand_canonical_runs(16, 2)` | 321 | 20-item peak; 4 payload items; 8 witness bytes; 0 hints; in-place canonical check is 206 bytes and 25 witness bytes |
+| 16 nibbles from eight length-2 runs | `u4_expand_canonical_runs(16, 8)` | 867 | 21-item peak on that witness; 16 payload items; 29 witness bytes; 0 hints; same item count as the raw vector |
 | 32 checked nibbles to parity bits | `u4_nibbles_to_parity(32)` | 440 | 50-item peak; one output bit per input; numeric range only; accepts non-minimal aliases without MINIMALDATA |
 | 32 canonical checked nibbles to parity bits | `u4_nibbles_to_parity_canonical(32)` | 504 | 51-item peak; 65-byte witness; rejects raw aliases; standalone maximum 981 inputs |
+| 12 checked Lehmer digits to one permutation rank | `u4_lehmer_to_value(12)` | 185 | 22-item peak; 24-byte witness; 12 data items; one value output; numeric range only; accepts non-minimal aliases without MINIMALDATA |
+| 12 canonical checked Lehmer digits to one permutation rank | `u4_lehmer_to_value_canonical(12)` | 305 | 22-item peak; 24-byte witness; rejects raw aliases; width bounded at 12 by the 4-byte numeric-operand domain |
 | Fixed-symbol u4 occurrence count | `u4_nibbles_count(0, 16)` | <!-- metric:u4_symbol_count_16 -->266<!-- /metric:u4_symbol_count_16 --> | <!-- metric:u4_symbol_count_16_stack -->19<!-- /metric:u4_symbol_count_16_stack -->-item peak; one count output; target embedded; numeric equality |
 | 16 checked nibbles to presence bits | `u4_nibbles_to_presence_bits(16)` | <!-- metric:u4_presence_bits_16 -->1526<!-- /metric:u4_presence_bits_16 --> | <!-- metric:u4_presence_bits_16_stack -->34<!-- /metric:u4_presence_bits_16_stack -->-item peak; 16 Boolean outputs; no bitwise opcode |
 | 32 checked nibbles transition count | `u4_nibbles_transition_count(32)` | 588 | 35-item peak; 391 static non-push opcodes; one compact count; no table |
@@ -65,7 +79,7 @@ the current byte-oriented and decode/re-encode configurations below.
 | 16 checked nibbles to an embedded cap | `u4_nibbles_to_clamp(4,16)` | <!-- metric:u4_clamp_16 -->270<!-- /metric:u4_clamp_16 --> | <!-- metric:u4_clamp_16_stack -->18<!-- /metric:u4_clamp_16_stack -->-item peak; `min(nibble,4)`; cap embedded |
 | 16 checked nibbles to an embedded-equality mask | `u4_nibbles_to_eq_mask(5,16)` | <!-- metric:u4_eq_mask_16 -->190<!-- /metric:u4_eq_mask_16 --> | <!-- metric:u4_eq_mask_16_stack -->18<!-- /metric:u4_eq_mask_16_stack -->-item peak; one output bit per input; symbol embedded |
 | 16 checked nibbles to an embedded-threshold mask | `u4_nibbles_to_lt_mask(5,16)` | <!-- metric:u4_lt_mask_16 -->190<!-- /metric:u4_lt_mask_16 --> | <!-- metric:u4_lt_mask_16_stack -->18<!-- /metric:u4_lt_mask_16_stack -->-item peak; one output bit per input; threshold embedded |
-| 32 checked nibbles to MSB bits | `u4_nibbles_to_msb(32)` | <!-- metric:u4_msb_batch32 -->446<!-- /metric:u4_msb_batch32 --> | <!-- metric:u4_msb_batch32_stack -->34<!-- /metric:u4_msb_batch32_stack -->-item peak; direct threshold; no hints |
+| 32 checked nibbles to MSB bits | `u4_nibbles_to_msb(32)` | <!-- metric:u4_msb_batch32 -->250<!-- /metric:u4_msb_batch32 --> | <!-- metric:u4_msb_batch32_stack -->35<!-- /metric:u4_msb_batch32_stack -->-item peak; range checks in groups of three and direct threshold; no hints |
 | 16 checked nibbles to one XOR nibble | `u4_nibbles_to_xor(16)` | 740 | 273-item peak; 256-item full XOR table |
 | Variable u32 XNOR | `u32_xnor(0, 1, 3)` | 222 | 272-item peak; 182 static non-push opcodes; shared 256-item XOR table |
 | Embedded public-mask u32 XNOR | `u32_xnor_constant(0x89abcdef)` | 686 | 13-byte/four-data-item witness; zero hints; 272-item peak; 502 static non-push opcodes |
@@ -302,3 +316,150 @@ All carry verifiers are table-free. Their bytes are arithmetic, validation,
 binding, and routing rather than reusable lookup setup. The composable profile
 amortizes certificate work, not static tables; its multi-gate witness scheduling
 and certificate duplication/reordering costs remain outside the measured gate.
+
+## Positional residue of a base-16 vector
+
+For **identical integer-modulo-17 semantics**, canonical runtime witness,
+fragment-only boundary and no hints, the
+[reverse fold](../primitives/u4-mod17.md) uses 670 bytes versus 746 for the
+forward scheduler at 32 inputs. Both serialize the same 62-byte data witness,
+peak at 35 combined stack items and return residue 6 for the recorded vector.
+At 997 inputs they use 20,926/24,775 optimized bytes and both reach 1,000 items.
+The reverse fold is smaller at each measured width (1/2/32/128/997); this is
+configuration-specific evidence, not a global current-best claim.
+
+The additive modulo-16 sum and XOR reduction implement different checksum
+semantics and cannot replace this positional residue. The existing modulo-16
+sum costs 592 bytes and has a 66-item peak at 32 inputs, so eliminating the table
+here improves memory but does not make a like-for-like script-size claim.
+See [NR-073](../negative-results/u4-mod17-forward-routing.md) for the dominated
+scheduler and [OP-031](../open-problems.md#op-031--positional-nibble-checksum-composition)
+for the complete-leaf validation criterion. All new configurations remain
+`locally-reproduced` / `unclassified`; dynamic opcodes are unavailable.
+
+## U32 word to modulo-65,537 residue
+
+For the same four canonical byte inputs and one canonical numeric residue,
+[two checked 16-bit lanes](../primitives/u32-mod65537.md) cost 100 fragment
+bytes and seven combined stack items, versus 1,137 bytes and 35 items for the
+general bitwise Horner circuit. Both use the same 13-byte data-only witness,
+four entry items and zero hints. Complete expected-residue leaves are 104 and
+1,141 bytes. This fixed-modulus configuration is `locally-reproduced` and
+`unclassified`; static non-push counts are 75/684, dynamic counts unavailable.
+The [dominated baseline](../negative-results/u32-mod65537-bitwise.md) remains
+comparison-only code. Compressed u32 adapters and F257 multiplication have
+different input/output semantics, so their byte sizes do not establish a
+like-for-like dominance relation here.
+
+
+## Canonical modulo-16 prefix vectors
+
+The [prefix scan](../primitives/u4-prefix-sum.md) returns every prefix, unlike
+scalar sum or the n-1-output forward delta. Conditional versus31-entry table
+under identical canonical input/output and staging/cleanup boundaries:
+
+| n | Conditional script / peak | Table script / peak | Data witness bytes | Hint items |
+| ---: | ---: | ---: | ---: | ---: |
+| 32 | 661 / 35 | 664 / 66 | 65 | 0 |
+| 128 | 2677 / 131 | 2584 / 162 | 257 | 0 |
+| 966 | 20275 / 969 | 20182 / 1000 | 1935 | 0 |
+| 997 | 20926 / 1000 | unsupported | 1997 | 0 |
+
+All n data items coexist at entry; caller live items add to the peak. Table
+setup/query/cleanup/restoration are included, terminal checks excluded on both
+sides. All sizes are policy-optimized. Evidence is locally-reproduced, execution
+unclassified, dynamic opcodes and validation weight unavailable. The table
+trades93 fewer bytes for 31 more live items at n128/966; see
+[NR-075](../negative-results/u4-prefix-table-tradeoff.md).
+
+
+## Exact nibble products
+
+[Quarter-square products](../primitives/u4-exact-product.md) use a 31-entry
+private table instead of the full 256-entry exact grid. At 32 pairs of canonical
+sevens they cost 1389 bytes/98 combined items versus 1937/323, with 129 serialized
+data-witness bytes, 64 ordinary inputs and zero hints. Both include setup,
+canonical/range checks, routing, cleanup and ordered outputs; terminals and
+input pushes are excluded. All data coexist at entry. Outputs are exact
+ScriptNums 0..225, not modulo nibbles or raw bytes. Costs are policy-optimized,
+locally-reproduced/unclassified. The [modulo comparison](../negative-results/u4-quarter-square-modulo.md)
+is a different operation and loses the size advantage at larger batches.
+
+## Decimal finite-state error detection
+
+The [numeric decimal Damm fold](../primitives/u4-damm.md) is an order-sensitive
+transducer, distinct from commutative exact or modulo-16 sums. Its fixed table
+has ten states; locally checked table relations support single numeric digit
+substitution and adjacent unequal numeric swap detection for fixed-length
+valid codewords. It accepts numeric aliases when the profile permits them and
+provides no authentication or byte-encoding binding. The 32-digit resident
+fragment measures 766 bytes, 61 witness bytes, 32 data items, zero hints and a
+136-item combined peak. The [lookup comparison](lookup-strategies.md#damm-finite-state-folds)
+prices matched alternatives; the shared contract tests preserve the existing
+sum-family semantics and deployment classes.
+
+## Integer floor roots
+
+The [ScriptNum root](../primitives/scriptnum-isqrt.md) consumes one checked
+numeric x and returns canonical floor sqrt(x). A residual difference `2*r*b+b*b`
+lets fixed root-bit trials use only the existing constant multiplier and ordinary
+stack/comparison arithmetic. It avoids forming an overflowing whole candidate
+square at 31 bits; no table, variable multiplication/division or hint is used.
+
+Matched restoring/threshold fragments measure 27/18 bytes at one bit,
+72/70 at six, 98/106 at seven, 99/147 at eight, and 232/2,989 at sixteen. Their peaks are five
+and three, respectively. Both include numeric guards and full calculation /
+cleanup, start from the same ordinary one-item witness and exclude input pushes
+and terminal checks. Sixteen-bit max-input witness is five bytes; each has
+zero hint items and zero hint bytes. At 31, restoring is 614 bytes ALL versus
+659,112 explicitly unoptimized NONE; exact-root leaves are 620/659,118.
+The one-input allowed numeric witness maximum is six bytes, including aliases.
+
+Canonical-input compositions using the existing verify_canonical helper are
+separately audited; their rejection/stack contracts are not transferred to the
+numeric public API. All results are locally-reproduced/unclassified. A single
+five-byte positive ScriptNum for 2^31 is rejected, not supported as a u32 word.
+[NR-080](../negative-results/integer-root-bounds.md) records small-width losses,
+whole-policy repetition deltas and that wider representation frontier.
+
+## CRC-8 message checksum representations
+
+[CRC-8/SMBus](../primitives/crc8-smbus.md) compares the same hostile numeric
+nibble messages, guards, canonical byte output, setup and cleanup. Feedback
+versus serial fragments are 414/285 at one byte, 520/541 at two, and
+1,262/2,333 at nine. Exact-CRC leaves at nine are 1,267/2,338; both witnesses
+serialize 18 ordinary data items, zero hints, all at entry, to 37 fixture bytes.
+Numeric aliases can attain 91 bytes under the local Consensus profile. Combined
+peaks are N+188 versus N+13, including future inputs and both caller stacks.
+Table feedback wins code growth but loses startup and maximum message length.
+
+The public complete-byte maximum is 406, with 812 ordinary items / zero hints,
+peak 1,000, and unoptimized NONE fragment/leaf 43,345/43,349. Serial permits
+493 complete bytes at peak 999 and has larger code. Canonical siblings and
+independent repeated messages have separate measured artifacts. These are
+locally-reproduced/unclassified outcomes, not cryptographic or deployment
+claims; see [NR-081](../negative-results/crc8-nibble-feedback.md).
+
+## Small permutation witnesses
+
+The [factoradic decoder](../primitives/factoradic-permutation.md) compares equal
+complete leaves at width 8: packed rank 312 script bytes + 5 serialized data
+witness bytes, 1 data item, 0 hints, 12 combined stack items, 178 executed
+non-push opcodes; separate Lehmer digits 129 + 15 bytes, 7 data items, 0 hints,
+18 items, 85 executed opcodes. Both include canonical checks, pool setup/cleanup,
+all output equalities and clean success. Their `unclassified` local tapscript
+runs enforce the stack limit. Packed wins witness and live items but loses total
+bytes (NR-084); these rows are not directly comparable with fragment-only u4
+projections or offchain signature multiset ranking.
+
+## Reflection-constrained vectors
+
+Equal-reflection width 32 complete leaves measure 309 + 32 script/data bytes for
+half expansion, versus 588 + 63 for a canonical full-vector symmetry verifier.
+Data items are 16 versus 32; hints are zero; combined peaks are 33 versus 36;
+executed non-push opcodes are 192 versus 368. Complement reflection gives
+357 + 32 versus 620 + 63 and 224 versus 384 opcodes. Both include every output
+comparison and clean success under strict local `unclassified` tapscript rules.
+These are constrained-state encodings, not a general vector compression claim;
+[the primitive](../primitives/u4-reflection.md) is semantically different from
+the per-symbol complement quotient and cyclic vector rotation.

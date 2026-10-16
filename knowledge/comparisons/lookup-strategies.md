@@ -136,3 +136,105 @@ All-witness-at-entry routing, certificate fan-out/reordering, and terminal
 predicates remain unmeasured. A straightforward 46-residue duplicate costs 138
 bytes before a square, illustrating why those circuit costs cannot be omitted
 from an end-to-end recurrence.
+
+
+## Canonical modulo-16 prefix vectors
+
+The [prefix scan](../primitives/u4-prefix-sum.md) returns every prefix, unlike
+scalar sum or the n-1-output forward delta. Conditional versus31-entry table
+under identical canonical input/output and staging/cleanup boundaries:
+
+| n | Conditional script / peak | Table script / peak | Data witness bytes | Hint items |
+| ---: | ---: | ---: | ---: | ---: |
+| 32 | 661 / 35 | 664 / 66 | 65 | 0 |
+| 128 | 2677 / 131 | 2584 / 162 | 257 | 0 |
+| 966 | 20275 / 969 | 20182 / 1000 | 1935 | 0 |
+| 997 | 20926 / 1000 | unsupported | 1997 | 0 |
+
+All n data items coexist at entry; caller live items add to the peak. Table
+setup/query/cleanup/restoration are included, terminal checks excluded on both
+sides. All sizes are policy-optimized. Evidence is locally-reproduced, execution
+unclassified, dynamic opcodes and validation weight unavailable. The table
+trades93 fewer bytes for 31 more live items at n128/966; see
+[NR-075](../negative-results/u4-prefix-table-tradeoff.md).
+
+
+## Product-grid symmetry
+
+The [exact nibble product](../primitives/u4-exact-product.md) uses Q(sum) minus
+Q(abs difference), with Q(x)=floor(x*x/4) and 31 resident entries. At n32 its
+complete memory lifecycle costs1389 bytes and 98 combined items, versus 1937/323
+for an exact 256-entry grid, with 64 data items, 129 witness bytes and zero hints.
+All input checks, routing, cleanup and outputs are included; terminals excluded.
+The quarter modulo table keeps its 225-item memory saving but loses script size
+at n128/370 because each query normalizes the signed difference; see
+[NR-076](../negative-results/u4-quarter-square-modulo.md).
+
+## Damm finite-state folds
+
+The [decimal Damm fold](../primitives/u4-damm.md) consumes hostile numeric digits
+in left-to-right order and returns a canonical checksum state. All four methods
+validate every 0..=9 digit and include table lifecycle/routing. At 32 digits:
+
+| Method | Fragment / exact-state leaf bytes | Combined peak |
+| --- | ---: | ---: |
+| Resident 100-entry table | 766 / 769 | 136 |
+| First-digit balanced warmup, then resident table | 829 / 832 | 135 |
+| Selected ten-entry row table | 5,652 / 5,655 | 42 |
+| Balanced table-free mapping | 27,809 / 27,812 | 35 |
+
+All are ALL policy compilations. Each uses the same 61-byte serialized witness:
+32 ordinary numeric data items, **zero hint items and zero hint bytes**, all
+present at entry. Witness pushes and script/control-block/transaction framing
+are excluded; the leaf binds the final state and returns TRUE. Nonminimal
+four-byte numeric aliases are also allowed by the local Consensus profile;
+the complete admissible witness maximum is 161 bytes at this boundary.
+Local Policy rejects those aliases with MinimalData, without proving relay
+acceptance of canonical leaves.
+
+At one digit, resident lookup loses (172/105 bytes/peak versus row table 27/11
+and dispatch 81/4). At two, resident beats row-table bytes (191 versus 206) but
+uses 106 versus 12 items. At 128, resident/row-table measure 2,686/23,124 bytes
+with ALL; balanced dispatch is 113,731 bytes explicitly **unoptimized NONE**.
+No universal dominance or new checksum algorithm is claimed. Public resident
+capacity is 896 digits at peak 1,000; the next digit fails StackSize. The measured
+warmup/row-table/dispatch frontiers are 897/990/997 digits, respectively.
+
+All results are `locally-reproduced`/`unclassified` using an explicitly configured
+local tapscript interpreter with stack enforcement; no Bitcoin Core experiment
+is present. [NR-079](../negative-results/damm-finite-state.md) records lost
+capacity, one-digit domination and checksum forgery. Source revisions, artifact
+hashes, exact profiles, lifecycle components and cross-component deltas are
+bound by [the report](../../research/damm-finite-state/README.md).
+
+## Integer-root square thresholds
+
+The [integer-root experiment](../primitives/scriptnum-isqrt.md) compares
+balanced constant square thresholds with residual differences, on identical
+numeric guards and exact-root boundaries. Small threshold trees win bytes at
+1/4/6 bits (18/34/70 versus 27/48/72); sixteen-bit threshold dispatch costs
+2,989 versus 232, with peak three versus five. One ordinary input / zero hints
+and the same serialized witness are included. There is no resident lookup
+memory in either method. Large 24/31-bit trees are explicitly unoptimized NONE
+(54,109/659,112 bytes), while the public difference schedule remains ALL.
+A root result authenticates neither the input encoding nor its provenance.
+These are locally-reproduced/unclassified comparisons, not Core execution.
+
+## CRC-8 four-bit feedback
+
+A sixteen-entry paired feedback table composes with the existing 136-item
+triangular XOR table and sixteen offsets: 184 resident items. On matched
+complete message boundaries, [CRC-8](../primitives/crc8-smbus.md) loses to
+serial bits at one byte (414 versus 285 fragment bytes), wins at two
+(520 versus 541) and nine (1,262 versus 2,333), but needs N+188 combined
+items rather than N+13. Every input is guarded before lookup, both caller
+stacks are preserved, and every setup/cleanup cost is included. Each byte
+uses two ordinary numeric nibbles and zero hints, all at entry.
+
+For independent nine-byte messages the whole policy switches between
+R=25 ALL and R=26 unoptimized NONE; component-policy deltas include that
+change. R=45 coexists at 998, R=46 fails at 1,001. Numeric aliases, canonical
+compositions, terminals, runtime caller bytes and each hostile live position
+have separate shared contracts. Evidence is locally-reproduced, deployment
+unclassified; [NR-081](../negative-results/crc8-nibble-feedback.md) retains the
+startup, memory and repeated-setup tradeoffs.

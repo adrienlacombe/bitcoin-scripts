@@ -284,10 +284,10 @@
     },
     {
       "id": "bitvm3s-2025",
-      "title": "BitVM 3s \u2013 Garbled Circuits for Efficient Computation on Bitcoin",
+      "title": "BitVM 3s – Garbled Circuits for Efficient Computation on Bitcoin",
       "kind": "paper",
       "url": "https://bitvm.org/bitvm3.pdf",
-      "revision": "Robin Linus, July 22, 2025; architectural context only, not validation of this repository\u2019s constant-sum verifier"
+      "revision": "Robin Linus, July 22, 2025; architectural context only, not validation of this repository’s constant-sum verifier"
     },
     {
       "id": "nist-dlmf-multiset-permutations",
@@ -309,6 +309,69 @@
       "kind": "reference-implementation",
       "url": "https://github.com/bitcoin/bitcoin/tree/49faec4f87f5cd19c88db01a82e5c68b087c8227",
       "revision": "49faec4f87f5cd19c88db01a82e5c68b087c8227 (v30.3); official archive SHA256 pins in tools/bitcoin_core_release.json; 24 deterministic complete Taproot regtest comparisons recorded 2026-09-10"
+    },
+    {
+      "id": "bitcoin-scripts-quarter-square-20261002",
+      "title": "Existing Bitcoin Scripts quarter-square identity and field table construction",
+      "kind": "reference-implementation",
+      "url": "https://github.com/solving-bitcoin/bitcoin-scripts/blob/bf9ee0bb34987a9130ad9dc13a06e18fef137296/src/fields/secp256k1/bigint9/mod.rs",
+      "revision": "bf9ee0bb34987a9130ad9dc13a06e18fef137296; identity and source inspected; field arithmetic tests excluded"
+    },
+    {
+      "id": "cpp-draft-stable-copy-if-20261002",
+      "title": "C++ draft [alg.copy]: stable copy_if semantics",
+      "kind": "specification",
+      "url": "https://github.com/Eelis/draft/blob/c7015b485cc3db8efaa9dfb9ff0809c5394a4ed1/source/algorithms.tex",
+      "revision": "c7015b485cc3db8efaa9dfb9ff0809c5394a4ed1; source/algorithms.tex, [alg.copy]; inspected 2026-10-02; semantic context only, no Bitcoin Script cost or security claim"
+    },
+    {
+      "id": "damm-checkdigits-net-20261002",
+      "title": "CheckDigits.Net Damm decimal transition table and fold",
+      "kind": "upstream-source",
+      "url": "https://github.com/KnowledgeForwardSolutions/CheckDigits.Net/tree/734afa2d3596862ef4c3bb3ec404b512b96b8965",
+      "revision": "734afa2d3596862ef4c3bb3ec404b512b96b8965; exact MIT-licensed DammQuasigroupTable.cs, DammAlgorithm.cs and LICENSE.txt snapshots with SHA256 bindings in research/damm-finite-state/reference; numeric table relations reproduced locally on 2026-10-02, without C# execution or thesis proof inspection"
+    },
+    {
+      "id": "integer-root-linux-v618",
+      "title": "Linux integer square root shift/subtract implementation",
+      "kind": "upstream-source",
+      "url": "https://github.com/torvalds/linux/blob/7d0a66e4bb9081d75c82ec4957c50034cb0ea449/lib/math/int_sqrt.c",
+      "revision": "7d0a66e4bb9081d75c82ec4957c50034cb0ea449 (v6.18); inspected 2026-10-02 as established algorithm context; code is not ported and no Linux execution is claimed"
+    },
+    {
+      "id": "integer-root-cpython-v3147",
+      "title": "CPython v3.14.7 exact math.isqrt oracle",
+      "kind": "reference-implementation",
+      "url": "https://github.com/python/cpython/tree/823f0323ee6ec1402088b73bce1a38473cac36dc",
+      "revision": "823f0323ee6ec1402088b73bce1a38473cac36dc (v3.14.7); math.isqrt exact integer contract documented at https://docs.python.org/3.14/library/math.html#math.isqrt; actual runtime version printed by independent Python oracles, locally 3.14.7; no floating-point roots"
+    },
+    {
+      "id": "crc8-smbus-v31",
+      "title": "SMBus Specification v3.1 CRC-8 Packet Error Checking",
+      "kind": "specification",
+      "url": "https://smbus.org/specs/SMBus_3_1_20180319.pdf",
+      "revision": "v3.1, 2018-03-19, section 6.4.1.3 p.37; PDF SHA256 ae22a791184fdd649c3101f70c3ce238c35b08c7f5b736458e740b903d1bf386"
+    },
+    {
+      "id": "crc8-linux-v618",
+      "title": "Linux v6.18 generic CRC-8 table generator and byte fold",
+      "kind": "reference-implementation",
+      "url": "https://github.com/torvalds/linux/blob/7d0a66e4bb9081d75c82ec4957c50034cb0ea449/lib/crc/crc8.c",
+      "revision": "Linux v6.18 commit 7d0a66e4bb9081d75c82ec4957c50034cb0ea449; inspected context only, not copied/executed"
+    },
+    {
+      "id": "tarau-factoradic-2008",
+      "title": "Ranking and Unranking of Hereditarily Finite Functions and Permutations",
+      "kind": "paper",
+      "url": "https://arxiv.org/html/0808.0554v1",
+      "revision": "arXiv:0808.0554v1, 2008-08-05; sections 7.1 and 7.2"
+    },
+    {
+      "id": "gao-palindromic-2021",
+      "title": "Enumeration of self-reciprocal irreducible monic polynomials with prescribed leading coefficients over a finite field",
+      "kind": "paper",
+      "url": "https://arxiv.org/abs/2109.09006v1",
+      "revision": "arXiv:2109.09006v1, 2021-09-18; palindromic coefficient-vector definition only"
     }
   ]
 }

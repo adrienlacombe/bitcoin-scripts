@@ -121,3 +121,61 @@ The [v30.3 differential fixtures](../core-validation.md) now
 confirm Core rejection of that boundary and validate one complete isolated
 HASH160 leaf under consensus and policy; other table/fragment measurements
 retain their original scope.
+
+
+## Ordered prefix outputs deepen table queries
+
+[Modulo-16 prefix sums](../primitives/u4-prefix-sum.md) retain prior outputs
+above a 31-entry table. Query i adds the number of prior prefixes to its index;
+cleanup parks all outputs before dropping the table, then restores their order.
+At n128 this saves 93 bytes over conditional subtraction but needs 31 more live
+items (162 versus131). Include staging and output restoration before comparing;
+[NR-075](../negative-results/u4-prefix-table-tradeoff.md) gives the frontier.
+
+
+## Quarter squares specialize product grids
+
+For canonical 0..15 operands, Q(a+b)-Q(abs(a-b)) with Q(x)=floor(x*x/4) needs 31
+entries instead of 256. The sum/difference parity makes floors cancel. A live
+Q(sum) item requires adding 1 to the second lookup index; neither table index
+may bypass operand checks. The [exact batch](../primitives/u4-exact-product.md)
+returns 0..225 ScriptNums and stages all outputs through table cleanup. Storing
+Q modulo 16 adds a negative-difference correction; its byte/stack frontier is
+[NR-076](../negative-results/u4-quarter-square-modulo.md).
+
+## Resident finite-state transitions
+
+The [Damm fold](../primitives/u4-damm.md) embeds all 100 decimal transition
+entries once, routes each checked numeric digit above the table and current
+state, and uses `10*state+digit` as a PICK index. Cleanup preserves the final
+state and the caller's altstack. Resident lookup exchanges table bytes for
+live space: nonempty peak is `n+104` plus **both** caller stacks. There are
+exactly zero hints per fold and n ordinary entry data items. The 896-digit
+standalone endpoint leaves no caller capacity.
+
+The report independently policy-compiles table setup, zero initial state,
+validated/routed queries and state-preserving cleanup, and records the delta to
+the final whole fragment. A selected ten-entry row table instead peaks at n+10
+but repeats dispatch and cleanup, losing bytes from two measured digits onward.
+Balanced table-free mapping peaks at n+3 and loses more bytes. These are local
+tradeoffs, not consensus evidence. The public API installs a fresh table per
+fold; it does not expose shared resident state between independent messages.
+
+At 32 digits the independently policy-compiled lifecycle is 100 bytes of table
+setup, one byte of initial state, 613 bytes of validated queries/routing, and
+52 bytes of table cleanup/state restoration. The whole optimizer delta is zero,
+so these sum to the final 766-byte fragment. At 128/896 digits, query/routing
+components are 2,533/17,893 bytes; setup/state/cleanup remain 100/1/52 and deltas
+remain zero. Query depth encodings vary with n, so this is not a constant
+per-digit charge or a shared-table API.
+
+## CRC feedback plus symmetric XOR
+
+[CRC-8 nibble feedback](../primitives/crc8-smbus.md) pairs high/low remainder
+entries and reuses the triangular XOR table for two state transitions per
+input nibble. A fixed 186-deep ROLL consumes the next checked input below
+184 table items and two CRC nibbles. Every query derives its index from
+range-checked numeric inputs or bounded internal state; tables are embedded.
+Both setup and destructive cleanup belong to the measured boundary. This
+reduces code growth at the cost of resident memory, recorded in
+[NR-081](../negative-results/crc8-nibble-feedback.md).

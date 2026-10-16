@@ -4,12 +4,21 @@ Each page describes one construction family or representation. Exact measured
 configurations live in `../catalog.json`; implementation details remain beside
 the source. Read a page together with its comparison page and evidence record.
 
+## Stack support
+
+- [Stable selection of opaque stack items](stable-selection.md)
+
 ## Arithmetic
 
+- [CRC-8/SMBus with nibble feedback](crc8-smbus.md)
+
 - [ScriptNum constant multiplication](scriptnum-constant-mul.md)
+- [ScriptNum integer floor root](scriptnum-isqrt.md)
 - [Hinted ScriptNum division](scriptnum-hinted-div.md)
 - [u4 digit arithmetic](u4.md)
+- [Numeric decimal Damm finite-state checksum](u4-damm.md)
 - [Signed radix-32 window decoder](signed-radix32-decoder.md)
+- [Checked factoradic (Lehmer code) decoding](factoradic-u4.md)
 - [Fixed-width u4 lexicographic comparison](u4-lexicographic.md)
 - [Checked u4 cyclic lag-equality mask](u4-cyclic-equality.md)
 - [Checked u4 embedded-equality mask](u4-equality.md)
@@ -20,6 +29,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked inverse u4 Gray projection](u4-gray-inverse.md)
 - [Checked u4 nonzero-power-of-two predicate](u4-power-of-two.md)
 - [Checked u4 modulo-three projection](u4-mod3.md)
+- [Checked u4 run-length expansion](u4-run-length.md)
 - [Checked u4 parity projection](u4-parity.md)
 - [Checked fixed-symbol u4 occurrence count](u4-count.md)
 - [Checked u4 presence-bit projection](u4-presence.md)
@@ -31,13 +41,16 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked u4 most-significant-bit projection](u4-msb.md)
 - [Checked u4 triplet-to-u12 packing](u4-triplet.md)
 - [Checked u4 quad-to-u16 packing](u4-quad.md)
+- [Checked base-16 integer residue modulo 17](u4-mod17.md)
 - [Checked u4 XOR reduction](u4-xor-reduction.md)
 - [Checked public-constant u4 multiplication modulo 16](u4-mul-constant-mod16.md)
 - [Checked u4 squaring modulo 16](u4-square-mod16.md)
 - [Checked u4 nondecreasing predicate](u4-nondecreasing.md)
 - [Checked u4 exact sum](u4-exact-sum.md)
+- [Exact u4 quarter-square products](u4-exact-product.md)
 - [Checked u4 batch nibble packing](u4-batch-pack.md)
 - [Checked u4 adjacent forward delta](u4-adjacent-delta.md)
+- [Canonical u4 modulo-16 prefix scan](u4-prefix-sum.md)
 - [Checked u4 cyclic vector rotation](u4-vector-rotation.md)
 - [Checked u4 vector interleave](u4-interleave.md)
 - [Checked u4 reflected Gray-code projection](u4-gray.md)
@@ -77,6 +90,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [u32 byte parity projection](u32-byte-parity.md)
 - [Fused u32 NAND](u32-nand.md)
 - [Fused u32 NOR](u32-nor.md)
+- [Canonical u32 residue modulo 65,537](u32-mod65537.md)
 - [Checked u32 zero predicate](u32-zero.md)
 
 - [Compressed total-domain u32 logical right shift](u32-compressed-rshift.md)
@@ -90,6 +104,10 @@ the source. Read a page together with its comparison page and evidence record.
 - [Multi-limb big integers](bigint.md)
 - [Residue-number arithmetic](rns.md)
 - [Prime logarithmic residue-number arithmetic](prime-rns.md)
+
+- [Canonical bounded permutation decoding](factoradic-permutation.md)
+
+- [Canonical reflection-constrained u4 witnesses](u4-reflection.md)
 
 ## Commitments
 
@@ -120,6 +138,7 @@ the source. Read a page together with its comparison page and evidence record.
 - [Checked AES-128 SubBytes](aes-subbytes.md)
 - [Checked AES-128 MixColumns](aes-mixcolumns.md)
 - [PRINCEv2 over u4 digits](princev2-u4.md)
+- [PRINCEv2 standalone M-hat layer](princev2-mhat.md)
 
 ## Signatures and one-time authentication
 

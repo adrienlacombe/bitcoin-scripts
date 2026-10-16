@@ -17,7 +17,8 @@ pub use bitcoin_script::script;
 
 use crate::arithmetic::bigint::U256;
 use crate::hashes::blake3::utils::{
-    compress, compress_short_digits, get_flags_for_block, DigitWord, TablesVars,
+    compress, compress_root_keyed, compress_short_digits, get_flags_for_block, DigitWord,
+    TablesVars, IV, MSG_PERMUTATION,
 };
 use crate::support::script::ScriptCompilation;
 
@@ -444,12 +445,156 @@ pub fn blake3_compute_script(message_len: usize) -> Script {
     blake3_compute_script_with_limb(message_len, 29)
 }
 
-fn blake3_short(stack: &mut StackTracker, message_len: u32, output_word_count: u8) {
+const CHUNK_START: u32 = 1 << 0;
+const CHUNK_END: u32 = 1 << 1;
+const ROOT: u32 = 1 << 3;
+const KEYED_HASH: u32 = 1 << 4;
+const DERIVE_KEY_CONTEXT: u32 = 1 << 5;
+const DERIVE_KEY_MATERIAL: u32 = 1 << 6;
+
+/// BLAKE3 mode for the short witness-backed profile.
+///
+/// Every mode differs from unkeyed hashing only in the root compression's
+/// input chaining value and one mode flag. Keys and contexts are fixed when
+/// the script is generated, so no mode adds witness items or Script work
+/// beyond different constants.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Blake3Mode {
+    /// Ordinary unkeyed BLAKE3.
+    Hash,
+    /// `keyed_hash` under a generation-time 32-byte key.
+    KeyedHash([u8; 32]),
+    /// The material phase of `derive_key`. Construct it with
+    /// [`Blake3Mode::derive_key`], which runs the context phase on the host.
+    DeriveKey { context_key: [u8; 32] },
+}
+
+impl Blake3Mode {
+    /// Derive-key mode for a hardcoded context string of at most 1,024 bytes.
+    ///
+    /// BLAKE3 requires the context to be a compile-time constant, so the
+    /// context phase is computed here and only the material phase is
+    /// generated as Script.
+    pub fn derive_key(context: &str) -> Self {
+        let context_key = host_hash_single_chunk(&IV, context.as_bytes(), DERIVE_KEY_CONTEXT);
+        Self::DeriveKey {
+            context_key: words_to_le_bytes(&context_key[..8]),
+        }
+    }
+
+    fn key_words(&self) -> [u32; 8] {
+        match self {
+            Self::Hash => IV,
+            Self::KeyedHash(key) | Self::DeriveKey { context_key: key } => {
+                std::array::from_fn(|index| {
+                    u32::from_le_bytes(key[4 * index..4 * index + 4].try_into().unwrap())
+                })
+            }
+        }
+    }
+
+    fn flags(&self) -> u32 {
+        match self {
+            Self::Hash => 0,
+            Self::KeyedHash(_) => KEYED_HASH,
+            Self::DeriveKey { .. } => DERIVE_KEY_MATERIAL,
+        }
+    }
+}
+
+fn words_to_le_bytes<const N: usize>(words: &[u32]) -> [u8; N] {
+    let bytes = words
+        .iter()
+        .flat_map(|word| word.to_le_bytes())
+        .collect::<Vec<_>>();
+    bytes.try_into().unwrap()
+}
+
+fn host_g(state: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize, x: u32, y: u32) {
+    state[a] = state[a].wrapping_add(state[b]).wrapping_add(x);
+    state[d] = (state[d] ^ state[a]).rotate_right(16);
+    state[c] = state[c].wrapping_add(state[d]);
+    state[b] = (state[b] ^ state[c]).rotate_right(12);
+    state[a] = state[a].wrapping_add(state[b]).wrapping_add(y);
+    state[d] = (state[d] ^ state[a]).rotate_right(8);
+    state[c] = state[c].wrapping_add(state[d]);
+    state[b] = (state[b] ^ state[c]).rotate_right(7);
+}
+
+/// Host BLAKE3 compression returning all sixteen output words.
+fn host_compress(cv: &[u32; 8], block: &[u8], block_len: u32, flags: u32) -> [u32; 16] {
+    let mut padded = [0_u8; 64];
+    padded[..block.len()].copy_from_slice(block);
+    let mut message: [u32; 16] = std::array::from_fn(|index| {
+        u32::from_le_bytes(padded[4 * index..4 * index + 4].try_into().unwrap())
+    });
+    let mut state = [
+        cv[0], cv[1], cv[2], cv[3], cv[4], cv[5], cv[6], cv[7], IV[0], IV[1], IV[2], IV[3], 0, 0,
+        block_len, flags,
+    ];
+    for round in 0..7 {
+        host_g(&mut state, 0, 4, 8, 12, message[0], message[1]);
+        host_g(&mut state, 1, 5, 9, 13, message[2], message[3]);
+        host_g(&mut state, 2, 6, 10, 14, message[4], message[5]);
+        host_g(&mut state, 3, 7, 11, 15, message[6], message[7]);
+        host_g(&mut state, 0, 5, 10, 15, message[8], message[9]);
+        host_g(&mut state, 1, 6, 11, 12, message[10], message[11]);
+        host_g(&mut state, 2, 7, 8, 13, message[12], message[13]);
+        host_g(&mut state, 3, 4, 9, 14, message[14], message[15]);
+        if round != 6 {
+            message = std::array::from_fn(|index| message[MSG_PERMUTATION[index] as usize]);
+        }
+    }
+    std::array::from_fn(|index| {
+        if index < 8 {
+            state[index] ^ state[index + 8]
+        } else {
+            state[index] ^ cv[index - 8]
+        }
+    })
+}
+
+/// Host single-chunk BLAKE3 returning the 64-byte root output block.
+fn host_hash_single_chunk(key: &[u32; 8], input: &[u8], mode_flags: u32) -> [u32; 16] {
+    assert!(
+        input.len() <= 1024,
+        "host BLAKE3 input must fit one 1,024-byte chunk"
+    );
+    let block_count = input.len().div_ceil(64).max(1);
+    let mut cv = *key;
+    for (index, block) in input
+        .chunks(64)
+        .chain(input.is_empty().then_some(&[][..]))
+        .enumerate()
+    {
+        let mut flags = mode_flags;
+        if index == 0 {
+            flags |= CHUNK_START;
+        }
+        if index + 1 == block_count {
+            return host_compress(&cv, block, block.len() as u32, flags | CHUNK_END | ROOT);
+        }
+        cv = host_compress(&cv, block, 64, flags)[..8]
+            .try_into()
+            .unwrap();
+    }
+    unreachable!("the final block returns")
+}
+
+fn blake3_short(
+    stack: &mut StackTracker,
+    message_len: u32,
+    output_word_count: u8,
+    mode: &Blake3Mode,
+    extended_output: bool,
+) {
     assert!(
         (1..=32).contains(&message_len),
         "short BLAKE3 message length must be in the range [1, 32]"
     );
     assert!((1..=8).contains(&output_word_count));
+    assert!(!extended_output || output_word_count == 8);
+    let key = mode.key_words();
 
     let input_nibbles = message_len * 2;
     stack.define(input_nibbles, "short message nibbles");
@@ -538,22 +683,30 @@ fn blake3_short(stack: &mut StackTracker, message_len: u32, output_word_count: u
             })
             .collect();
         tables.push_late_tables(stack);
-        compress_short_digits(stack, message_len, message, &tables, output_word_count);
+        compress_short_digits(
+            stack,
+            &key,
+            mode.flags(),
+            message_len,
+            message,
+            &tables,
+            output_word_count,
+            extended_output,
+        );
     } else {
         let message = (0..message_word_count as usize)
             .map(|semantic_index| (semantic_index as u8, message_words[semantic_index]))
             .collect();
-        compress(
+        compress_root_keyed(
             stack,
-            false,
-            0,
+            &key,
             message_len,
-            get_flags_for_block(0, 1),
+            get_flags_for_block(0, 1) | mode.flags(),
             message,
             &tables,
             output_word_count,
             true,
-            true,
+            extended_output,
         );
     }
 
@@ -570,7 +723,11 @@ fn blake3_short(stack: &mut StackTracker, message_len: u32, output_word_count: u
     } else {
         tables.drop(stack);
     }
-    stack.from_altstack_joined(u32::from(output_word_count) * 8, "blake3-hash");
+    let extended_nibbles = if extended_output { 64 } else { 0 };
+    stack.from_altstack_joined(
+        u32::from(output_word_count) * 8 + extended_nibbles,
+        "blake3-hash",
+    );
 }
 
 fn blake3_short_message_nibbles(message: &[u8]) -> Vec<u8> {
@@ -652,7 +809,7 @@ pub fn blake3_short_compute_script(message_len: usize) -> Script {
     );
 
     let mut stack = StackTracker::new();
-    blake3_short(&mut stack, message_len as u32, 8);
+    blake3_short(&mut stack, message_len as u32, 8, &Blake3Mode::Hash, false);
     Script::new("optimized short BLAKE3").push_script(optimize_to_fixed_point(
         stack.get_script().compile_with_policy(),
     ))
@@ -688,8 +845,67 @@ pub fn blake3_short_compute_script_truncated_128(message_len: usize) -> Script {
     );
 
     let mut stack = StackTracker::new();
-    blake3_short(&mut stack, message_len as u32, 4);
+    blake3_short(&mut stack, message_len as u32, 4, &Blake3Mode::Hash, false);
     Script::new("optimized truncated short BLAKE3").push_script(optimize_to_fixed_point(
+        stack.get_script().compile_with_policy(),
+    ))
+}
+
+/// Computes BLAKE3 in `mode` for a witness-backed message of at most 32
+/// bytes, returning the first `output_len` bytes of its output stream.
+///
+/// `output_len` is 16, 32, or 64. A 64-byte output is the complete root
+/// compression output, so it needs no additional compression: the second half
+/// XORs the root's high state words with the generation-time chaining value.
+/// The input contract matches [`blake3_short_compute_script`]; the output is
+/// two u4 items per byte, first byte deepest. An empty message is checked to
+/// have no input and returns the host-computed constant output.
+pub fn blake3_short_mode_compute_script(
+    message_len: usize,
+    mode: Blake3Mode,
+    output_len: usize,
+) -> Script {
+    assert!(
+        message_len <= 32,
+        "short BLAKE3 messages must be at most 32 bytes"
+    );
+    let (output_word_count, extended_output) = match output_len {
+        16 => (4, false),
+        32 => (8, false),
+        64 => (8, true),
+        _ => panic!("short BLAKE3 output length must be 16, 32, or 64 bytes"),
+    };
+
+    if message_len == 0 {
+        let output: [u8; 64] = words_to_le_bytes(&host_hash_single_chunk(
+            &mode.key_words(),
+            &[],
+            mode.flags(),
+        ));
+        let nibbles = output[..output_len]
+            .iter()
+            .flat_map(|byte| [byte >> 4, byte & 0x0f])
+            .collect::<Vec<_>>();
+        return Script::new("empty-message BLAKE3 output").push_script(
+            script! {
+                OP_DEPTH 0 OP_EQUALVERIFY
+                for nibble in nibbles {
+                    { nibble }
+                }
+            }
+            .compile_with_policy(),
+        );
+    }
+
+    let mut stack = StackTracker::new();
+    blake3_short(
+        &mut stack,
+        message_len as u32,
+        output_word_count,
+        &mode,
+        extended_output,
+    );
+    Script::new("optimized short BLAKE3 mode").push_script(optimize_to_fixed_point(
         stack.get_script().compile_with_policy(),
     ))
 }
@@ -720,6 +936,11 @@ pub fn blake3_verify_output_script(expected_output: [u8; 32]) -> Script {
     verify_output_bytes(&expected_output, "verify BLAKE3 output")
 }
 
+/// Verifies the 64-byte output of [`blake3_short_mode_compute_script`].
+pub fn blake3_verify_extended_output_script(expected_output: [u8; 64]) -> Script {
+    verify_output_bytes(&expected_output, "verify extended BLAKE3 output")
+}
+
 /// Verifies the first 128 bits returned by
 /// [`blake3_short_compute_script_truncated_128`].
 pub fn blake3_verify_output_prefix_script(expected_output: [u8; 16]) -> Script {
@@ -731,6 +952,7 @@ mod tests {
     use super::*;
     use crate::support::execution::{
         execute_script, execute_script_buf_without_stack_limit, execute_script_with_inputs,
+        execute_script_with_inputs_strict, ExecuteInfo,
     };
     use bitcoin::ScriptBuf;
 
@@ -979,6 +1201,206 @@ mod tests {
             { compute }
         });
         assert!(!extra.success);
+    }
+
+    const MODE_TEST_KEY: [u8; 32] = *b"whats the Elvish word for friend";
+    const MODE_TEST_CONTEXT: &str = "BLAKE3 2019-12-27 16:29:52 test vectors context";
+
+    fn reference_output(mode: &str, message: &[u8]) -> [u8; 64] {
+        let mut hasher = match mode {
+            "hash" => blake3::Hasher::new(),
+            "keyed_hash" => blake3::Hasher::new_keyed(&MODE_TEST_KEY),
+            "derive_key" => blake3::Hasher::new_derive_key(MODE_TEST_CONTEXT),
+            _ => unreachable!(),
+        };
+        let mut output = [0; 64];
+        hasher.update(message).finalize_xof().fill(&mut output);
+        output
+    }
+
+    fn test_modes() -> [(&'static str, Blake3Mode); 3] {
+        [
+            ("hash", Blake3Mode::Hash),
+            ("keyed_hash", Blake3Mode::KeyedHash(MODE_TEST_KEY)),
+            ("derive_key", Blake3Mode::derive_key(MODE_TEST_CONTEXT)),
+        ]
+    }
+
+    fn mode_output_matches(
+        message: &[u8],
+        mode: Blake3Mode,
+        output_len: usize,
+        expected: &[u8],
+    ) -> ExecuteInfo {
+        let compute = blake3_short_mode_compute_script(message.len(), mode, output_len);
+        let verify = verify_output_bytes(&expected[..output_len], "verify mode output");
+        execute_script_with_inputs_strict(
+            script! {
+                { compute }
+                { verify }
+            },
+            blake3_short_message_witness(message),
+        )
+    }
+
+    #[test]
+    fn test_short_modes_match_official_extended_vectors() {
+        use serde::Deserialize;
+
+        #[derive(Deserialize)]
+        struct TestVectors {
+            key: String,
+            context_string: String,
+            cases: Vec<TestVector>,
+        }
+
+        #[derive(Deserialize)]
+        struct TestVector {
+            input_len: usize,
+            hash: String,
+            keyed_hash: String,
+            derive_key: String,
+        }
+
+        let vectors: TestVectors = serde_json::from_str(
+            &std::fs::read_to_string("src/hashes/blake3/test_vectors.json").unwrap(),
+        )
+        .unwrap();
+        assert_eq!(vectors.key.as_bytes(), MODE_TEST_KEY);
+        assert_eq!(vectors.context_string, MODE_TEST_CONTEXT);
+
+        let mut checked = 0;
+        for case in vectors.cases.iter().filter(|case| case.input_len <= 32) {
+            let message = (0..251_u8).cycle().take(case.input_len).collect::<Vec<_>>();
+            for ((name, mode), expected) in
+                test_modes()
+                    .into_iter()
+                    .zip([&case.hash, &case.keyed_hash, &case.derive_key])
+            {
+                let expected = <[u8; 64]>::from_hex(&expected[..128]).unwrap();
+                let result = mode_output_matches(&message, mode, 64, &expected);
+                assert!(result.success, "{name} length {}: {result}", case.input_len);
+                checked += 1;
+            }
+        }
+        assert_eq!(checked, 27, "official vectors cover lengths 0..=8");
+    }
+
+    #[test]
+    fn test_short_modes_match_reference_all_lengths_and_outputs() {
+        for message_len in 0..=32 {
+            let message = (0..message_len)
+                .map(|index| ((index * 41 + message_len * 7) & 0xff) as u8)
+                .collect::<Vec<_>>();
+            for (name, mode) in test_modes() {
+                let expected = reference_output(name, &message);
+                for output_len in [16, 32, 64] {
+                    let result = mode_output_matches(&message, mode, output_len, &expected);
+                    assert!(
+                        result.success,
+                        "{name} length {message_len} output {output_len}: {result}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_derive_key_contexts_match_reference() {
+        let multi_block = (0..150).map(|index| (b'a' + index % 26) as char);
+        for context in [String::new(), "ctx".into(), multi_block.collect()] {
+            let mode = Blake3Mode::derive_key(&context);
+            for message_len in [0, 1, 32] {
+                let message = vec![0xa5; message_len];
+                let mut expected = [0; 64];
+                blake3::Hasher::new_derive_key(&context)
+                    .update(&message)
+                    .finalize_xof()
+                    .fill(&mut expected);
+                let result = mode_output_matches(&message, mode, 64, &expected);
+                assert!(
+                    result.success,
+                    "context length {} message length {message_len}: {result}",
+                    context.len()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_short_hash_mode_preserves_existing_scripts() {
+        for message_len in [1, 8, 28, 29, 32] {
+            assert_eq!(
+                blake3_short_mode_compute_script(message_len, Blake3Mode::Hash, 32)
+                    .compile_with_policy(),
+                blake3_short_compute_script(message_len).compile_with_policy()
+            );
+            assert_eq!(
+                blake3_short_mode_compute_script(message_len, Blake3Mode::Hash, 16)
+                    .compile_with_policy(),
+                blake3_short_compute_script_truncated_128(message_len).compile_with_policy()
+            );
+        }
+    }
+
+    #[test]
+    fn test_short_modes_are_domain_separated() {
+        let message = [0x5a; 32];
+        let keyed = Blake3Mode::KeyedHash(MODE_TEST_KEY);
+        let unkeyed = reference_output("hash", &message);
+        let result = mode_output_matches(&message, keyed, 32, &unkeyed);
+        assert!(!result.success, "keyed script accepted the unkeyed digest");
+
+        let derive = Blake3Mode::derive_key(MODE_TEST_CONTEXT);
+        let keyed_output = reference_output("keyed_hash", &message);
+        let result = mode_output_matches(&message, derive, 32, &keyed_output);
+        assert!(
+            !result.success,
+            "derive-key script accepted the keyed digest"
+        );
+    }
+
+    #[test]
+    fn test_short_modes_reject_malformed_inputs() {
+        for (name, mode) in test_modes() {
+            for message_len in [1, 32] {
+                let compute = blake3_short_mode_compute_script(message_len, mode, 64);
+                let valid = blake3_short_message_witness(&vec![0x11; message_len]);
+                for (position, invalid) in [(0, vec![0x10]), (valid.len() - 1, vec![0x81])] {
+                    let mut witness = valid.clone();
+                    witness[position] = invalid;
+                    let result = execute_script_with_inputs_strict(compute.clone(), witness);
+                    assert!(!result.success, "{name} {message_len} accepted bad nibble");
+                }
+
+                let mut extra = valid.clone();
+                extra.push(vec![]);
+                let result = execute_script_with_inputs_strict(compute.clone(), extra);
+                assert!(!result.success, "{name} {message_len} accepted extra item");
+
+                let result = execute_script_with_inputs_strict(compute, valid[1..].to_vec());
+                assert!(
+                    !result.success,
+                    "{name} {message_len} accepted missing item"
+                );
+            }
+
+            let empty = blake3_short_mode_compute_script(0, mode, 64);
+            let result = execute_script_with_inputs_strict(empty, vec![vec![]]);
+            assert!(!result.success, "{name} empty message accepted input");
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "output length must be 16, 32, or 64 bytes")]
+    fn test_short_modes_reject_unsupported_output_length() {
+        blake3_short_mode_compute_script(32, Blake3Mode::Hash, 48);
+    }
+
+    #[test]
+    #[should_panic(expected = "host BLAKE3 input must fit one 1,024-byte chunk")]
+    fn test_derive_key_rejects_multi_chunk_context() {
+        Blake3Mode::derive_key(&"c".repeat(1025));
     }
 
     #[test]

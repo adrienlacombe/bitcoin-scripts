@@ -14,7 +14,7 @@ use bitcoin::hashes::{
 use bitcoin::{script::Instruction, Witness};
 use bitcoin_lab::arithmetic::rns::prime::carry::bound;
 use bitcoin_lab::{
-    arithmetic::{bigint::U254, rns, scriptint, signed_window, u31, u32, u4},
+    arithmetic::{bigint::U254, factoradic, rns, scriptint, signed_window, u31, u32, u4},
     ciphers::{aes, prince},
     commitments::{
         four_way_hash_path_integer_commitment, four_way_hash_path_integer_witness,
@@ -136,6 +136,62 @@ fn static_non_push_opcodes(script: bitcoin_script::Script) -> usize {
         .count()
 }
 
+#[test]
+fn crc8_smbus_metrics_are_current() {
+    use bitcoin_lab::arithmetic::checksums::crc8::crc8_smbus_nibbles;
+    let fragment = crc8_smbus_nibbles(9);
+    let leaf = script! {{fragment.clone()}244 OP_EQUALVERIFY OP_TRUE};
+    let witness: Vec<Vec<u8>> = b"123456789"
+        .iter()
+        .flat_map(|&b| [b >> 4, b & 15])
+        .rev()
+        .map(|n| scriptnum(n.into()))
+        .collect();
+    let readme = "src/arithmetic/checksums/crc8/README.md";
+    check_readme_metrics(vec![
+        Metric {
+            readme,
+            key: "crc8_smbus9",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme,
+            key: "crc8_smbus9_leaf",
+            value: script_len(leaf.clone()),
+        },
+        Metric {
+            readme,
+            key: "crc8_smbus9_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme,
+            key: "crc8_smbus9_stack",
+            value: max_stack_items_strict(leaf, witness),
+        },
+        Metric {
+            readme,
+            key: "crc8_smbus9_static",
+            value: static_non_push_opcodes(fragment),
+        },
+        Metric {
+            readme,
+            key: "crc8_smbus1",
+            value: script_len(crc8_smbus_nibbles(1)),
+        },
+        Metric {
+            readme,
+            key: "crc8_smbus2",
+            value: script_len(crc8_smbus_nibbles(2)),
+        },
+        Metric {
+            readme,
+            key: "crc8_smbus406",
+            value: script_len(crc8_smbus_nibbles(406)),
+        },
+    ]);
+}
+
 fn witness_size(items: &[Vec<u8>]) -> usize {
     serialize(&Witness::from_slice(items)).len()
 }
@@ -211,6 +267,62 @@ fn prince_metrics() -> Vec<Metric> {
             readme: "src/ciphers/prince/README.md",
             key: "prince_non_push_ops",
             value: non_push_ops,
+        },
+    ]
+}
+
+fn prince_m_layer_metrics() -> Vec<Metric> {
+    let fragment = prince::prince_m_layer();
+    let compiled = fragment.clone().compile_with_policy();
+    let witness: Vec<Vec<u8>> = [
+        0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
+    ]
+    .into_iter()
+    .rev()
+    .map(|nibble| if nibble == 0 { vec![] } else { vec![nibble] })
+    .collect();
+    let execution_leaf = script! {
+        { fragment.clone() }
+        for _ in 0..8 { OP_2DROP }
+        OP_TRUE
+    };
+    let execution = execute_script_with_inputs_strict(execution_leaf, witness.clone());
+    assert!(
+        execution.success,
+        "PRINCEv2 M-layer metric execution failed: {execution}"
+    );
+    let static_non_push = compiled
+        .instructions()
+        .map(|instruction| instruction.expect("generated PRINCEv2 M-layer must parse"))
+        .filter(
+            |instruction| matches!(instruction, Instruction::Op(opcode) if opcode.to_u8() > 0x60),
+        )
+        .count();
+    vec![
+        Metric {
+            readme: "src/ciphers/prince/README.md",
+            key: "prince_m_layer",
+            value: compiled.len(),
+        },
+        Metric {
+            readme: "src/ciphers/prince/README.md",
+            key: "prince_m_layer_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/ciphers/prince/README.md",
+            key: "prince_m_layer_stack",
+            value: execution.stats.max_nb_stack_items,
+        },
+        Metric {
+            readme: "src/ciphers/prince/README.md",
+            key: "prince_m_layer_static_opcodes",
+            value: static_non_push,
+        },
+        Metric {
+            readme: "src/ciphers/prince/README.md",
+            key: "prince_m_layer_hints",
+            value: 0,
         },
     ]
 }
@@ -4137,6 +4249,24 @@ fn metrics() -> Vec<Metric> {
         },
         Metric {
             readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_prefix_32_8",
+            value: script_len(ripemd160::ripemd160_prefix(32, 8)),
+        },
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_prefix_32_8_witness",
+            value: witness_size(&vec![vec![0x42]; 32]),
+        },
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_prefix_32_8_stack",
+            value: max_stack_items(
+                script! { { ripemd160::ripemd160_prefix(32, 8) } OP_TRUE },
+                vec![vec![0x42]; 32],
+            ),
+        },
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
             key: "ripemd160_u32_80_midstate",
             value: script_len(ripemd160::ripemd160_80bytes_from_midstate(
                 ripemd160_midstate_42x64(),
@@ -4149,6 +4279,11 @@ fn metrics() -> Vec<Metric> {
         },
         Metric {
             readme: "src/hashes/sha1/README.md",
+            key: "sha1_u32_prefix_32_8",
+            value: script_len(sha1::sha1_prefix(32, 8)),
+        },
+        Metric {
+            readme: "src/hashes/sha1/README.md",
             key: "sha1_u32_80_midstate",
             value: script_len(sha1::sha1_80bytes_from_midstate(sha1_midstate_42x64())),
         },
@@ -4156,6 +4291,11 @@ fn metrics() -> Vec<Metric> {
             readme: "src/hashes/sha256/README.md",
             key: "sha2_u32_32",
             value: script_len(sha256::sha2_u32::sha256(32)),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_prefix_32_8",
+            value: script_len(sha256::sha2_u32::sha256_prefix(32, 8)),
         },
         Metric {
             readme: "src/hashes/sha256/README.md",
@@ -4213,6 +4353,11 @@ fn metrics() -> Vec<Metric> {
             readme: "src/hashes/sha256/README.md",
             key: "sha2_u4_32",
             value: script_len(sha256::sha2_u4::sha256(32)),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_prefix_32_8",
+            value: script_len(sha256::sha2_u4::sha256_prefix(32, 8)),
         },
         Metric {
             readme: "src/hashes/sha256/README.md",
@@ -4625,6 +4770,7 @@ fn metrics() -> Vec<Metric> {
     .chain(u32_compressed_rshift_metrics())
     .chain(u32_compressed_lshift_metrics())
     .chain(prince_metrics())
+    .chain(prince_m_layer_metrics())
     .chain(aes_sub_bytes_metrics())
     .chain(aes_mix_columns_metrics())
     .chain(winternitz_metrics())
@@ -4653,9 +4799,13 @@ fn metrics() -> Vec<Metric> {
     .chain(u32_conditional_select_metrics())
     .chain(u32_conditional_negate_metrics())
     .chain(u4_sum_metrics())
+    .chain(u4_mod17_metrics())
+    .chain(u4_prefix_sum_metrics())
+    .chain(u4_exact_product_metrics())
     .chain(u32_consuming_bitwise_metrics())
     .chain(u4_le_bits_metrics())
     .chain(u32_iszero_metrics())
+    .chain(u32_mod65537_metrics())
     .chain(u254_add_nocarry_metrics())
     .chain(u254_sub_noborrow_metrics())
     .chain(sha2_u4_shared_lookup_metrics())
@@ -4931,11 +5081,105 @@ fn blake3_short_truncated_128_metrics_are_current() {
     ]);
 }
 
+/// Generation-time BLAKE3 modes and the 64-byte XOF prefix over the same
+/// 32-byte direct-u4 input profile. Each fragment consumes exactly 64 checked
+/// u4 witness items with zero hints; stack peaks include the output verifier.
+#[test]
+fn blake3_short_mode_metrics_are_current() {
+    let message: [u8; 32] = std::array::from_fn(|index| index as u8);
+    let key: [u8; 32] = *b"whats the Elvish word for friend";
+    let context = "BLAKE3 2019-12-27 16:29:52 test vectors context";
+    let reference = |mut hasher: ::blake3::Hasher| {
+        let mut output = [0_u8; 64];
+        hasher.update(&message).finalize_xof().fill(&mut output);
+        output
+    };
+    let cases = [
+        (
+            [
+                "blake3_short_keyed_32",
+                "blake3_short_keyed_32_opcodes",
+                "blake3_short_keyed_32_stack",
+            ],
+            blake3::Blake3Mode::KeyedHash(key),
+            reference(::blake3::Hasher::new_keyed(&key)),
+            32,
+        ),
+        (
+            [
+                "blake3_short_derive_key_32",
+                "blake3_short_derive_key_32_opcodes",
+                "blake3_short_derive_key_32_stack",
+            ],
+            blake3::Blake3Mode::derive_key(context),
+            reference(::blake3::Hasher::new_derive_key(context)),
+            32,
+        ),
+        (
+            [
+                "blake3_short_xof64_32",
+                "blake3_short_xof64_32_opcodes",
+                "blake3_short_xof64_32_stack",
+            ],
+            blake3::Blake3Mode::Hash,
+            reference(::blake3::Hasher::new()),
+            64,
+        ),
+        (
+            [
+                "blake3_short_keyed_xof64_32",
+                "blake3_short_keyed_xof64_32_opcodes",
+                "blake3_short_keyed_xof64_32_stack",
+            ],
+            blake3::Blake3Mode::KeyedHash(key),
+            reference(::blake3::Hasher::new_keyed(&key)),
+            64,
+        ),
+    ];
+    let mut metrics = Vec::new();
+    for (keys, mode, expected, output_len) in cases {
+        let compute = blake3::blake3_short_mode_compute_script(32, mode, output_len);
+        let verify = if output_len == 64 {
+            blake3::blake3_verify_extended_output_script(expected)
+        } else {
+            blake3::blake3_verify_output_script(expected[..32].try_into().unwrap())
+        };
+        let complete = script! {
+            { blake3::blake3_push_short_message_script(&message) }
+            { compute.clone() }
+            { verify }
+        };
+        metrics.extend([
+            Metric {
+                readme: "src/hashes/blake3/README.md",
+                key: keys[0],
+                value: script_len(compute.clone()),
+            },
+            Metric {
+                readme: "src/hashes/blake3/README.md",
+                key: keys[1],
+                value: static_non_push_opcodes(compute),
+            },
+            Metric {
+                readme: "src/hashes/blake3/README.md",
+                key: keys[2],
+                value: max_stack_items_strict(complete, vec![]),
+            },
+        ]);
+    }
+    check_readme_metrics(metrics);
+}
+
 /// Check or intentionally refresh only the PRINCEv2 metric markers, without
 /// generating scripts for the full-repository metric suite.
 #[test]
 fn prince_metrics_are_current() {
-    check_readme_metrics(prince_metrics());
+    check_readme_metrics(
+        prince_metrics()
+            .into_iter()
+            .chain(prince_m_layer_metrics())
+            .collect(),
+    );
 }
 
 #[test]
@@ -5609,6 +5853,302 @@ fn u32_uncompress_canonical_nonnegative_metrics_are_current() {
             value: result.stats.opcode_count - 3,
         },
     ]);
+}
+
+#[test]
+fn output_prefix_metrics_are_current() {
+    let byte_witness = vec![vec![0x42]; 32];
+    let nibble_witness = vec![vec![1]; 64];
+    let ripemd_prefix = ripemd160::ripemd160_prefix(32, 8);
+    let sha1_prefix = sha1::sha1_prefix(32, 8);
+    let sha2_u32_prefix = sha256::sha2_u32::sha256_prefix(32, 8);
+    let sha2_u4_prefix = sha256::sha2_u4::sha256_prefix(32, 8);
+
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_prefix_32_8",
+            value: script_len(ripemd_prefix.clone()),
+        },
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_prefix_32_8_witness",
+            value: witness_size(&byte_witness),
+        },
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_prefix_32_8_stack",
+            value: max_stack_items(
+                script! {
+                    { ripemd_prefix.clone() }
+                    for _ in 0..8 { OP_DROP }
+                    OP_TRUE
+                },
+                byte_witness.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/hashes/ripemd160/README.md",
+            key: "ripemd160_prefix_32_8_opcodes",
+            value: static_non_push_opcodes(ripemd_prefix),
+        },
+        Metric {
+            readme: "src/hashes/sha1/README.md",
+            key: "sha1_u32_prefix_32_8",
+            value: script_len(sha1_prefix.clone()),
+        },
+        Metric {
+            readme: "src/hashes/sha1/README.md",
+            key: "sha1_u32_prefix_32_8_witness",
+            value: witness_size(&byte_witness),
+        },
+        Metric {
+            readme: "src/hashes/sha1/README.md",
+            key: "sha1_u32_prefix_32_8_stack",
+            value: max_stack_items(
+                script! {
+                    { sha1_prefix.clone() }
+                    for _ in 0..8 { OP_DROP }
+                    OP_TRUE
+                },
+                byte_witness.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/hashes/sha1/README.md",
+            key: "sha1_u32_prefix_32_8_opcodes",
+            value: static_non_push_opcodes(sha1_prefix),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_prefix_32_8",
+            value: script_len(sha2_u32_prefix.clone()),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_prefix_32_8_witness",
+            value: witness_size(&byte_witness),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_prefix_32_8_stack",
+            value: max_stack_items(
+                script! {
+                    { sha2_u32_prefix.clone() }
+                    for _ in 0..8 { OP_DROP }
+                    OP_TRUE
+                },
+                byte_witness.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u32_prefix_32_8_opcodes",
+            value: static_non_push_opcodes(sha2_u32_prefix),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_prefix_32_8",
+            value: script_len(sha2_u4_prefix.clone()),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_prefix_32_8_witness",
+            value: witness_size(&nibble_witness),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_prefix_32_8_stack",
+            value: max_stack_items(
+                script! {
+                    { sha2_u4_prefix.clone() }
+                    for _ in 0..8 { OP_DROP }
+                    OP_TRUE
+                },
+                nibble_witness.clone(),
+            ),
+        },
+        Metric {
+            readme: "src/hashes/sha256/README.md",
+            key: "sha2_u4_prefix_32_8_opcodes",
+            value: static_non_push_opcodes(sha2_u4_prefix),
+        },
+    ]);
+}
+
+#[test]
+fn u4_unpack_metrics_are_current() {
+    let scalar = |byte_count: u32| {
+        script! {
+            for _ in 0..byte_count {
+                { u4::stack::u8_to_u4_pair(true) }
+                OP_TOALTSTACK OP_TOALTSTACK
+            }
+            for _ in 0..byte_count {
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP
+            }
+        }
+    };
+    let mut metrics = Vec::new();
+    for byte_count in [16, 18, 19, 32, 243] {
+        // Byte/opcode metrics use this single policy-produced fragment. Peak
+        // execution below wraps the same fragment in the shared output-drop /
+        // truth harness required for strict clean-stack evaluation.
+        let table_fragment = u4::unpack::u4_bytes_to_nibbles(byte_count);
+        let table_witness = vec![scriptnum(0xff); byte_count as usize];
+        let table_compiled = table_fragment.clone().compile_with_policy();
+        let table_stack = max_stack_items_strict(
+            script! {
+                { table_fragment.clone() }
+                { u4::stack::u4_drop(2 * byte_count) }
+                OP_TRUE
+            },
+            table_witness.clone(),
+        );
+        let table_script_bytes = table_compiled.len();
+        let table_static_opcodes = table_compiled
+            .instructions()
+            .map(|instruction| instruction.expect("generated table metric script must parse"))
+            .filter(|instruction| {
+                matches!(instruction, Instruction::Op(opcode) if opcode.to_u8() > 0x60)
+            })
+            .count();
+        let scalar_fragment = scalar(byte_count);
+        let scalar_witness = vec![scriptnum(0xff); byte_count as usize];
+        let scalar_compiled = scalar_fragment.clone().compile_with_policy();
+        let scalar_stack = max_stack_items_strict(
+            script! {
+                { scalar_fragment.clone() }
+                { u4::stack::u4_drop(2 * byte_count) }
+                OP_TRUE
+            },
+            scalar_witness.clone(),
+        );
+        let scalar_script_bytes = scalar_compiled.len();
+        let scalar_static_opcodes = scalar_compiled
+            .instructions()
+            .map(|instruction| instruction.expect("generated scalar metric script must parse"))
+            .filter(|instruction| {
+                matches!(instruction, Instruction::Op(opcode) if opcode.to_u8() > 0x60)
+            })
+            .count();
+        let (table_script_key, table_witness_key, table_stack_key, table_opcode_key) =
+            match byte_count {
+                16 => (
+                    "u4_unpack_batch16",
+                    "u4_unpack_batch16_witness",
+                    "u4_unpack_batch16_stack",
+                    "u4_unpack_batch16_opcodes",
+                ),
+                18 => (
+                    "u4_unpack_batch18",
+                    "u4_unpack_batch18_witness",
+                    "u4_unpack_batch18_stack",
+                    "u4_unpack_batch18_opcodes",
+                ),
+                19 => (
+                    "u4_unpack_batch19",
+                    "u4_unpack_batch19_witness",
+                    "u4_unpack_batch19_stack",
+                    "u4_unpack_batch19_opcodes",
+                ),
+                32 => (
+                    "u4_unpack_batch32",
+                    "u4_unpack_batch32_witness",
+                    "u4_unpack_batch32_stack",
+                    "u4_unpack_batch32_opcodes",
+                ),
+                243 => (
+                    "u4_unpack_batch243",
+                    "u4_unpack_batch243_witness",
+                    "u4_unpack_batch243_stack",
+                    "u4_unpack_batch243_opcodes",
+                ),
+                _ => unreachable!(),
+            };
+        let (scalar_script_key, scalar_witness_key, scalar_stack_key, scalar_opcode_key) =
+            match byte_count {
+                16 => (
+                    "u4_unpack_scalar_batch16",
+                    "u4_unpack_scalar_batch16_witness",
+                    "u4_unpack_scalar_batch16_stack",
+                    "u4_unpack_scalar_batch16_opcodes",
+                ),
+                18 => (
+                    "u4_unpack_scalar_batch18",
+                    "u4_unpack_scalar_batch18_witness",
+                    "u4_unpack_scalar_batch18_stack",
+                    "u4_unpack_scalar_batch18_opcodes",
+                ),
+                19 => (
+                    "u4_unpack_scalar_batch19",
+                    "u4_unpack_scalar_batch19_witness",
+                    "u4_unpack_scalar_batch19_stack",
+                    "u4_unpack_scalar_batch19_opcodes",
+                ),
+                32 => (
+                    "u4_unpack_scalar_batch32",
+                    "u4_unpack_scalar_batch32_witness",
+                    "u4_unpack_scalar_batch32_stack",
+                    "u4_unpack_scalar_batch32_opcodes",
+                ),
+                243 => (
+                    "u4_unpack_scalar_batch243",
+                    "u4_unpack_scalar_batch243_witness",
+                    "u4_unpack_scalar_batch243_stack",
+                    "u4_unpack_scalar_batch243_opcodes",
+                ),
+                _ => unreachable!(),
+            };
+        metrics.extend([
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: table_script_key,
+                value: table_script_bytes,
+            },
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: table_witness_key,
+                value: witness_size(&table_witness),
+            },
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: table_stack_key,
+                value: table_stack,
+            },
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: table_opcode_key,
+                value: table_static_opcodes,
+            },
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: scalar_script_key,
+                value: scalar_script_bytes,
+            },
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: scalar_witness_key,
+                value: witness_size(&scalar_witness),
+            },
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: scalar_stack_key,
+                value: scalar_stack,
+            },
+            Metric {
+                readme: "src/arithmetic/u4/README.md",
+                key: scalar_opcode_key,
+                value: scalar_static_opcodes,
+            },
+        ]);
+        assert_eq!(table_witness.len(), byte_count as usize);
+        assert_eq!(scalar_witness.len(), byte_count as usize);
+        if byte_count == 16 {
+            assert_eq!(witness_size(&table_witness), 49);
+        }
+    }
+    check_readme_metrics(metrics);
 }
 
 #[test]
@@ -7107,6 +7647,62 @@ fn u4_parity_canonical_metrics_are_current() {
             readme: "src/arithmetic/u4/README.md",
             key: "u4_parity_canonical_batch32_opcodes",
             value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
+/// Representative maximum-width factoradic configuration.
+#[test]
+fn factoradic_u4_metrics_are_current() {
+    const WIDTH: u32 = 12;
+    let fragment = factoradic::u4_lehmer_to_value(WIDTH);
+    let canonical = factoradic::u4_lehmer_to_value_canonical(WIDTH);
+    let digits: Vec<u32> = (0..WIDTH).rev().collect();
+    let witness: Vec<Vec<u8>> = digits
+        .iter()
+        .rev()
+        .map(|d| if *d == 0 { vec![] } else { vec![*d as u8] })
+        .collect();
+    let peak = max_stack_items_strict(
+        script! {
+            { fragment.clone() }
+            OP_DROP
+            OP_TRUE
+        },
+        witness.clone(),
+    );
+
+    assert_eq!(witness.len(), WIDTH as usize);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/factoradic/README.md",
+            key: "factoradic_u4_width12",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/factoradic/README.md",
+            key: "factoradic_u4_width12_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/factoradic/README.md",
+            key: "factoradic_u4_width12_witness_items",
+            value: witness.len(),
+        },
+        Metric {
+            readme: "src/arithmetic/factoradic/README.md",
+            key: "factoradic_u4_width12_stack",
+            value: peak,
+        },
+        Metric {
+            readme: "src/arithmetic/factoradic/README.md",
+            key: "factoradic_u4_width12_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+        Metric {
+            readme: "src/arithmetic/factoradic/README.md",
+            key: "factoradic_u4_canonical_width12",
+            value: script_len(canonical),
         },
     ]);
 }
@@ -10152,6 +10748,112 @@ fn u4_power_of_two_metrics_are_current() {
     ]);
 }
 
+fn u4_run_pairs(runs: &[(i64, i64)]) -> Vec<Vec<u8>> {
+    runs.iter()
+        .flat_map(|(symbol, length)| [scriptnum(*symbol), scriptnum(*length)])
+        .collect()
+}
+
+/// This isolated fixture measures checked canonical u4 run-length expansion.
+#[test]
+fn u4_run_length_metrics_are_current() {
+    let repetitive = u4::run_length::u4_expand_canonical_runs(16, 2);
+    let repetitive_witness = u4_run_pairs(&[(0, 8), (15, 8)]);
+    let repetitive_peak = max_stack_items_strict(
+        script! {
+            { repetitive.clone() }
+            for _ in 0..16 {
+                OP_DROP
+            }
+            OP_TRUE
+        },
+        repetitive_witness.clone(),
+    );
+    let short_runs: Vec<(i64, i64)> = (0..8).map(|index| (index % 2, 2)).collect();
+    let short = u4::run_length::u4_expand_canonical_runs(16, 8);
+    let short_witness = u4_run_pairs(&short_runs);
+    let short_peak = max_stack_items_strict(
+        script! {
+            { short.clone() }
+            for _ in 0..16 {
+                OP_DROP
+            }
+            OP_TRUE
+        },
+        short_witness.clone(),
+    );
+    let direct_witness: Vec<Vec<u8>> = [0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 15, 15, 15, 15, 15, 15]
+        .into_iter()
+        .map(scriptnum)
+        .collect();
+    let direct = script! {
+        for index in (0..16u32).rev() {
+            { index }
+            OP_PICK
+            OP_DUP
+            0
+            16
+            OP_WITHIN
+            OP_VERIFY
+            OP_DUP
+            OP_DUP
+            OP_0
+            OP_ADD
+            OP_EQUALVERIFY
+            OP_DROP
+        }
+    };
+    assert_eq!(script_len(direct), 206);
+    assert_eq!(witness_size(&direct_witness), 25);
+    assert_eq!(repetitive_witness.len(), 4);
+    assert_eq!(short_witness.len(), 16);
+    assert_eq!(repetitive_peak, 20);
+    assert_eq!(short_peak, 21);
+
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs2",
+            value: script_len(repetitive.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs2_witness",
+            value: witness_size(&repetitive_witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs2_stack",
+            value: repetitive_peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs2_opcodes",
+            value: static_non_push_opcodes(repetitive),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs8",
+            value: script_len(short.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs8_witness",
+            value: witness_size(&short_witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs8_stack",
+            value: short_peak,
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_run_length_width16_runs8_opcodes",
+            value: static_non_push_opcodes(short),
+        },
+    ]);
+}
+
 /// This isolated fixture measures only the checked u4 modulo-three projection.
 #[test]
 fn u4_mod3_metrics_are_current() {
@@ -10860,4 +11562,541 @@ fn u32_or_constant_metrics() -> Vec<Metric> {
 #[test]
 fn u32_or_constant_metrics_are_current() {
     check_readme_metrics(u32_or_constant_metrics());
+}
+
+fn u4_mod17_metrics() -> Vec<Metric> {
+    let fragment = u4::mod17::u4_nibbles_to_mod17(32);
+    let witness: Vec<_> = (0..32).map(|i| scriptnum((7 * i + i / 3) % 16)).collect();
+    let leaf = script! { { fragment.clone() } 6 OP_EQUAL };
+    vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mod17_batch32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mod17_batch32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mod17_batch32_stack",
+            value: max_stack_items_strict(leaf, witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_mod17_batch32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]
+}
+
+#[test]
+fn u4_mod17_metrics_are_current() {
+    check_readme_metrics(u4_mod17_metrics());
+}
+
+fn u32_mod65537_metrics() -> Vec<Metric> {
+    let fragment = u32::residue::u32_mod65537();
+    let witness = byte_u32_witness(0x89abcdef).to_vec();
+    let leaf = script! { { fragment.clone() } { 0x89abcdefu32 % 65537 } OP_EQUAL };
+    vec![
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_mod65537",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_mod65537_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_mod65537_leaf",
+            value: script_len(leaf.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_mod65537_stack",
+            value: max_stack_items_strict(leaf, witness),
+        },
+        Metric {
+            readme: "src/arithmetic/u32/README.md",
+            key: "u32_mod65537_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]
+}
+#[test]
+fn u32_mod65537_metrics_are_current() {
+    check_readme_metrics(u32_mod65537_metrics());
+}
+
+fn u4_prefix_sum_metrics() -> Vec<Metric> {
+    let fragment = u4::prefix_sum::u4_nibbles_to_prefix_sum(32);
+    let leaf = script! {{fragment.clone()}for i in (1..=32).rev(){{(7*i)%16}OP_EQUALVERIFY}OP_TRUE};
+    vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_prefix_sum32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_prefix_sum32_leaf",
+            value: script_len(leaf.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_prefix_sum32_witness",
+            value: witness_size(&vec![scriptnum(7); 32]),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_prefix_sum32_stack",
+            value: max_stack_items_strict(leaf, vec![scriptnum(7); 32]),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_prefix_sum32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]
+}
+#[test]
+fn u4_prefix_sum_metrics_are_current() {
+    check_readme_metrics(u4_prefix_sum_metrics());
+}
+
+fn u4_exact_product_metrics() -> Vec<Metric> {
+    let fragment = u4::quarter_square::u4_pairwise_mul_exact(32);
+    let leaf = script! {{fragment.clone()}for _ in 0..32{49 OP_EQUALVERIFY}OP_TRUE};
+    vec![
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_exact_product32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_exact_product32_leaf",
+            value: script_len(leaf.clone()),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_exact_product32_witness",
+            value: witness_size(&vec![scriptnum(7); 64]),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_exact_product32_stack",
+            value: max_stack_items_strict(leaf, vec![scriptnum(7); 64]),
+        },
+        Metric {
+            readme: "src/arithmetic/u4/README.md",
+            key: "u4_exact_product32_opcodes",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]
+}
+#[test]
+fn u4_exact_product_metrics_are_current() {
+    check_readme_metrics(u4_exact_product_metrics());
+}
+
+#[test]
+fn stable_selection_metrics_are_current() {
+    let fragment = bitcoin_lab::support::selection::compact_selected_items(32);
+    let leaf = script! {
+        {fragment.clone()} 32 OP_EQUALVERIFY
+        for _ in 0..32 {0x42 OP_EQUALVERIFY}
+        OP_TRUE
+    };
+    let witness: Vec<_> = (0..32).flat_map(|_| [vec![0x42], vec![1]]).collect();
+    let readme = "src/support/selection/README.md";
+    check_readme_metrics(vec![
+        Metric {
+            readme,
+            key: "stable_selection32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme,
+            key: "stable_selection32_leaf",
+            value: script_len(leaf.clone()),
+        },
+        Metric {
+            readme,
+            key: "stable_selection32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme,
+            key: "stable_selection32_stack",
+            value: max_stack_items_strict(leaf, witness),
+        },
+        Metric {
+            readme,
+            key: "stable_selection32_static",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
+#[test]
+fn u4_damm_metrics_are_current() {
+    let fragment = bitcoin_lab::arithmetic::u4::damm::u4_decimal_digits_to_damm(32);
+    let leaf = script! {{fragment.clone()}9 OP_EQUALVERIFY OP_TRUE};
+    let witness: Vec<_> = (0..32).map(|i| scriptnum((7 * i + 3) % 10)).collect();
+    let readme = "src/arithmetic/u4/damm/README.md";
+    check_readme_metrics(vec![
+        Metric {
+            readme,
+            key: "u4_damm32",
+            value: script_len(fragment.clone()),
+        },
+        Metric {
+            readme,
+            key: "u4_damm32_leaf",
+            value: script_len(leaf.clone()),
+        },
+        Metric {
+            readme,
+            key: "u4_damm32_witness",
+            value: witness_size(&witness),
+        },
+        Metric {
+            readme,
+            key: "u4_damm32_stack",
+            value: max_stack_items_strict(leaf, witness),
+        },
+        Metric {
+            readme,
+            key: "u4_damm32_static",
+            value: static_non_push_opcodes(fragment),
+        },
+    ]);
+}
+
+#[test]
+fn scriptnum_isqrt_metrics_are_current() {
+    let g16 = bitcoin_lab::arithmetic::integer_root::scriptnum_isqrt(16);
+    let g31 = bitcoin_lab::arithmetic::integer_root::scriptnum_isqrt(31);
+    let leaf16 = script! {{g16.clone()}255 OP_EQUALVERIFY OP_TRUE};
+    let leaf31 = script! {{g31.clone()}46340 OP_EQUALVERIFY OP_TRUE};
+    let readme = "src/arithmetic/integer_root/README.md";
+    check_readme_metrics(vec![
+        Metric {
+            readme,
+            key: "scriptnum_isqrt16",
+            value: script_len(g16),
+        },
+        Metric {
+            readme,
+            key: "scriptnum_isqrt16_leaf",
+            value: script_len(leaf16),
+        },
+        Metric {
+            readme,
+            key: "scriptnum_isqrt31",
+            value: script_len(g31.clone()),
+        },
+        Metric {
+            readme,
+            key: "scriptnum_isqrt31_leaf",
+            value: script_len(leaf31.clone()),
+        },
+        Metric {
+            readme,
+            key: "scriptnum_isqrt31_witness",
+            value: witness_size(&[scriptnum(2147483647)]),
+        },
+        Metric {
+            readme,
+            key: "scriptnum_isqrt31_stack",
+            value: max_stack_items_strict(leaf31, vec![scriptnum(2147483647)]),
+        },
+        Metric {
+            readme,
+            key: "scriptnum_isqrt31_static",
+            value: static_non_push_opcodes(g31),
+        },
+    ]);
+}
+
+/// Compare equal complete leaves for packed-rank and separate-digit witnesses.
+#[test]
+fn permutation_rank_metrics_are_current() {
+    use bitcoin::{absolute, transaction, TapLeafHash, Transaction};
+    use bitcoin_lab::{arithmetic::permutation, support::provenance};
+    use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate};
+
+    fn measure(script: bitcoin::ScriptBuf, witness: Vec<Vec<u8>>) -> (usize, usize) {
+        let mut exec = Exec::new(
+            ExecCtx::Tapscript,
+            Options {
+                require_minimal: false,
+                enforce_stack_limit: true,
+                ..Default::default()
+            },
+            TxTemplate {
+                tx: Transaction {
+                    version: transaction::Version::TWO,
+                    lock_time: absolute::LockTime::ZERO,
+                    input: vec![],
+                    output: vec![],
+                },
+                prevouts: vec![],
+                input_idx: 0,
+                taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+            },
+            script,
+            witness,
+        )
+        .unwrap();
+        let mut executed = 0;
+        loop {
+            let instruction = exec.remaining_script().instructions().next();
+            let active = exec.cond_stack().all_true();
+            let counted = matches!(instruction, Some(Ok(Instruction::Op(op))) if op.to_u8() > 0x60 && (active || (0x63..=0x68).contains(&op.to_u8())));
+            if exec.exec_next().is_err() {
+                break;
+            }
+            executed += usize::from(counted);
+        }
+        assert!(exec.result().unwrap().success);
+        assert_eq!(exec.stack().len(), 1);
+        (exec.stats().max_nb_stack_items, executed)
+    }
+
+    let mut report = Vec::new();
+    for width in [4, 8, 12] {
+        for (encoding, fragment, witness) in [
+            (
+                "rank",
+                permutation::decode_rank(width),
+                vec![scriptnum(i64::from(
+                    permutation::permutation_count(width) - 1,
+                ))],
+            ),
+            (
+                "digits",
+                permutation::decode_digits(width),
+                (1..width)
+                    .map(|digit| scriptnum(i64::from(digit)))
+                    .collect(),
+            ),
+        ] {
+            let leaf = script! {
+                { fragment }
+                for value in (0..width).rev() {
+                    { value } OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+            let compiled = leaf.clone().compile_with_policy();
+            let (peak, executed) = measure(compiled.clone(), witness.clone());
+            let keys = match (width, encoding) {
+                (4, "rank") => [
+                    "permutation_rank_4_script",
+                    "permutation_rank_4_witness",
+                    "permutation_rank_4_items",
+                    "permutation_rank_4_stack",
+                    "permutation_rank_4_executed",
+                ],
+                (4, "digits") => [
+                    "permutation_digits_4_script",
+                    "permutation_digits_4_witness",
+                    "permutation_digits_4_items",
+                    "permutation_digits_4_stack",
+                    "permutation_digits_4_executed",
+                ],
+                (8, "rank") => [
+                    "permutation_rank_8_script",
+                    "permutation_rank_8_witness",
+                    "permutation_rank_8_items",
+                    "permutation_rank_8_stack",
+                    "permutation_rank_8_executed",
+                ],
+                (8, "digits") => [
+                    "permutation_digits_8_script",
+                    "permutation_digits_8_witness",
+                    "permutation_digits_8_items",
+                    "permutation_digits_8_stack",
+                    "permutation_digits_8_executed",
+                ],
+                (12, "rank") => [
+                    "permutation_rank_12_script",
+                    "permutation_rank_12_witness",
+                    "permutation_rank_12_items",
+                    "permutation_rank_12_stack",
+                    "permutation_rank_12_executed",
+                ],
+                (12, "digits") => [
+                    "permutation_digits_12_script",
+                    "permutation_digits_12_witness",
+                    "permutation_digits_12_items",
+                    "permutation_digits_12_stack",
+                    "permutation_digits_12_executed",
+                ],
+                _ => unreachable!("fixed metric configurations"),
+            };
+            let row = serde_json::json!({
+                "width": width, "encoding": encoding, "script_bytes": compiled.len(),
+                "witness_bytes": witness_size(&witness), "data_items": witness.len(), "hint_items": 0,
+                "max_stack_items": peak, "executed_opcodes": executed,
+                "static_non_push_opcodes": static_non_push_opcodes(leaf),
+            });
+            let mut metrics = Vec::new();
+            for (key, field) in keys.into_iter().zip([
+                "script_bytes",
+                "witness_bytes",
+                "data_items",
+                "max_stack_items",
+                "executed_opcodes",
+            ]) {
+                metrics.push(Metric {
+                    readme: "src/arithmetic/permutation/README.md",
+                    key,
+                    value: row[field].as_u64().unwrap() as usize,
+                });
+            }
+            check_readme_metrics(metrics);
+            report.push(row);
+        }
+    }
+    println!(
+        "{}",
+        serde_json::json!({
+            "interpreter": provenance::interpreter().unwrap().commit,
+            "compiler": provenance::compiler().unwrap().commit,
+            "context": "tapscript", "stack_limit_enforced": true,
+            "require_minimal": false,
+            "execution": "unclassified", "rows": report,
+        })
+    );
+}
+
+#[test]
+fn u4_reflection_metrics_are_current() {
+    use bitcoin::{absolute, transaction, TapLeafHash, Transaction};
+    use bitcoin_lab::{
+        arithmetic::u4::reflection::{self, Reflection},
+        support::provenance,
+    };
+    use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate};
+
+    macro_rules! keys {
+        ($prefix:literal) => {
+            [
+                concat!($prefix, "_script"),
+                concat!($prefix, "_witness"),
+                concat!($prefix, "_items"),
+                concat!($prefix, "_stack"),
+                concat!($prefix, "_executed"),
+            ]
+        };
+    }
+    let mut report = Vec::new();
+    for (width, kind) in [
+        (32u32, Reflection::Equal),
+        (33, Reflection::Equal),
+        (32, Reflection::Complement),
+    ] {
+        let half: Vec<_> = (0..width.div_ceil(2))
+            .map(|i| ((i * 7 + 3) % 16) as u32)
+            .collect();
+        let values: Vec<_> = (0..width)
+            .map(|i| {
+                if i < half.len() as u32 {
+                    half[i as usize]
+                } else {
+                    let x = half[(width - 1 - i) as usize];
+                    if kind == Reflection::Equal {
+                        x
+                    } else {
+                        15 - x
+                    }
+                }
+            })
+            .collect();
+        for expanded in [true, false] {
+            let (fragment, data) = if expanded {
+                (reflection::expand_reflection(width, kind), &half)
+            } else {
+                (reflection::verify_reflection(width, kind), &values)
+            };
+            let witness: Vec<_> = data.iter().map(|&x| scriptnum(i64::from(x))).collect();
+            let leaf=script! { { fragment } for value in values.iter().rev() { { *value } OP_EQUALVERIFY } OP_TRUE }.compile_with_policy();
+            let mut exec = Exec::new(
+                ExecCtx::Tapscript,
+                Options {
+                    require_minimal: false,
+                    enforce_stack_limit: true,
+                    ..Default::default()
+                },
+                TxTemplate {
+                    tx: Transaction {
+                        version: transaction::Version::TWO,
+                        lock_time: absolute::LockTime::ZERO,
+                        input: vec![],
+                        output: vec![],
+                    },
+                    prevouts: vec![],
+                    input_idx: 0,
+                    taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+                },
+                leaf.clone(),
+                witness.clone(),
+            )
+            .unwrap();
+            let mut executed = 0;
+            loop {
+                let counted = matches!(exec.remaining_script().instructions().next(),Some(Ok(Instruction::Op(op))) if op.to_u8()>0x60);
+                // These generated leaves contain no conditionals. Every observed
+                // non-push opcode is counted after its successful execution.
+                assert!(exec.cond_stack().all_true());
+                if exec.exec_next().is_err() {
+                    break;
+                }
+                executed += usize::from(counted);
+            }
+            assert!(exec.result().unwrap().success);
+            let metric_keys = match (width, kind, expanded) {
+                (32, Reflection::Equal, true) => keys!("u4_reflection_equal32_expand"),
+                (32, Reflection::Equal, false) => keys!("u4_reflection_equal32_raw"),
+                (33, Reflection::Equal, true) => keys!("u4_reflection_equal33_expand"),
+                (33, Reflection::Equal, false) => keys!("u4_reflection_equal33_raw"),
+                (32, Reflection::Complement, true) => keys!("u4_reflection_complement32_expand"),
+                (32, Reflection::Complement, false) => keys!("u4_reflection_complement32_raw"),
+                _ => unreachable!(),
+            };
+            let peak = exec.stats().max_nb_stack_items;
+            let measures = [
+                leaf.len(),
+                witness_size(&witness),
+                witness.len(),
+                peak,
+                executed,
+            ];
+            check_readme_metrics(
+                metric_keys
+                    .into_iter()
+                    .zip(measures)
+                    .map(|(key, value)| Metric {
+                        readme: "src/arithmetic/u4/README.md",
+                        key,
+                        value,
+                    })
+                    .collect(),
+            );
+            report.push(serde_json::json!({"width":width,"kind":format!("{kind:?}"),"expanded":expanded,"script_bytes":leaf.len(),"witness_bytes":witness_size(&witness),"data_items":witness.len(),"hint_items":0,"max_stack_items":peak,"executed_opcodes":executed}));
+        }
+    }
+    println!(
+        "{}",
+        serde_json::json!({"compiler":provenance::compiler().unwrap().commit,"interpreter":provenance::interpreter().unwrap().commit,"stack_limit_enforced":true,"require_minimal":false,"execution":"unclassified","rows":report})
+    );
 }

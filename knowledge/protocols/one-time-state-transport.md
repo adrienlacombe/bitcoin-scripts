@@ -240,3 +240,16 @@ union codeword but does not reconstruct the source bytes or reject unused ranks.
 The same BitVM3 binding obligations therefore apply. These measurements are
 `locally-reproduced`, `research-unlimited`; strict local execution is
 `unclassified`, and the heuristic parameter search is not an optimum proof.
+
+The [small-alphabet permutation decoder](../primitives/factoradic-permutation.md)
+prices a different representation bridge: one untrusted canonical rank becomes
+a permutation of at most twelve public symbols. It does not authenticate the
+rank and cannot decode the existing 49-key multiset signature representation.
+Any use in state transport needs separate authentication and a measured consumer
+(OP-041); its lower witness/item count alone establishes no protocol advantage.
+
+[Half-vector reflection witnesses](../primitives/u4-reflection.md) apply only when
+the protocol requires equal or complement-reflected state. Expansion itself
+has no signature or commitment and cannot replace authenticated transport.
+Binding the half-vector, fixing width/rule, and pricing its full output consumer
+remain separate obligations (OP-042); arbitrary messages have no implied symmetry.
