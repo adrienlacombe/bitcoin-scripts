@@ -81,6 +81,15 @@ without being executable by the local tapscript interpreter. These checks do
 not execute the leaf or establish complete-transaction validity; callers can
 combine them with a leaf profile only at the selected input and prevout.
 
+`support::bip68::evaluate_bip68_sequence_locks` separately checks relative
+height and MTP maturity for confirmed inputs. It requires an ordered context
+entry whose outpoint matches each transaction input, plus the proposed block's
+height and parent MTP. Missing, unconfirmed, or inconsistent chain facts return
+`Unsupported`, distinct from `Premature`. A `Mature` result covers only BIP68
+sequence locks; the caller must still validate the leaf, commitment, other
+transaction rules and policy. The [funded CSV maturity experiment](../../knowledge/tapscript-csv-validation.md#confirmed-output-bip68-maturity-follow-up-2026-09-28)
+compares its height/time boundaries with pinned Core.
+
 ## Existing research helpers
 
 The public helpers in `execution.rs` retain their research settings:
@@ -182,9 +191,10 @@ primitive-specific evidence without widening the context-free API's claims.
 The [funded CSV experiment](../../knowledge/tapscript-csv-validation.md) checks
 19 exact leaves with five-byte operands, high and reserved bits, height/time
 comparisons, disabled inputs, numeric boundaries and a CLTV control. All local
-consensus and numeric-policy comparisons match Core. The local helper still
-checks only script execution; Core independently enforces relative maturity
-under BIP68.
+consensus and numeric-policy comparisons match Core. Its local leaf helper
+still checks only script execution; the separate BIP68 preflight checks
+confirmed-output maturity for two exact funded boundaries. Core independently
+validates each complete spend.
 
 The [complete-witness budget experiment](../../knowledge/tapscript-budget-validation.md)
 adds 32 funded cases with exact exhaustion, empty signatures, annexes, control
@@ -197,3 +207,10 @@ Return to an immutable upstream revision when it contains all adopted repairs or
 equivalent implementations and passes these regressions, Core comparisons,
 unchanged primitive metrics and the non-field suite. Do not silently repoint
 historical evidence or update the other dependency pins during that migration.
+
+## Stable item selection
+
+[`selection::compact_selected_items`](selection/README.md) routes opaque
+payloads using native tapscript binary flags, preserving both caller stacks.
+It requires zero hints and reports the full entry data count and caller-state
+frontier. Its local results remain `locally-reproduced` / `unclassified`.

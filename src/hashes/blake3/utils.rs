@@ -4,11 +4,11 @@ use bitcoin_script::script;
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 use std::collections::HashMap;
 
-const IV: [u32; 8] = [
+pub(crate) const IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
 ];
 
-const MSG_PERMUTATION: [u8; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
+pub(crate) const MSG_PERMUTATION: [u8; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
 
 /// A compression-block word can either live on the Script stack or be fixed
 /// when the script is generated.  Keeping fixed words out of the runtime
@@ -540,6 +540,7 @@ fn first_column_g(
 
 fn first_round_columns(
     stack: &mut StackTracker,
+    key: &[u32; 8],
     counter: u32,
     block_len: u32,
     flags: u32,
@@ -547,7 +548,7 @@ fn first_round_columns(
     tables: &TablesVars,
 ) -> HashMap<u8, StackVariable> {
     let initial = [
-        IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3],
+        key[0], key[1], key[2], key[3], key[4], key[5], key[6], key[7], IV[0], IV[1], IV[2], IV[3],
         counter, 0, block_len, flags,
     ];
     let mut state = HashMap::new();
@@ -829,13 +830,111 @@ pub(crate) fn compress_mixed(
     counter: u32,
     block_len: u32,
     flags: u32,
-    mut message: HashMap<u8, CompressionMessageWord>,
+    message: HashMap<u8, CompressionMessageWord>,
     tables: &TablesVars,
     final_rounds: u8,
     last_round: bool,
     direct_short_layout: bool,
 ) {
+    compress_mixed_keyed(
+        stack,
+        &IV,
+        chaining,
+        counter,
+        block_len,
+        flags,
+        message,
+        tables,
+        final_rounds,
+        last_round,
+        direct_short_layout,
+        false,
+    );
+}
+
+/// Single-block root compression whose input chaining value is the
+/// compile-time `key`: the IV for unkeyed hashing, the key words for keyed
+/// hashing, or the context key for derive-key material.  The caller supplies
+/// the matching mode flag in `flags`.
+///
+/// With `extended_output`, the second root-output half
+/// `state[i + 8] ^ key[i]` is also returned above the first half, giving the
+/// first 64 bytes of the BLAKE3 XOF stream from this same compression.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn compress_root_keyed(
+    stack: &mut StackTracker,
+    key: &[u32; 8],
+    block_len: u32,
+    flags: u32,
+    message: HashMap<u8, StackVariable>,
+    tables: &TablesVars,
+    final_rounds: u8,
+    direct_short_layout: bool,
+    extended_output: bool,
+) {
+    compress_mixed_keyed(
+        stack,
+        key,
+        false,
+        0,
+        block_len,
+        flags,
+        message
+            .into_iter()
+            .map(|(index, word)| (index, CompressionMessageWord::Dynamic(word)))
+            .collect(),
+        tables,
+        final_rounds,
+        true,
+        direct_short_layout,
+        extended_output,
+    );
+}
+
+/// XOR one runtime nibble, copied by `copy`, with a compile-time nibble.
+fn copy_xor_constant_nibble(
+    stack: &mut StackTracker,
+    tables: &TablesVars,
+    constant_nibble: u32,
+    copy: impl FnOnce(&mut StackTracker) -> StackVariable,
+) -> StackVariable {
+    match constant_nibble {
+        0 => copy(stack),
+        15 => {
+            stack.number(15);
+            copy(stack);
+            stack.op_sub()
+        }
+        _ => {
+            copy(stack);
+            stack.get_value_from_table(
+                tables.xor_table,
+                Some(packed_full_xor_row_offset(constant_nibble)),
+            )
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn compress_mixed_keyed(
+    stack: &mut StackTracker,
+    key: &[u32; 8],
+    chaining: bool,
+    counter: u32,
+    block_len: u32,
+    flags: u32,
+    mut message: HashMap<u8, CompressionMessageWord>,
+    tables: &TablesVars,
+    final_rounds: u8,
+    last_round: bool,
+    direct_short_layout: bool,
+    extended_output: bool,
+) {
     assert!((1..=8).contains(&final_rounds));
+    assert!(
+        !extended_output || (!chaining && last_round && final_rounds == 8),
+        "extended output requires a full single-block root compression"
+    );
     assert!(
         chaining
             || message
@@ -847,7 +946,8 @@ pub(crate) fn compress_mixed(
     let (mut state, first_full_round) = if chaining {
         (init_state(stack, true, counter, block_len, flags), 0)
     } else {
-        let mut state = first_round_columns(stack, counter, block_len, flags, &message, tables);
+        let mut state =
+            first_round_columns(stack, key, counter, block_len, flags, &message, tables);
         round(
             stack,
             &mut state,
@@ -888,6 +988,27 @@ pub(crate) fn compress_mixed(
         [false; 4],
         direct_short_layout,
     );
+
+    if extended_output {
+        // Emit the second half first: it copies state[8..16], which the first
+        // half still needs, and lands above the first half after the final
+        // altstack restore.
+        for i in (0..8_u8).rev() {
+            let word = state[&(i + 8)];
+            for n in 0..8_u8 {
+                copy_xor_constant_nibble(
+                    stack,
+                    tables,
+                    constant_nibble(key[usize::from(i)], n),
+                    |stack| stack.copy_var_sub_n(word, u32::from(n)),
+                );
+                if n % 2 == 1 {
+                    stack.to_altstack();
+                    stack.to_altstack();
+                }
+            }
+        }
+    }
 
     for i in (0..final_rounds).rev() {
         let mut tmp = Vec::new();
@@ -1277,19 +1398,38 @@ fn digit_permute(message: &HashMap<u8, DigitWord>) -> HashMap<u8, DigitWord> {
         .collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn compress_short_digits(
     stack: &mut StackTracker,
+    key: &[u32; 8],
+    mode_flags: u32,
     block_len: u32,
     mut message: HashMap<u8, DigitWord>,
     tables: &TablesVars,
     output_words: u8,
+    extended_output: bool,
 ) {
     // This backend is called only for a single root block with eight live
     // message words (29..=32 bytes).
     assert!((1..=8).contains(&output_words));
+    assert!(!extended_output || output_words == 8);
     let initial = [
-        IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0,
-        block_len, 0b1011,
+        key[0],
+        key[1],
+        key[2],
+        key[3],
+        key[4],
+        key[5],
+        key[6],
+        key[7],
+        IV[0],
+        IV[1],
+        IV[2],
+        IV[3],
+        0,
+        0,
+        block_len,
+        0b1011 | mode_flags,
     ];
     let mut state = HashMap::new();
     for index in 0..4_usize {
@@ -1373,6 +1513,26 @@ pub(crate) fn compress_short_digits(
         }
         if round < 6 {
             message = digit_permute(&message);
+        }
+    }
+
+    if extended_output {
+        // See `compress_mixed_keyed`: copy the second half before the first
+        // half consumes the low state words.
+        for word in (0..8_u8).rev() {
+            let source = state[&(word + 8)];
+            for digit in 0..8 {
+                copy_xor_constant_nibble(
+                    stack,
+                    tables,
+                    constant_nibble(key[usize::from(word)], digit as u8),
+                    |stack| source.copy_digit(stack, digit),
+                );
+                if digit % 2 == 1 {
+                    stack.to_altstack();
+                    stack.to_altstack();
+                }
+            }
         }
     }
 

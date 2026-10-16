@@ -3,13 +3,29 @@
 These records prevent repeated dead ends. They are scoped observations, not
 universal impossibility proofs.
 
-## NR-071: u4 MSB lookup table is dominated by a direct threshold at n=32
+## NR-078: Forward stable filtering and redundant flag guards
+
+The [stable-selection experiment](stable-selection.md) reproduces 970/1,070
+fragment/leaf bytes and peak 66 for forward routing with reversal versus
+496/596/65 for backward consumption, with the same 32 opaque payloads, native
+MINIMALIF, 64 ordinary data items, zero hints and 129 witness bytes. Explicit
+guards raise the backward fragment to 816 bytes and peak to 68, reducing its
+frontier to 498 pairs. Discarding cannot repair entry element or policy limits.
+Evidence is `locally-reproduced`; deployment `unclassified`.
+
+## NR-071: u4 MSB lookup table is dominated by grouped thresholds at n=32
 
 The former 16-entry lookup implementation measured 440 locking-script bytes
-and a 50-item peak, while the direct range-checked `nibble >= 8` implementation
-measures 446 bytes and a 34-item peak at the same 32-nibble boundary. This is
-scoped to `n=32` and does not claim dominance for other batch sizes. Evidence
-is `locally-reproduced`; deployment is `unclassified`.
+and a 50-item peak. The first direct range-checked `nibble >= 8`
+implementation measured 446 bytes and a 34-item peak at the same 32-nibble
+boundary. That was a bytes-for-stack tradeoff, not domination: the lookup was
+six bytes smaller. A per-nibble `OP_WITHIN` threshold measured 286 bytes and a
+35-item peak, and the current schedule, which range-checks nibbles in groups of
+three, measures 250 bytes and a 35-item peak, so the threshold dominates the
+lookup on both counts. Its two-nibble-group variant keeps the 34-item peak at
+277 bytes. See the [primitive page](../primitives/u4-msb.md#schedule-comparison).
+This is scoped to `n=32`. Evidence is `locally-reproduced` for the retained
+and lookup rows; deployment is `unclassified`.
 
 ## NR-049: Signature opcodes still diverge after resource repairs
 
@@ -195,6 +211,22 @@ these checks to the repaired dependency; see
 keep their original tool provenance and evidence classes.
 ## NR-061: BLAKE3 derive-key mode is not a drop-in unkeyed extension
 
+**Status (2026-10-11): reasoning retracted; derive-key is implemented.** The
+two-phase observation below is correct. The conclusion that a port must
+"duplicate the full compression schedule" is not. BLAKE3 requires the
+derive-key context to be a hardcoded string. The context phase therefore runs
+on the host when the script is generated, and only the material phase runs in
+Script. That phase is one root compression from a constant context key with
+`DERIVE_KEY_MATERIAL`, priced like keyed mode. For the 32-byte `00 01 ... 1f`
+message and the official context, it measures 59,521 bytes, 41,131 static
+non-push opcodes, a 527-item strict peak, 64 data items, and zero hints. It
+matches the official vectors and the `blake3` crate for empty, short, and
+three-block contexts. Evidence is `differentially-validated`; deployment is
+`unclassified`. This closes
+[OP-025](../open-problems.md#op-025--blake3-derive-key-boundary). See the
+[short-profile page](../primitives/blake3-short-u4.md). The original text
+follows.
+
 The local BLAKE3 backend implements the unkeyed mode with the fixed BLAKE3 IV,
 unkeyed flags, and one message-hashing schedule. The reference specification
 defines derive-key mode as two distinct phases: hash the context under
@@ -219,8 +251,11 @@ under the combined 1,000-item stack limit.
 
 The [PRINCEv2 layout search](princev2-layout.md) records the discarded shared
 final-selector variant, invalid fixed-address row-removal experiment, and
-bounded global scheduling/CNOT searches. The retained result is a 6,136-byte
-zero-key fragment with zero hints and a strict 633-item combined peak.
+bounded global scheduling/CNOT searches. The retained full encryption result is
+a 6,136-byte zero-key fragment with zero hints and a strict 633-item combined
+peak. A standalone packed M-hat fragment now measures 1,707 bytes, but it does
+not replace the complete encryption circuit or prove that the rejected layout
+variants improve the full keyed construction.
 
 ## NR-001: Raw 1,024-byte SHAKE256 output exceeds the stack limit
 
@@ -1453,12 +1488,6 @@ leaf. Negative and larger positive indices are tested separately. Repaired
 pin `4b7269a` addresses the executor bounds bug; see
 [NR-048](#nr-048-minimal-push-policy-must-follow-execution). Historical measurements
 retain their original evidence; complete-protocol validation remains under OP-009.
-the remaining pool length, pinned `bitcoin-scriptexec`
-`ba96bc2bd76774c9d1b011461cb79d983c2c43a1` checks bounds before removing the
-selector and then unwrap-panics. A dedicated test reproduces that panic;
-it must not be counted as a clean local rejection or Core validation.
-Negative and larger positive indices are tested separately. This executor
-limitation and missing complete-protocol validation remain under OP-009.
 
 ## NR-050: Signed-window lookup tables lose short batches
 
@@ -1568,6 +1597,15 @@ multi-chunk tree. The existing boundary tests reproduce acceptance at exactly
 `locally-reproduced` API boundary and `inspected` missing-construction result,
 not an impossibility claim; the follow-up criterion is recorded in OP-023.
 ## NR-060: BLAKE3 XOF output is outside the current generator contract
+
+**Status (2026-10-11): corrected; 64-byte output is implemented.** The text
+below says that a longer output requires "the extra compression". That is
+wrong for the first 64 bytes. They are the complete root compression output:
+the second half is `v[i+8] ^ cv[i]`, which needs no new compression. The
+short profile now returns them for 60,131 bytes, versus 59,534 for the
+digest, at the same 527-item peak. See the corrected
+[XOF record](blake3-xof-output.md). Output beyond 64 bytes, and a 64-byte XOF
+in the multi-block limb API, remain unimplemented. The original text follows.
 
 The local BLAKE3 generators stop at the unkeyed 32-byte digest and do not
 implement the root-output block counter needed for XOF continuation. A
@@ -1737,6 +1775,13 @@ result is not a consensus or policy deployment claim. Reproduce it with:
 
 ## NR-069: BLAKE3 keyed mode is outside the current generator contract
 
+**Status (2026-10-11): retracted; keyed mode is implemented.** With a key
+fixed when the script is generated, keyed mode changes only constants: the key
+replaces the IV, and the flags gain `KEYED_HASH`. Witness shape and stack
+routing do not change. The keyed hash measures 59,532 bytes with the official
+test key, versus 59,534 unkeyed, at the same 527-item peak and zero hints. See
+the [retracted keyed record](blake3-keyed-mode.md). The original text follows.
+
 The local BLAKE3 generators accept no key and set no `KEYED_HASH` mode flag.
 A deterministic probe over `00 01 ... 1f` with a 32-byte `0x42` key produces a
 keyed digest different from the current unkeyed digest, while the existing
@@ -1757,3 +1802,165 @@ integer objective and is not retained as a byte-efficiency improvement. The
 result does not rule out a ternary path when protocol state is naturally
 three-valued or when a different consumer amortizes its dispatcher; see
 [OP-030](../open-problems.md#op-030--ternary-commitment-composition-frontier).
+
+## NR-073: Forward modulo-17 nibble routing loses to a reverse fold
+
+For the same canonical big-endian residue boundary and runtime witness,
+forward `OP_ROLL`/altstack scheduling costs 746 bytes at 32 inputs versus
+670 for the reverse subtraction fold, with the same 35-item peak and zero
+hints. It remains comparison-only code. See the
+[reproducible negative result](u4-mod17-forward-routing.md).
+
+## NR-074: Bitwise u32 remainder loses to the Fermat lane identity
+
+For a canonical four-byte word reduced modulo 65,537, general bitwise Horner
+reduction costs 1,137 fragment bytes and a 35-item peak, versus 100 bytes and
+seven items for two checked 16-bit lanes and a signed difference. Both have
+four data items, the same 13-byte witness and zero hints. See the
+[exact-boundary negative result](u32-mod65537-bitwise.md).
+
+
+## NR-075: Prefix-scan table/branch Pareto frontier
+
+The table-free canonical prefix scan uses31 fewer live items than its31-entry
+table baseline for n>=2, but the table saves93 bytes at n128 and n966.
+The [measured tradeoff](u4-prefix-table-tradeoff.md) is locally reproduced;
+neither is a universal script-size winner and execution remains unclassified.
+
+
+## NR-076: Quarter-square modulo memory does not always save script bytes
+
+The 31-entry modulo table saves 225 live items versus the full 256-entry grid.
+It is 209 bytes smaller at n32 but 175 bytes larger at n128 and 1143 larger at
+n370 under the same canonical lifecycle boundary. The [measured tradeoff](u4-quarter-square-modulo.md)
+keeps this branch variant as a research comparison; exact products have a
+separate API and evidence. Classification: locally-reproduced/unclassified.
+
+## NR-079: Damm table bytes consume composition capacity
+
+A resident 100-entry decimal transition table wins measured bytes from two
+digits against row-table dispatch, but loses at one digit and adds 94 peak
+items versus row tables. Standalone resident capacity is 896 digits; 28
+preloaded 32-digit folds reach exactly 1,000 combined items and a 29th rejects
+StackSize. All invocations have zero hints. A ten-state checksum is forgeable:
+000 and 130 are distinct equal-length zero-state codewords. This is
+`locally-reproduced`/`unclassified`, not authentication or Core validation.
+See [the complete negative result](damm-finite-state.md).
+
+## NR-080: Integer-root trials lose small widths and do not widen ScriptNum
+
+Residual root-bit trials cost 27/48/72 bytes at 1/4/6 bits versus threshold
+18/34/70, while using five instead of three peak items. They win measured bytes
+from seven bits, but a repeated whole script can cross the optimizer cutoff:
+996 preloaded roots use a 615,528-byte unoptimized NONE fragment and peak 1,000
+with 996 ordinary inputs and zero hints. Five-byte positive inputs remain
+outside the arithmetic domain; root calculation is not input authentication.
+See [the complete record](integer-root-bounds.md), locally-reproduced/unclassified.
+
+## NR-081: CRC-8 feedback startup and memory frontier
+
+[CRC-8 nibble feedback](crc8-nibble-feedback.md) wins code growth from two
+bytes but loses at one byte and uses N+188 combined stack items versus
+serial N+13. Every input, table and parked output is counted; all hints are
+zero. Independent nine-byte calls switch compilation policy at 25/26 and
+reach the resource frontier at 45/46. Evidence is locally-reproduced;
+deployment is unclassified.
+
+## NR-083: Fixed-count u4 run-length expansion loses combined bytes
+
+The question is whether a canonical run-length witness is a smaller way to
+supply a width-16 u4 vector than checking those nibbles in place. Both sides
+are policy-compiled fragments. The run-length side includes validation and
+expansion to the nibble vector. The baseline checks each nibble in place with
+the same range and canonical-encoding tests and leaves that vector on the
+stack. Input pushes inside the script are excluded; witness bytes are the
+consensus serialization of the payload only. Neither side includes a terminal
+predicate, transaction weight, or validation budget. Hint items are zero on
+both sides, and every payload item coexists at script entry.
+
+| Witness shape | Payload items | Witness bytes | Script bytes | Script + witness | Combined stack |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| In-place check of eight `0` nibbles and eight `15` nibbles | 16 | 25 | 206 | 231 | not the dominance criterion |
+| Two runs, `(0, 8)` then `(15, 8)` | 4 | 8 | 321 | 329 | 20 |
+| Eight runs of length 2, symbols alternating `0, 1` | 16 | 29 | 867 | 896 | 21 |
+| Sixteen runs of length 1, symbols `0..=15` | 32 | 64 | 698 | 762 | not separately peaked |
+
+The two-run witness cuts entry items from 16 to 4 and witness bytes from 25
+to 8, but the expander adds 115 script bytes. Combined fragment bytes rise
+from 231 to 329. Length-2 runs tie the item count and increase both witness
+and script bytes. Length-1 runs double the item count. The two-run policy
+script is SHA256
+`00c8ca6ef44237329a54df1e49adeb7944393d22a7f1ed7065a207b0849d08f1`.
+Its static non-push count is 271, above the 201-opcode bare/P2SH/P2WSH limit.
+Evidence is `locally-reproduced`. Deployment is `unclassified`.
+
+A raw multi-value length cannot drive `OP_IF` under BIP342 minimal-if. A
+one-item control with length 1 completes; length 2 fails with
+`TapscriptMinimalIf` before `OP_1SUB`. The generator therefore counts down
+with `OP_GREATERTHAN` against zero. That failed flag encoding is not a second
+cost entry.
+
+The shape-wide stack bound `max(2*run_count+5, width+run_count+2)` is pinned
+separately from these witness-specific peaks. For eight runs of width 16 the
+bound is 26, above the length-2 fixture's 21. No variable run count and no
+byte-winning layout is claimed. See [OP-040](../open-problems.md#op-040--byte-competitive-variable-run-length-decoder).
+
+## NR-084: Packed permutation ranks lose combined bytes
+
+Canonical, hint-free factoradic decoding saves data witness items and stack peak,
+but loses complete-leaf script plus data-witness bytes to separate Lehmer digits
+at widths 4/8/12 (105/317/639 versus 64/144/224). Both explicitly check hostile
+encodings, clean up their trusted symbol pool and compare every output. This
+`locally-reproduced`, `unclassified` tapscript result uses strict stack checks
+and zero hints. See [the measurements](factoradic-permutation.md) and OP-041.
+
+## NR-085: Odd nibble complement reflection has no center
+
+A vector constrained by `v[i]+v[n-1-i]=15` cannot have odd width over integer
+nibbles: its middle coordinate would require `2*x=15`. The half-vector
+[reflection adapter](../primitives/u4-reflection.md) therefore rejects odd
+complement widths at generation time. Odd equal reflection is supported and
+retains its center once. This is a domain-specific algebraic obstruction, not
+a claim that another involution or alphabet cannot have an odd fixed point.
+Local shape-rejection tests reproduce the API boundary; deployment remains
+`unclassified`.
+
+## NR-070: Output prefixes do not reduce fixed-hash compression cost
+
+The RIPEMD-160, SHA-1, and SHA-256 byte/u4 prefix adapters execute the complete
+underlying compression schedule and only route fewer digest items at the
+terminal boundary. For 32-byte inputs, the representative prefix fragments are
+240,251 bytes (RIPEMD-160), 205,586 bytes (SHA-1), 512,468 bytes (SHA-256
+u32), and 332,970 bytes (SHA-256 u4); the corresponding full fragments are
+240,223, 205,558, 512,428, and 332,942 bytes. The measured prefix peaks are
+406, 632, 856, and 969 items, respectively, under the local
+`research-unlimited` boundary.
+
+The prefixes are useful only as explicit result-shape choices. An 8-byte
+prefix has at most a 32-bit generic collision bound and an ideal 64-bit
+preimage bound; an 8-nibble prefix has at most a 16-bit generic collision
+bound and an ideal 32-bit preimage bound. This is locally reproduced and
+differentially checked against the underlying hash references; it is not a
+consensus or relay-policy deployment claim.
+
+## NR-082: The u4 byte-unpack table loses bytes and stack at small batches
+
+Matched checked table and scalar fixtures include the same byte validation and
+output staging/restoration, with output-drop and terminal-truth harness
+excluded from script bytes and static opcode counts. Both use `n` witness data
+items encoding 255 as `[0xff, 0x00]`, and zero hints. Strict stack runs compile
+both fragments with the same output-drop and truth harness. At 16 inputs the
+scalar path is smaller and shallower
+(1,066 bytes / 34 items versus 1,168 / 546), although the table has fewer
+static non-push opcodes (544 versus 682). At 18 the scalar remains smaller and
+shallower (1,200 / 38 versus 1,218 / 550). The table becomes 24 bytes smaller
+at 19 inputs (1,243 versus 1,267), but still uses 552 versus 40 items. At its
+243-input ceiling it reaches exactly 1,000 combined main/alt-stack items, so
+its 6,843-byte script has no room for unrelated state despite being smaller
+than the 16,275-byte, 488-item scalar path there. All script-byte figures are
+from policy-produced scripts; opcode figures are static non-push counts, not
+dynamic counts. Strict
+local tapscript execution is `locally-reproduced`; deployment remains
+`unclassified`, with no Bitcoin Core validation claim. The reproduced rows
+are in the [u4 implementation README](../../src/arithmetic/u4/README.md) and
+`primitive_metrics::u4_unpack_metrics_are_current`.

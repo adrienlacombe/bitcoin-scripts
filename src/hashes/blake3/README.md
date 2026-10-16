@@ -15,13 +15,15 @@ Two input profiles are public:
 - `blake3_short_compute_script_truncated_128` is the short-input direct-u4
   profile when only the first 128 output bits are needed.
 
-The profiles implement unkeyed BLAKE3 with either the standard 32-byte output
-or its short-input 128-bit prefix. Keyed mode, derive-key mode, XOF output, and
-the multi-chunk tree API are not implemented.
-The [keyed-mode boundary result](../../../knowledge/negative-results/blake3-keyed-mode.md)
-records the missing key/flag interface and its pricing boundary.
-The independent [XOF boundary result](../../../knowledge/negative-results/blake3-xof-output.md)
-records the 64-byte reference boundary and the missing output-block schedule.
+- `blake3_short_mode_compute_script` generalizes the short profile to all
+  three BLAKE3 modes (`Hash`, `KeyedHash`, `DeriveKey`) and 16-, 32-, or
+  64-byte outputs.
+
+The limb-API profile implements unkeyed BLAKE3 with the standard 32-byte
+output. The short profile also supports keyed hashing, derive-key, and the
+first 64 bytes of the XOF stream. The multi-chunk tree API and XOF output
+beyond 64 bytes are not implemented; see the
+[tree boundary](../../../knowledge/negative-results/blake3-tree-composition.md).
 
 The experimental `ed25519_challenge` module also exposes custom-signature
 transcript shapes. These are not stable hash APIs and do not implement RFC
@@ -210,6 +212,55 @@ composition peak of
 429 compute bytes versus the full 32-byte output at the same
 64-item checked input boundary. The empty-message specialization rejects
 extra stack input and returns the first 16 bytes of the standard empty digest.
+
+### Modes and 64-byte XOF output
+
+A BLAKE3 mode changes only the root compression's input chaining value and
+one flag. Unkeyed hashing starts from the IV. `keyed_hash` starts from the key
+words with `KEYED_HASH`. `derive_key` starts from the context key with
+`DERIVE_KEY_MATERIAL`. The key and context are fixed when the script is
+generated. BLAKE3 requires the derive-key context to be a hardcoded string.
+`Blake3Mode::derive_key` therefore computes the context phase on the host,
+for a context of at most 1,024 bytes. The generator folds the chaining value
+into the same constant-addressed first-round lookups that it uses for the IV.
+No mode adds witness items, hint items, or compressions.
+
+The first 64 bytes of the XOF stream are the complete root compression
+output. Bytes 0 to 31 are `v[i] ^ v[i + 8]`, the ordinary digest. Bytes 32 to
+63 are `v[i + 8] ^ cv[i]`. In this single-block profile, `cv` is the
+generation-time chaining value. The 64-byte output therefore needs no
+additional compression: it adds 64 copies and constant-row XOR lookups.
+Script emits this half before the digest half, because the digest half
+consumes the low state words. The output is 128 u4 items, with the first byte
+deepest. XOF output beyond 64 bytes needs another root compression with an
+incremented counter. That is not implemented.
+
+For the 32-byte message `00 01 ... 1f`, with zero hint items and 64 checked
+u4 data items all present at entry:
+
+| 32-byte message | Compute script | Static non-push opcodes | Strict peak with verifier |
+| --- | ---: | ---: | ---: |
+| Unkeyed, 32-byte output | `blake3_short_32` above | `blake3_opcodes_short_32` above | `blake3_stack_short_32` above |
+| Keyed, 32-byte output | <!-- metric:blake3_short_keyed_32 -->59532<!-- /metric:blake3_short_keyed_32 --> bytes | <!-- metric:blake3_short_keyed_32_opcodes -->41135<!-- /metric:blake3_short_keyed_32_opcodes --> | <!-- metric:blake3_short_keyed_32_stack -->527<!-- /metric:blake3_short_keyed_32_stack --> |
+| Derive-key, 32-byte output | <!-- metric:blake3_short_derive_key_32 -->59521<!-- /metric:blake3_short_derive_key_32 --> bytes | <!-- metric:blake3_short_derive_key_32_opcodes -->41131<!-- /metric:blake3_short_derive_key_32_opcodes --> | <!-- metric:blake3_short_derive_key_32_stack -->527<!-- /metric:blake3_short_derive_key_32_stack --> |
+| Unkeyed, 64-byte XOF | <!-- metric:blake3_short_xof64_32 -->60131<!-- /metric:blake3_short_xof64_32 --> bytes | <!-- metric:blake3_short_xof64_32_opcodes -->41442<!-- /metric:blake3_short_xof64_32_opcodes --> | <!-- metric:blake3_short_xof64_32_stack -->527<!-- /metric:blake3_short_xof64_32_stack --> |
+| Keyed, 64-byte XOF | <!-- metric:blake3_short_keyed_xof64_32 -->60133<!-- /metric:blake3_short_keyed_xof64_32 --> bytes | <!-- metric:blake3_short_keyed_xof64_32_opcodes -->41443<!-- /metric:blake3_short_keyed_xof64_32_opcodes --> | <!-- metric:blake3_short_keyed_xof64_32_stack -->527<!-- /metric:blake3_short_keyed_xof64_32_stack --> |
+
+Key-dependent byte differences come from the constant-folded lookup offsets
+and ScriptNum widths. The key is embedded in the script, so treat a
+revealed keyed leaf as disclosing its key. Use keyed mode for domain
+separation, or for MAC checks only when the key may be public at spend
+time.
+
+`test_short_modes_match_official_extended_vectors` checks all 27 official
+mode vectors with input length 0 to 8 against their 64-byte extended outputs.
+`test_short_modes_match_reference_all_lengths_and_outputs` checks every
+length from 0 to 32, every mode, and 16-, 32-, and 64-byte outputs against the
+independent `blake3` crate. Both tests use strict-stack tapscript execution
+with witness inputs. Malformed-nibble, extra-item, missing-item, and
+cross-mode digest tests reject. Evidence is `differentially-validated`
+against the `blake3` crate for the fragment boundary. Deployment is
+`unclassified`: no Bitcoin Core comparison was made.
 
 For the deterministic 64-byte message `00 01 ... 3f`, host-side 29-bit message
 packing is <!-- metric:blake3_push_64_limb29 -->87<!-- /metric:blake3_push_64_limb29 -->
