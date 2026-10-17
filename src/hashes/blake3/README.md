@@ -170,9 +170,9 @@ measurement-boundary correction.
 | Configuration | Compute script |
 | --- | ---: |
 | Empty message, 29-bit API | <!-- metric:blake3_empty_limb29 -->64<!-- /metric:blake3_empty_limb29 --> bytes |
-| 1 byte, direct checked u4 | <!-- metric:blake3_short_1 -->56124<!-- /metric:blake3_short_1 --> bytes |
-| 32 bytes, direct checked u4 | <!-- metric:blake3_short_32 -->59534<!-- /metric:blake3_short_32 --> bytes |
-| 32 bytes, direct checked u4, low 128 bits | <!-- metric:blake3_short_truncated_128_32 -->59105<!-- /metric:blake3_short_truncated_128_32 --> bytes |
+| 1 byte, direct checked u4 | <!-- metric:blake3_short_1 -->39660<!-- /metric:blake3_short_1 --> bytes |
+| 32 bytes, direct checked u4 | <!-- metric:blake3_short_32 -->44305<!-- /metric:blake3_short_32 --> bytes |
+| 32 bytes, direct checked u4, low 128 bits | <!-- metric:blake3_short_truncated_128_32 -->43841<!-- /metric:blake3_short_truncated_128_32 --> bytes |
 | 32 bytes, selected 4-bit limbs | <!-- metric:blake3_32_limb4 -->61204<!-- /metric:blake3_32_limb4 --> bytes |
 | 64 bytes, 4-bit limbs | <!-- metric:blake3_64_limb4 -->64095<!-- /metric:blake3_64_limb4 --> bytes |
 | 64 bytes, 29-bit limbs | <!-- metric:blake3_64_limb29 -->72293<!-- /metric:blake3_64_limb29 --> bytes |
@@ -184,15 +184,15 @@ BLAKE3-specific fixed-point pass.
 For the deterministic 32-byte message `00 01 ... 1f`, direct host-side message
 pushes are <!-- metric:blake3_push_short_32 -->64<!-- /metric:blake3_push_short_32 -->
 bytes. The push, compute fragment, and 128-byte digest comparison compose to
-<!-- metric:blake3_complete_short_32 -->59726<!-- /metric:blake3_complete_short_32 -->
+<!-- metric:blake3_complete_short_32 -->44497<!-- /metric:blake3_complete_short_32 -->
 bytes. Encoding the same nibbles as canonical witness items takes
 <!-- metric:blake3_witness_short_32 -->111<!-- /metric:blake3_witness_short_32 -->
 serialized bytes; the valid 64-item maximum is
 <!-- metric:blake3_witness_short_32_max -->129<!-- /metric:blake3_witness_short_32_max -->
 bytes. The compute fragment contains
-<!-- metric:blake3_opcodes_short_32 -->41135<!-- /metric:blake3_opcodes_short_32 -->
+<!-- metric:blake3_opcodes_short_32 -->28893<!-- /metric:blake3_opcodes_short_32 -->
 static non-push opcodes, and the executable composition peaks at
-<!-- metric:blake3_stack_short_32 -->527<!-- /metric:blake3_stack_short_32 -->
+<!-- metric:blake3_stack_short_32 -->581<!-- /metric:blake3_stack_short_32 -->
 combined main/altstack items.
 
 The corresponding 32-byte selected-limb helper composition peaks at
@@ -205,10 +205,10 @@ compression but materializes only the first four output words. It is useful for
 protocols that commit to a 128-bit BLAKE3 prefix; the output uses the standard
 little-endian byte order and contains 32 u4 items. The 32-byte profile's
 truncated compute fragment is
-<!-- metric:blake3_short_truncated_128_32_compute -->59105<!-- /metric:blake3_short_truncated_128_32_compute --> bytes, with
-<!-- metric:blake3_short_truncated_128_32_opcodes -->40816<!-- /metric:blake3_short_truncated_128_32_opcodes --> static non-push opcodes and a strict
+<!-- metric:blake3_short_truncated_128_32_compute -->43841<!-- /metric:blake3_short_truncated_128_32_compute --> bytes, with
+<!-- metric:blake3_short_truncated_128_32_opcodes -->28653<!-- /metric:blake3_short_truncated_128_32_opcodes --> static non-push opcodes and a strict
 composition peak of
-<!-- metric:blake3_short_truncated_128_32_stack -->527<!-- /metric:blake3_short_truncated_128_32_stack --> items including the prefix verifier. It saves
+<!-- metric:blake3_short_truncated_128_32_stack -->581<!-- /metric:blake3_short_truncated_128_32_stack --> items including the prefix verifier. It saves
 429 compute bytes versus the full 32-byte output at the same
 64-item checked input boundary. The empty-message specialization rejects
 extra stack input and returns the first 16 bytes of the standard empty digest.
@@ -241,10 +241,10 @@ u4 data items all present at entry:
 | 32-byte message | Compute script | Static non-push opcodes | Strict peak with verifier |
 | --- | ---: | ---: | ---: |
 | Unkeyed, 32-byte output | `blake3_short_32` above | `blake3_opcodes_short_32` above | `blake3_stack_short_32` above |
-| Keyed, 32-byte output | <!-- metric:blake3_short_keyed_32 -->59532<!-- /metric:blake3_short_keyed_32 --> bytes | <!-- metric:blake3_short_keyed_32_opcodes -->41135<!-- /metric:blake3_short_keyed_32_opcodes --> | <!-- metric:blake3_short_keyed_32_stack -->527<!-- /metric:blake3_short_keyed_32_stack --> |
-| Derive-key, 32-byte output | <!-- metric:blake3_short_derive_key_32 -->59521<!-- /metric:blake3_short_derive_key_32 --> bytes | <!-- metric:blake3_short_derive_key_32_opcodes -->41131<!-- /metric:blake3_short_derive_key_32_opcodes --> | <!-- metric:blake3_short_derive_key_32_stack -->527<!-- /metric:blake3_short_derive_key_32_stack --> |
-| Unkeyed, 64-byte XOF | <!-- metric:blake3_short_xof64_32 -->60131<!-- /metric:blake3_short_xof64_32 --> bytes | <!-- metric:blake3_short_xof64_32_opcodes -->41442<!-- /metric:blake3_short_xof64_32_opcodes --> | <!-- metric:blake3_short_xof64_32_stack -->527<!-- /metric:blake3_short_xof64_32_stack --> |
-| Keyed, 64-byte XOF | <!-- metric:blake3_short_keyed_xof64_32 -->60133<!-- /metric:blake3_short_keyed_xof64_32 --> bytes | <!-- metric:blake3_short_keyed_xof64_32_opcodes -->41443<!-- /metric:blake3_short_keyed_xof64_32_opcodes --> | <!-- metric:blake3_short_keyed_xof64_32_stack -->527<!-- /metric:blake3_short_keyed_xof64_32_stack --> |
+| Keyed, 32-byte output | <!-- metric:blake3_short_keyed_32 -->44300<!-- /metric:blake3_short_keyed_32 --> bytes | <!-- metric:blake3_short_keyed_32_opcodes -->28893<!-- /metric:blake3_short_keyed_32_opcodes --> | <!-- metric:blake3_short_keyed_32_stack -->581<!-- /metric:blake3_short_keyed_32_stack --> |
+| Derive-key, 32-byte output | <!-- metric:blake3_short_derive_key_32 -->44297<!-- /metric:blake3_short_derive_key_32 --> bytes | <!-- metric:blake3_short_derive_key_32_opcodes -->28893<!-- /metric:blake3_short_derive_key_32_opcodes --> | <!-- metric:blake3_short_derive_key_32_stack -->581<!-- /metric:blake3_short_derive_key_32_stack --> |
+| Unkeyed, 64-byte XOF | <!-- metric:blake3_short_xof64_32 -->44886<!-- /metric:blake3_short_xof64_32 --> bytes | <!-- metric:blake3_short_xof64_32_opcodes -->29173<!-- /metric:blake3_short_xof64_32_opcodes --> | <!-- metric:blake3_short_xof64_32_stack -->581<!-- /metric:blake3_short_xof64_32_stack --> |
+| Keyed, 64-byte XOF | <!-- metric:blake3_short_keyed_xof64_32 -->44877<!-- /metric:blake3_short_keyed_xof64_32 --> bytes | <!-- metric:blake3_short_keyed_xof64_32_opcodes -->29173<!-- /metric:blake3_short_keyed_xof64_32_opcodes --> | <!-- metric:blake3_short_keyed_xof64_32_stack -->581<!-- /metric:blake3_short_keyed_xof64_32_stack --> |
 
 Key-dependent byte differences come from the constant-folded lookup offsets
 and ScriptNum widths. The key is embedded in the script, so treat a

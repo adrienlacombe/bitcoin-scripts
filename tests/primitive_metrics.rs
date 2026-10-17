@@ -5035,6 +5035,60 @@ fn shake256_prefix_metrics_are_current() {
     ]);
 }
 
+/// The direct-u4 short profile's rows from the repository-wide suite, kept
+/// runnable without enabling that ignored suite. Definitions match
+/// `metrics()` exactly.
+#[test]
+fn blake3_short_metrics_are_current() {
+    let message: [u8; 32] = std::array::from_fn(|index| index as u8);
+    let expected = *::blake3::hash(&message).as_bytes();
+    let push = blake3::blake3_push_short_message_script(&message);
+    let compute = blake3::blake3_short_compute_script(32);
+    let complete = script! {
+        {push.clone()}
+        {compute.clone()}
+        {blake3::blake3_verify_output_script(expected)}
+    };
+    let witness = blake3::blake3_short_message_witness(&message);
+    check_readme_metrics(vec![
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_1",
+            value: script_len(blake3::blake3_short_compute_script(1)),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_short_32",
+            value: script_len(compute.clone()),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_push_short_32",
+            value: script_len(push),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_complete_short_32",
+            value: script_len(complete.clone()),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_opcodes_short_32",
+            value: static_non_push_opcodes(compute),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_stack_short_32",
+            value: max_stack_items(complete, vec![]),
+        },
+        Metric {
+            readme: "src/hashes/blake3/README.md",
+            key: "blake3_witness_short_32",
+            value: witness_size(&witness),
+        },
+    ]);
+}
+
 #[test]
 fn blake3_short_truncated_128_metrics_are_current() {
     let message: [u8; 32] = std::array::from_fn(|index| index as u8);
@@ -5046,7 +5100,7 @@ fn blake3_short_truncated_128_metrics_are_current() {
         { blake3::blake3_verify_output_prefix_script(expected[..16].try_into().unwrap()) }
     };
     let full = blake3::blake3_short_compute_script(32);
-    assert_eq!(script_len(full.clone()) - script_len(compute.clone()), 429);
+    assert_eq!(script_len(full.clone()) - script_len(compute.clone()), 464);
     check_readme_metrics(vec![
         Metric {
             readme: "src/hashes/blake3/README.md",
