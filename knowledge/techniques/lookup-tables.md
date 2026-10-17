@@ -23,6 +23,13 @@ can query values embedded on the stack. Local constructions use several forms:
   `OP_IF` branches and let witness-provided minimal booleans select a leaf. This
   avoids placing every map entry on the stack, at the cost of a larger locking
   script and branch-hint witness.
+- **Depth-biased values:** store each computed value plus a constant chosen so
+  that the value itself is the `OP_PICK` depth of the entry it indexes next.
+  The [short BLAKE3 generator](../primitives/blake3-short-u4.md) stores
+  addition outputs as lut depths and carries as modulo-entry depths, so a
+  steady-state lookup needs no index arithmetic. This needs an exact model of
+  the stack; any residual offset outside the steady state is added before
+  the lookup.
 - **Addition chain:** embed no persistent table; unroll doubles and adds.
 - **Key-specific fused rows:** combine a fixed XOR and S-box lookup into a
   unary table. Price row installation, frequency, address encodings and cleanup

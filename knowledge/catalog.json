@@ -5950,10 +5950,10 @@
       "id": "hash/blake3-short-u4",
       "name": "BLAKE3 sparse direct-u4 short-input construction",
       "class": "hash/fixed",
-      "summary": "Length-specialized BLAKE3 for at most 32 witness-backed bytes, with checked u4 input, compile-time omission of zero padding words, generation-time hash/keyed/derive-key modes, and 16-, 32-, or 64-byte output.",
+      "summary": "Length-specialized BLAKE3 for at most 32 witness-backed bytes from a stack-modelled generator, with checked u4 input, depth-biased lookup values, compile-time omission of zero padding words, generation-time hash/keyed/derive-key modes, and 16-, 32-, or 64-byte output.",
       "status": "active",
       "evidence": "differentially-validated",
-      "execution": "research-unlimited",
+      "execution": "unclassified",
       "as_of": "2026-10-16",
       "knowledge_page": "knowledge/primitives/blake3-short-u4.md",
       "implementation": "src/hashes/blake3/mod.rs",
@@ -5982,13 +5982,14 @@
         "bitcoin-script-stack-locked"
       ],
       "techniques": [
-        "tracked-stack",
+        "stack-scheduling",
         "lookup-table",
         "constant-folding",
-        "sparse-state"
+        "sparse-state",
+        "range-check"
       ],
-      "security": "Security is inherited from BLAKE3 for the supported modes; the truncated mode is a prefix of the standard digest and the 64-byte mode is the first 64 bytes of the standard XOF stream. Keys and derive-key contexts are generation-time constants folded into the script, so a revealed leaf must be treated as disclosing its key. All witness-backed nibbles are numerically checked in [0,16), omitted words are fixed zero padding, and raw-byte canonicality plus digest binding remain caller obligations.",
-      "stack_contract": "Consumes exactly two numeric nibble items per declared message byte from an otherwise empty main stack and returns 32, 64, or 128 output nibbles (16-, 32-, or 64-byte output, first byte deepest); the 32-byte configuration uses the documented physical word and digit permutations.",
+      "security": "Security is inherited from BLAKE3 for the supported modes; the truncated mode is a prefix of the standard digest and the 64-byte mode is the first 64 bytes of the standard XOF stream. Keys and derive-key contexts are generation-time constants folded into the script, so a revealed leaf must be treated as disclosing its key. All witness-backed nibbles are numerically checked in [0,16) at first use, before any addition or lookup; without the minimal-number policy rule a non-minimal encoding of an in-range nibble is accepted as that nibble. Omitted words are fixed zero padding, and raw-byte canonicality plus digest binding remain caller obligations.",
+      "stack_contract": "Consumes exactly two numeric nibble items per declared message byte from an otherwise empty main stack and returns 32, 64, or 128 output nibbles (16-, 32-, or 64-byte output, first byte deepest); the 32-byte configuration uses the documented physical word and digit permutations. Altstack use is balanced, so caller items parked on the altstack are preserved and add to the peak.",
       "configurations": [
         {
           "id": "message32-direct-u4",
@@ -6200,6 +6201,7 @@
         "Keys and derive-key contexts are fixed when the script is generated; a witness-supplied key is not implemented",
         "XOF output is limited to the first 64 bytes; later output blocks need another root compression",
         "The direct u4 layout uses up to 64 witness items and differs from the selected-limb API",
+        "Caller state must be parked on the altstack; the fragment rejects any extra main-stack item",
         "Bitcoin Core consensus and policy validation were not performed"
       ],
       "open_problems": [

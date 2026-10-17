@@ -24,6 +24,10 @@ bytes, plus every length up to 32 against the `blake3` crate, match under
 strict-stack execution. Evidence is `differentially-validated`; deployment is
 `unclassified`. See [the primitive page](../primitives/blake3-short-u4.md).
 
+Remeasured on 2026-10-16 with the stack-modelled short generator: keyed
+hashing is 43,915 bytes with the official key and 43,904 bytes with the
+all-`0x42` key, versus 43,930 unkeyed, all at a 499-item strict peak.
+
 A key supplied in the witness is still not implemented. It would use the
 existing runtime chaining-value path, the one the generic backend uses for
 non-first blocks, plus 64 range-checked key nibbles. A key fixed when the

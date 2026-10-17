@@ -219,7 +219,9 @@ on the host when the script is generated, and only the material phase runs in
 Script. That phase is one root compression from a constant context key with
 `DERIVE_KEY_MATERIAL`, priced like keyed mode. For the 32-byte `00 01 ... 1f`
 message and the official context, it measures 59,521 bytes, 41,131 static
-non-push opcodes, a 527-item strict peak, 64 data items, and zero hints. It
+non-push opcodes, a 527-item strict peak, 64 data items, and zero hints
+(43,928 bytes, 28,856 opcodes and 499 items with the 2026-10-16
+stack-modelled generator). It
 matches the official vectors and the `blake3` crate for empty, short, and
 three-block contexts. Evidence is `differentially-validated`; deployment is
 `unclassified`. This closes
@@ -634,7 +636,9 @@ through 47. The rejected unadjusted form and retained correction are therefore
 `locally-reproduced` for this generator. Subsequent XOR/modulo fusion, delayed
 table introduction, peepholes, and independent-digit scheduling reduce the
 combined frontier to 59,529 bytes; the 61,074-byte figure remains the
-like-for-like measurement of the addition change itself.
+like-for-like measurement of the addition change itself. The later
+stack-modelled generator replaces this backend for the short profile; see
+[NR-086](#nr-086-short-blake3-generator-variants-that-did-not-pay).
 
 ## NR-021: Higher Winternitz radices lose locking-script bytes
 
@@ -1603,7 +1607,9 @@ below says that a longer output requires "the extra compression". That is
 wrong for the first 64 bytes. They are the complete root compression output:
 the second half is `v[i+8] ^ cv[i]`, which needs no new compression. The
 short profile now returns them for 60,131 bytes, versus 59,534 for the
-digest, at the same 527-item peak. See the corrected
+digest, at the same 527-item peak. Remeasured on 2026-10-16 with the
+stack-modelled generator: 44,500 versus 43,930 bytes at a 499-item peak. See
+the corrected
 [XOF record](blake3-xof-output.md). Output beyond 64 bytes, and a 64-byte XOF
 in the multi-block limb API, remain unimplemented. The original text follows.
 
@@ -1779,7 +1785,9 @@ result is not a consensus or policy deployment claim. Reproduce it with:
 fixed when the script is generated, keyed mode changes only constants: the key
 replaces the IV, and the flags gain `KEYED_HASH`. Witness shape and stack
 routing do not change. The keyed hash measures 59,532 bytes with the official
-test key, versus 59,534 unkeyed, at the same 527-item peak and zero hints. See
+test key, versus 59,534 unkeyed, at the same 527-item peak and zero hints
+(43,915 versus 43,930 bytes at 499 items with the 2026-10-16 stack-modelled
+generator). See
 the [retracted keyed record](blake3-keyed-mode.md). The original text follows.
 
 The local BLAKE3 generators accept no key and set no `KEYED_HASH` mode flag.
@@ -1964,3 +1972,22 @@ local tapscript execution is `locally-reproduced`; deployment remains
 `unclassified`, with no Bitcoin Core validation claim. The reproduced rows
 are in the [u4 implementation README](../../src/arithmetic/u4/README.md) and
 `primitive_metrics::u4_unpack_metrics_are_current`.
+
+## NR-086: Short BLAKE3 generator variants that did not pay
+
+Porting the stack-modelled short-input generator onto upstream `374d076`
+reduced the 32-byte unkeyed fragment from 59,534 to 44,305 bytes. Packed XOR
+rows, a searched G-call order and more XOR nibble orders then reached 43,930
+bytes at a 499-item peak. Several variants measured on the same boundary did
+not pay. A fully packed 295-item table moved the shift table away from the top
+and made every steady-state shift adjustment push two data bytes: 44,646
+bytes at a 492-item peak, 341 more than its 44,305-byte baseline. Pushing the
+initial state instead of folding it, or leaving message low nibbles unbiased,
+was longer in all 96 unkeyed length and output configurations (+149 and +146
+bytes at 32 bytes). A biased round-6 shift table saved 16 bytes for 16 more
+peak items, one-operation XOR-order lookahead saved 2 bytes for about three
+times the generation time, and a greedy XOR order saved nothing. The natural
+witness layout would save 3 bytes and was not adopted. Byte counts are
+`locally-reproduced`; the retained construction is `differentially-validated`
+and deployment is `unclassified`. See the
+[generator record](blake3-short-generator.md).
