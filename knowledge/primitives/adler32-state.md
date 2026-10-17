@@ -47,7 +47,7 @@ fragment's peak in a composition model. The closest streaming baseline has
 the same witness and peak and costs 740/749 at n32; at n997 its 41253/41263
 bytes are **unoptimized** above the cutoff. See the
 [like-for-like comparison](../comparisons/checksums.md) and
-[NR-077](../negative-results/adler32-scheduling.md).
+[NR-087](../negative-results/adler32-scheduling.md).
 
 Independent zlib outputs check 555 deterministic vectors, including every
 one-byte value, 256 asymmetric pairs, the standard decimal-text vector,
@@ -80,4 +80,4 @@ This checksum detects accidental corruption and has easy deliberate collisions;
 it has no cryptographic security claim. Residues are numeric ScriptNums,
 not network-order byte strings; packed checksum serialization and protocol
 authentication are outside this boundary. A complete funded/Core/policy
-fixture remains [OP-035](../open-problems.md#op-035--complete-adler-state-leaf-validation).
+fixture remains [OP-043](../open-problems.md#op-043--complete-adler-state-leaf-validation).

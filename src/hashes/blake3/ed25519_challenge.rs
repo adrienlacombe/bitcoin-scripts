@@ -443,7 +443,6 @@ pub fn compute_script() -> Script {
         &tables,
         8,
         false,
-        false,
     );
     for _ in 0..8 {
         let top = stack.get_var_from_stack(0);
@@ -467,7 +466,6 @@ pub fn compute_script() -> Script {
         &tables,
         8,
         true,
-        false,
     );
     for _ in 0..8 {
         let top = stack.get_var_from_stack(0);
@@ -547,9 +545,7 @@ pub fn key_specialized_compute_script_preserving(
             stack.to_altstack();
         }
     }
-    compress(
-        &mut stack, true, 0, 64, 0b1010, message, &tables, 8, true, false,
-    );
+    compress(&mut stack, true, 0, 64, 0b1010, message, &tables, 8, true);
     for _ in 0..8 {
         let top = stack.get_var_from_stack(0);
         stack.drop(top);
@@ -661,7 +657,6 @@ pub fn key_specialized_compute_script_preserving_truncated_128_fixed_message(
         &tables,
         4,
         true,
-        false,
     );
     for _ in 0..12 {
         let top = stack.get_var_from_stack(0);
@@ -817,9 +812,7 @@ fn key_specialized_truncated_128_inner(
     }
     // Only words 0..=3 of the root output are needed by the 128-bit scalar
     // schedule. The other half of the output is never materialized.
-    compress(
-        &mut stack, true, 0, 64, 0b1010, message, &tables, 4, true, false,
-    );
+    compress(&mut stack, true, 0, 64, 0b1010, message, &tables, 4, true);
     // Four low state words were consumed while producing the truncated root;
     // discard the twelve unused state words that remain.
     for _ in 0..12 {

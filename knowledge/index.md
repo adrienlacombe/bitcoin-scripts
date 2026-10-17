@@ -53,8 +53,13 @@ python3 tools/kb.py validate
 
 ## Coverage snapshot
 
+The stack-support layer includes [stable selection of opaque payloads](primitives/stable-selection.md)
+under native tapscript binary flags, with matched routing comparisons and
+explicit caller-state frontiers.
+
 The initial catalog covers all primitive families documented or actively
-implemented in this repository: ScriptNum, u4/u32/u31/bigint/RNS, native
+implemented in this repository: ScriptNum, u4/u32/u31/bigint/RNS (including checked
+factoradic/Lehmer decoding), native
 secp256k1 and other prime-field arithmetic, integer commitments, SHA-1,
 SHA-256, RIPEMD-160, BLAKE3, SHAKE256,
 AES-128, PRINCEv2, Lamport/HORS/Winternitz one-time constructions, and BN254
@@ -66,3 +71,19 @@ tapscript context and sometimes without the consensus stack limit. Therefore
 the initial catalog is stronger as a map of constructions and relative local
 measurements than as a deployability database. Closing that gap is tracked in
 [open problems](open-problems.md).
+
+The [numeric decimal Damm fold](primitives/u4-damm.md) adds a fixed-state
+checksum comparison: resident tables, row tables and balanced dispatch are
+measured on matched numeric inputs with zero hints. Its strict local tests,
+including preloaded independent folds, remain `locally-reproduced` and
+`unclassified`; they do not extend deployment evidence for other primitives.
+
+The [integer floor-root schedule](primitives/scriptnum-isqrt.md) adds a
+zero-hint nonlinear ScriptNum operation and a matched threshold-dispatch
+comparison. Its finite arithmetic argument and all-entry composition are local
+results; every configuration remains locally-reproduced/unclassified.
+
+The [CRC-8 nibble feedback experiment](primitives/crc8-smbus.md) adds a checked
+noncryptographic checksum frontier: zero hints, exact all-entry limits, matched
+serial/canonical families, and immutable local artifacts; deployment remains
+unclassified.

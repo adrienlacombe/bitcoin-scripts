@@ -1,8 +1,11 @@
 # BLAKE3 over tracked limbs
 
-The public construction is limited to the unkeyed 32-byte digest. Its missing
-root-output counter and longer-output routing are recorded in the [XOF
-boundary result](../negative-results/blake3-xof-output.md).
+The public construction is limited to the unkeyed 32-byte digest. Keyed,
+derive-key, and 64-byte XOF output are implemented only in the single-block
+[short direct-u4 profile](blake3-short-u4.md). A multi-block 64-byte XOF in
+this profile would also need to keep the final block's input chaining value,
+because the second output half XORs with it. See the corrected
+[XOF boundary result](../negative-results/blake3-xof-output.md).
 
 Implements BLAKE3 for messages up to one 1,024-byte chunk using tracked-stack
 u4 and bigint machinery.

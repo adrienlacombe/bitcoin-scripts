@@ -11,7 +11,10 @@ The complete-witness preflight now validates the revealed script and control
 block against the P2TR output. Seven funded depth-one fixtures compare valid,
 mutated, and malformed control paths with pinned Core. The recorded comparisons
 are `differentially-validated`; the preflight is not a complete transaction
-validator. Next, validate the remaining transaction context:
+validator. A separate [confirmed-output BIP68 comparison](tapscript-csv-validation.md#confirmed-output-bip68-maturity-follow-up-2026-09-28)
+now matches Core immediately before and at exact height/MTP maturity while
+preserving a missing-context `Unsupported` result. Next, validate the remaining
+transaction context:
 **complete when** valid and mutated Taproot commitments, annexes and Schnorr
 signatures produce supported local verdicts that agree with pinned Core,
 including budgets initialized from the full serialized witness. Unsupported
@@ -50,6 +53,20 @@ multi-block context; records both `DERIVE_KEY_CONTEXT` and
 witness shape, and combined stack peak; and either executes under the 1,000-item
 limit or records a measured negative result. See [NR-061](negative-results/index.md).
 
+**Closed (2026-10-11).** `Blake3Mode::derive_key` runs the
+`DERIVE_KEY_CONTEXT` phase on the host, because BLAKE3 requires a hardcoded
+context. The context key becomes the generation-time chaining value of the
+in-Script `DERIVE_KEY_MATERIAL` root compression. The short direct-u4 profile
+matches the official derive-key vectors up to 8 bytes, plus every length up
+to 32 for empty, short, and 150-byte (three-block) contexts against the
+`blake3` crate. For the 32-byte message it measures 59,521 script bytes, a
+111-byte representative witness of 64 data items, zero hints, and a 527-item
+strict peak. Evidence is `differentially-validated`; deployment is
+`unclassified`. Contexts over 1,024 bytes are rejected by the host helper.
+Remeasured on 2026-10-16 with the stack-modelled generator: 43,928 bytes and
+a 499-item strict peak.
+See the corrected [NR-061](negative-results/index.md#nr-061-blake3-derive-key-mode-is-not-a-drop-in-unkeyed-extension).
+
 ## OP-019 — PRINCEv2 M-hat circuit frontier
 
 Find a smaller repeated M-hat circuit for generation-time-key encryption.
@@ -64,6 +81,15 @@ this criterion; see [the layout search](negative-results/princev2-layout.md).
 The new checked 6,426-byte zero-key leaf measures input validation and a
 terminal predicate as well; it is a separate boundary and does not advance
 the sub-5,000-byte fragment objective.
+
+Progress: the reusable standalone `prince_m_layer()` fragment now measures
+1,707 policy-produced bytes with 16 input data items, zero hints, and a strict
+633-item peak. It includes canonical per-nibble checks (rejecting out-of-range
+values and non-minimal encodings), packed table setup/cleanup, all four M-hat
+blocks, and output restoration. This clears the byte target for the
+linear-layer fragment, but does not yet demonstrate the complete
+generation-time-key encryption circuit against the pinned C fixtures and
+seeded random key/plaintext set, so OP-019 remains open.
 
 ## OP-021 — Taproot Merkle-path verifier
 
@@ -130,13 +156,14 @@ context-free profiles, including when their opcodes appear in dead branches.
 The [funded CSV comparison](tapscript-csv-validation.md) repairs a five-byte
 operand panic and checks 19 complete spends against Core. The local executor
 compares transaction version and `nSequence`; it does not know the funding
-height or median-time history needed for BIP68 transaction finality.
-**Remaining acceptance criterion:** a transaction-aware wrapper must either
-check the relevant funding height/MTP against the spend block and match pinned
-Core on both sides of each relative-maturity boundary, or return an explicit
-unsupported outcome when that chain context is absent. This remains under
-OP-001; the funded Core harness supplies complete-spend verdicts for the
-recorded CSV fixtures.
+height or median-time history needed for BIP68 transaction finality. A new
+host-side preflight accepts ordered confirmed-prevout heights, their prior-block
+MTPs and a candidate block's height/parent MTP. Two funded CSV5 spends match
+pinned Core both one height/time unit before and exactly at maturity. Missing or
+inconsistent chain context returns `Unsupported`, never transaction rejection.
+This satisfies the height/time boundary criterion for the recorded confirmed
+prevouts, while same-block and mempool parents, chain-fact authentication,
+absolute finality and full transaction validity remain open under OP-001.
 
 The current [53-fixture Core experiment](core-validation.md) reproduces every
 consensus/policy expectation and rejection diagnostic, with all 106 combined
@@ -499,25 +526,29 @@ vulnerability from the adjacent advisory without this analysis.
 
 ## OP-013 — BLAKE3 circuit-superoptimization frontier
 
-The checked short-input frontier is 59,529 bytes and 527 stack items for 32
-bytes. The preceding digit-routing criterion is bounded: a
-shortest-common-superstring DP reduced the XOR table, row-zero suffixes fused
-the modulo table, table-lifetime search delayed shift/addition memory, and an
-independent-nibble backend searched global and per-call rotation orders. Every
-retained length from 0 through 32 passed differential and malformed-input
-tests. Alternate radices, expanded witness schedules, eager routing,
+The checked short-input frontier is 43,930 bytes and 499 stack items for 32
+bytes (2026-10-16). It comes from a stack-modelled generator that stores
+addition outputs and carries biased so that most lookup values are directly
+`OP_PICK` depths, folds constants into lookup offsets, packs the XOR rows as
+superstring pieces, and fixes a searched G-call order; see the
+[primitive page](primitives/blake3-short-u4.md). It replaced the 59,529-byte
+tracked-stack frontier, whose digit-routing searches (superstring XOR table,
+fused modulo suffix, delayed tables, independent-nibble rotation orders) are
+recorded with alternate radices, expanded witness schedules, eager routing,
 little-endian state, raw-sum add-to-XOR fusion, final-round pair fusion, and
-extra low-XOR planes are measured or bounded in the negative-results index.
-Deep state routing still dominates, with 473 items of strict stack headroom in
-the representative short configuration.
+extra low-XOR planes in the negative-results index. Generator variants that
+did not pay are in [NR-086](negative-results/index.md#nr-086-short-blake3-generator-variants-that-did-not-pay).
+Operand fetches, mostly 3-byte rolls of deep state nibbles and 4-byte message
+picks, are about 45% of the bytes. There are 501 items of strict stack
+headroom in the representative short configuration.
 
 **Complete when:** a reproducible joint circuit search or proof-producing
 superoptimizer covers a precisely stated space of digit lifetimes, G-stage
-fusion, lookup layouts, and per-call schedules on the same checked
-`fragment-with-memory` boundary; every retained candidate passes all short
-lengths and malformed inputs; and it either beats 59,529 bytes below the
-1,000-item peak or records a machine-checkable lower bound for that search
-space.
+fusion, lookup layouts, value biases, and per-call schedules on the same
+checked `fragment-with-memory` boundary; every retained candidate passes all
+short lengths, modes and malformed inputs; and it either beats 43,930 bytes
+below the 1,000-item peak or records a machine-checkable lower bound for that
+search space.
 
 ## OP-023 — BLAKE3 parent-tree composition
 
@@ -553,6 +584,20 @@ reports dominance only for the tested compressed-input configurations. The
 byte-oriented API remains unresolved: identify a caller and compare direct
 four-byte shifting with compression, compressed shifting, and conversion back,
 including validation and table setup/cleanup at the same boundary.
+
+## OP-040 — Byte-competitive variable run-length decoder
+
+`u4_expand_canonical_runs` fixes the run count in the locking script. On the
+measured width-16 shapes it costs more script-plus-witness bytes than checking
+the expanded nibbles in place. [NR-083](negative-results/index.md#nr-083-fixed-count-u4-run-length-expansion-loses-combined-bytes)
+records those boundaries.
+
+**Complete when:** one fragment accepts every canonical run count from 1
+through a stated width, rejects zero-length, overlong, adjacent-equal,
+non-canonical, and sum-mismatch witnesses at every pair, and either undercuts
+the in-place canonical-nibble script-plus-witness total on a stated repetitive
+witness or records a new measured negative result at that same boundary. A
+single compile-time run count does not close this.
 
 ## OP-026 — Total-domain compressed-u32 shift pair
 
@@ -952,6 +997,19 @@ digest. **Complete when:** a generation-time output length supports at least a
 additional output-block compression/routing/cleanup and witness shape, and
 passes the combined 1,000-item stack check for the documented composition.
 
+**Closed (2026-10-11) for 64 bytes.** The first 64 XOF bytes are the
+complete root compression output, so no output-block compression is needed.
+`blake3_short_mode_compute_script(.., 64)` copies `v[8..16]`, XORs it with
+the constant chaining value through fixed XOR-table rows, and returns 128 u4
+items. For the 32-byte message it measures 60,131 script bytes (+597 over the
+digest), 64 data items, zero hints, and a 527-item strict peak including the
+verifier. Remeasured on 2026-10-16 with the stack-modelled generator: 44,500
+bytes (+570) and a 499-item peak. It matches the `blake3` crate in all three modes for every length up
+to 32. Output beyond 64 bytes, which needs a counter-1 root compression, and
+a multi-block limb-API XOF remain unimplemented. Neither is tracked as an open
+problem until a caller needs it. See the corrected
+[XOF record](negative-results/blake3-xof-output.md).
+
 ## OP-027 — Integrate signed-window decoding into a complete scalar schedule
 
 The signed radix-32 decoder is only a representation bridge. A deterministic
@@ -986,7 +1044,7 @@ independent BLAKE3 implementation, records the eight key words and
 `KEYED_HASH` flag handling, reports witness and combined-stack costs, and
 compares the result with the unkeyed profile under the same compilation policy.
 
-## OP-035 — Complete Adler-state leaf validation
+## OP-043 — Complete Adler-state leaf validation
 
 Build a complete, independently bound error-detection computation leaf for
 the canonical Adler-32 state fragment. **Complete when:** a funded fixture
@@ -997,3 +1055,145 @@ weight, consensus and relay-policy outcomes separately. Include explicit
 zero hint counts and combined stack peaks. Keep the documented checksum
 collision and lack of authentication explicit; Core acceptance must not be
 represented as cryptographic security or inherited by other configurations.
+
+## OP-031 — Positional nibble checksum composition
+
+The new [modulo-17 integer residue](primitives/u4-mod17.md) is locally reproduced
+with canonical runtime witnesses and an exact strict stack bound. **Accept when:**
+a complete leaf with a caller-bound vector length and independently fixed residue
+passes an immutable Bitcoin Core consensus differential harness, rejects all
+single-symbol changes and unequal adjacent swaps in deterministic vectors, and
+reports complete Taproot witness size, combined peak with surrounding state,
+terminal predicate, compiler/interpreter/leaf pins and policy acceptance separately.
+Record cancelling changes and same-parity permutations as expected collisions;
+no authentication or Winternitz anti-forwarding claim follows from this checksum.
+
+## OP-032 — U32 Fermat residue composition
+
+The [paired-lane modulo-65,537 adapter](primitives/u32-mod65537.md) is locally
+reproduced under strict resource checks, but its complete computation leaf has
+not been exercised in a real spend. **Accept when:** a pinned Bitcoin Core
+harness differentially tests the exact final leaf with unsigned boundary words,
+all hostile witness positions, raw numeric aliases and wrong expected residues;
+records compiler/interpreter/code/leaf pins, full transaction and witness sizes,
+terminal predicate and combined stack with surrounding state; and reports
+consensus and policy evidence separately. The 17-bit output interpretation and
+expected modulus must be bound by its consumer; modular collisions are expected,
+not authentication failures.
+
+
+## OP-033 — Complete prefix-scan oracle
+
+Validate a complete canonical modulo-16 prefix-vector leaf against an independent
+Bitcoin Core transaction oracle. **Accept when:** the measured n32 complete
+leaf and every-position malformed/canonical-alias vectors have differential
+verdicts tied to exact leaf bytes, witness, transaction and Core revision;
+record policy separately and include leaf/control block in witness weight.
+The local997-item frontier and delta round trip do not close this criterion.
+
+
+## OP-034 — Complete quarter-square product oracle
+
+**Accept when:** a complete 32-pair exact-product leaf plus malformed and alias
+vectors has differential verdicts against an immutable Bitcoin Core transaction
+oracle, with exact leaf/witness/transaction hashes and full witness weights.
+Record relay policy separately and test output ScriptNum sign-padding values
+128..225. Local 483-pair resource acceptance and host products do not satisfy
+that complete transaction criterion.
+
+## OP-036 — Stable selection protocol composition
+
+Determine whether stable filtering improves a real authenticated variable-output
+consumer after binding selector meaning, retained count/vector and cleanup.
+**Accept when:** an identified protocol composes the selector with its actual
+caller state and terminal predicates, prices both reverse and matched forward
+schedules on the same boundary, records all preloaded data items and exactly
+zero or explicit hint items, observes a combined peak no greater than 1,000,
+and validates complete transactions against an immutable Bitcoin Core revision.
+Report policy separately, including oversized discarded payloads and whole-leaf
+optimizer options. A locally accepted routing fragment or constant literal
+consumer alone does not close this criterion; see NR-078.
+
+## OP-037 — Authenticated decimal transducer composition
+
+Determine whether the Damm table schedule is useful inside a real authenticated
+numeric decimal protocol after message meaning, fixed length and order are
+bound. **Complete when:** implement a consumer that independently authenticates
+those properties and every checksum result, compare resident/row-table/branch
+schedules on the same complete boundary (including routing, cleanup, witness
+serialization and caller state), reject known forgeable codewords and numeric
+alias attacks as appropriate to the consumer's encoding contract, and record
+explicit ordinary data and hint-item counts per invocation and composed
+configuration with combined peak at most 1,000. Any claimed consensus/policy
+class needs a pinned Bitcoin Core differential fixture for that exact leaf.
+The 28-message checksum-only composition and checks against literal final states
+do not close this criterion; a freely recomputable check digit authenticates
+neither the message nor its source.
+
+## OP-038 — Unsigned-word integer-root frontier
+
+Extend the floor-root operation beyond one nonnegative four-byte ScriptNum.
+**Complete when:** a checked ordinary unsigned 32-bit word representation
+supports 0..=2^32-1 and returns the exact canonical root, executes square-boundary
+and malformed-limb/alias tests with compiled validation bypasses and unchanged
+valid controls, records all conversion/routing/cleanup/terminal costs and
+per-invocation plus composed data/hint counts, and compares against the
+31-bit schedule on matched overlapping inputs. If hints are used, bind them and
+count all live hints/inputs/results within the combined 1,000-item limit.
+Any consensus/policy claim requires a pinned Core fixture for that exact leaf.
+A five-byte single ScriptNum is rejected rather than a valid wider encoding,
+and the 996-root 31-bit composition does not close this criterion.
+
+## OP-039 — Streamed CRC-8 frontier
+
+Can a smaller table lifecycle, bounded bit circuit or shared feedback layout
+improve the complete-message byte/stack frontier? The current numeric
+CRC-8 feedback constructor stops at 406 bytes because 812 entry nibbles
+plus 188 items reach 1,000. Serial admits more input but is much larger.
+
+Acceptance criterion: deterministically reproduce the same zero-init, MSB-first
+0x07/no-xor CRC for at least 407 complete bytes, all inputs present at entry,
+zero hints, combined main-plus-alt peak at most 1,000, and a final
+policy-produced fragment at most 43,345 bytes. Include the same hostile
+numeric domain, all setup/cleanup/packing and caller-state obligations;
+label NONE results unoptimized. Audit every state/nibble transition, exhaustive
+two-byte messages, malformed/alias/short inputs at every live position, actual
+compiled guard/terminal/order mutations caught by the same assertions, exact
+resource boundaries and repeated-message composition. Pin source/dependencies,
+profiles, witness/hint counts, script and input hashes. Strengthened deployment
+classes additionally need the appropriate complete Core/relay evidence. The
+existing serial baseline does not meet the byte target.
+
+**Closed (2026-10-11).** Keyed mode with a key fixed when the script is
+generated replaces the IV with the key words and adds `KEYED_HASH`. Witness
+shape and routing are unchanged. For the 32-byte message and official key, it
+measures 59,532 script bytes versus 59,534 unkeyed, under the same compilation
+policy and the same 527-item strict peak, with zero hints. Script size varies
+slightly with the key; the all-`0x42` key gives 59,557. A key supplied in the
+witness is not implemented. Remeasured on 2026-10-16 with the stack-modelled
+generator: 43,915 bytes keyed (43,904 with the all-`0x42` key) versus 43,930
+unkeyed, at a 499-item peak. See the retracted
+[keyed record](negative-results/blake3-keyed-mode.md).
+
+## OP-041 — Permutation decoding consumer frontier
+
+The bounded factoradic decoder reduces witness items and stack peak but loses
+combined bytes to separate Lehmer digits at widths 4/8/12 (NR-084).
+**Accept when:** a concrete consumer uses the decoded permutation, preserves its
+required live main/alt state, and measures both encodings on equal complete-leaf
+boundaries with data bytes/items, exact hint counts, executed non-push opcodes
+and combined peaks; either demonstrate a useful composition enabled by the
+packed representation or record the consumer as dominated. Complete-spend/Core
+validation is required before strengthening deployment claims. The 49-key
+signature multiset representation is outside the present four-byte rank domain.
+
+## OP-042 — Reflection witness consumer frontier
+
+Half-vector expansion improves complete-leaf bytes and entry items over raw
+symmetry verification for the measured equal/complement domains. **Accept when:**
+a polynomial or authenticated-state consumer requires this precise relation,
+consumes the expanded vector with its live protocol state, and compares both
+encodings on an equal boundary with witness bytes/items, exact hint counts,
+executed opcodes and combined peaks. Record either a consumer-level improvement
+or dominance. A general compression or deployment claim requires its own
+semantics and full-spend/Core validation; odd complement centers remain excluded.

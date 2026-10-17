@@ -124,3 +124,60 @@ costs are local specializations, not new Adler algorithms. Independent
 zlib output vectors are reproducible from
 [`oracle.py`](../../research/adler32-delayed-reduction/oracle.py); no Core
 execution or transaction evidence is inherited from that result oracle.
+
+
+The exact nibble product specializes the already-inspected identity in
+`bitcoin-scripts-quarter-square-20261002`, pinned to bf9ee0bb34987a9130ad9dc13a06e18fef137296.
+Only the mathematical identity is reused; its field carry/hint/deployment claims
+are not inherited and field arithmetic tests remain excluded.
+
+The stable opaque-item selector uses `cpp-draft-stable-copy-if-20261002`,
+Eelis/draft `c7015b485cc3db8efaa9dfb9ff0809c5394a4ed1`, [alg.copy], solely
+for established stable-subsequence semantics. Native exact binary flags use
+BIP342's tapscript MINIMALIF context. Its local source/artifact report pins the
+retained `bitcoin-script-locked` compiler and `bitcoin-scriptexec-csv-20260920`
+interpreter; neither semantic source nor local execution establishes deployment.
+
+The [Damm experiment](../../research/damm-finite-state/README.md) uses
+`damm-checkdigits-net-20261002`, CheckDigits.Net commit
+`734afa2d3596862ef4c3bb3ec404b512b96b8965`, as primary implementation evidence.
+Exact table/fold/license bytes are preserved and SHA256-bound. Independent
+Python checks compare the Rust transcription and every local fold result;
+row/column permutations, the zero diagonal and all 1,000 adjacent-pair state
+relations are reproduced. The original C# implementation has not been executed.
+The upstream ASCII API rejects empty text; returning zero for an empty numeric
+fold is an explicit local extension. The 2004 thesis was unavailable, so no
+thesis proof inspection or cryptographic security claim is made.
+
+The [integer-root experiment](../../research/integer-root-bounds/README.md)
+records Linux v6.18 commit `7d0a66e4bb9081d75c82ec4957c50034cb0ea449`
+(`integer-root-linux-v618`) as established shift/subtract context, without
+porting its code or executing Linux as an oracle. The Script schedule derives
+the square-difference identity locally. Independent exact Python math.isqrt
+checks use `integer-root-cpython-v3147`, CPython v3.14.7 source commit
+`823f0323ee6ec1402088b73bce1a38473cac36dc`; each verifier prints its actual runtime
+version. The original prototype compared complete 16-bit output streams and all
+31-bit square endpoints against that exact-integer oracle. Source/artifact/Cargo
+bindings, numeric versus canonicality contracts and local execution classes
+are recorded separately; algorithm context is not a deployment proof.
+
+## CRC-8 primary sources
+
+- `crc8-smbus-v31`: [SMBus Specification v3.1, 2018-03-19](https://smbus.org/specs/SMBus_3_1_20180319.pdf),
+  section 6.4.1.3 (p.37); PDF SHA256
+  ae22a791184fdd649c3101f70c3ce238c35b08c7f5b736458e740b903d1bf386.
+- `crc8-linux-v618`: [Linux generic CRC-8](https://github.com/torvalds/linux/blob/7d0a66e4bb9081d75c82ec4957c50034cb0ea449/lib/crc/crc8.c),
+  v6.18 immutable commit 7d0a66e4bb9081d75c82ec4957c50034cb0ea449. Algorithm
+  context only; not copied/executed, and its generic caller-selected state
+  does not replace the explicit zero/no-xor local profile.
+
+The bounded permutation decoder cites `tarau-factoradic-2008`,
+[arXiv:0808.0554v1](https://arxiv.org/html/0808.0554v1), for factoradic and Lehmer
+permutation encoding. Its Script threshold subtraction, hostile-witness checks
+and complete-leaf comparison are local results, not claims from that paper.
+
+`gao-palindromic-2021` pins [arXiv:2109.09006v1](https://arxiv.org/abs/2109.09006v1),
+2021-09-18, for the interpretation of equal-reflected coefficients as palindromic.
+The u4 half-witness adapter's complement rule, Script implementation and measured
+costs are local contributions; no polynomial irreducibility or security claim
+is imported from the paper.

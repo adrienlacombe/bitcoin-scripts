@@ -4,11 +4,11 @@ use bitcoin_script::script;
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 use std::collections::HashMap;
 
-const IV: [u32; 8] = [
+pub(crate) const IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
 ];
 
-const MSG_PERMUTATION: [u8; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
+pub(crate) const MSG_PERMUTATION: [u8; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
 
 /// A compression-block word can either live on the Script stack or be fixed
 /// when the script is generated.  Keeping fixed words out of the runtime
@@ -28,19 +28,10 @@ pub(crate) struct TablesVars {
     xor_table: StackVariable,
     depth_lookup: StackVariable,
     use_full_tables: bool,
-    late_tables: bool,
 }
 
 impl TablesVars {
     pub(crate) fn new(stack: &mut StackTracker, use_full_tables: bool) -> Self {
-        Self::build(stack, use_full_tables, false)
-    }
-
-    pub(crate) fn new_late(stack: &mut StackTracker) -> Self {
-        Self::build(stack, true, true)
-    }
-
-    fn build(stack: &mut StackTracker, use_full_tables: bool, late_tables: bool) -> Self {
         let depth_lookup = if !use_full_tables {
             u4_push_from_depth_half_lookup(stack, -18)
         } else {
@@ -51,21 +42,13 @@ impl TablesVars {
         } else {
             push_packed_full_xor_table(stack)
         };
-        let shift_tables = if late_tables {
-            StackVariable::null()
-        } else {
-            u4_push_shift_for_blake(stack)
-        };
+        let shift_tables = u4_push_shift_for_blake(stack);
         let modulo_last = if use_full_tables {
             StackVariable::null()
         } else {
             u4_push_modulo_for_blake(stack)
         };
-        let add_interleaved = if late_tables {
-            StackVariable::null()
-        } else {
-            push_interleaved_add_table(stack)
-        };
+        let add_interleaved = push_interleaved_add_table(stack);
         TablesVars {
             modulo_last,
             add_interleaved,
@@ -73,17 +56,7 @@ impl TablesVars {
             xor_table,
             depth_lookup,
             use_full_tables,
-            late_tables,
         }
-    }
-
-    pub(crate) fn push_late_tables(&mut self, stack: &mut StackTracker) {
-        assert!(self.late_tables);
-        assert!(self.shift_tables.is_null());
-        assert!(self.add_interleaved.is_null());
-        self.shift_tables = u4_push_shift_for_blake(stack);
-        self.add_interleaved = push_interleaved_add_table(stack);
-        self.late_tables = false;
     }
 
     pub(crate) fn drop(&self, stack: &mut StackTracker) {
@@ -94,23 +67,6 @@ impl TablesVars {
         stack.drop(self.shift_tables);
         stack.drop(self.xor_table);
         stack.drop(self.depth_lookup);
-    }
-
-    pub(crate) fn drop_after_destructive_xor_query(&self, stack: &mut StackTracker) {
-        assert!(self.use_full_tables);
-        // The final OP_ROLL removes one item from the 331-item table memory.
-        // Model the four tracked table variables as one 330-item runtime drop.
-        stack.custom(
-            script! {
-                for _ in 0..165 {
-                    OP_2DROP
-                }
-            },
-            4,
-            false,
-            0,
-            "drop tables after final destructive XOR query",
-        );
     }
 }
 
@@ -348,37 +304,18 @@ fn split_addition(stack: &mut StackTracker, tables: &TablesVars, nibble_index: u
 fn u4_add_direct(
     stack: &mut StackTracker,
     to_copy: Vec<StackVariable>,
-    to_move: Vec<&mut StackVariable>,
-    tables: &TablesVars,
-) {
-    u4_add_direct_ordered(stack, to_copy, to_move, tables, false);
-}
-
-fn u4_add_direct_ordered(
-    stack: &mut StackTracker,
-    to_copy: Vec<StackVariable>,
     mut to_move: Vec<&mut StackVariable>,
     tables: &TablesVars,
-    move_before_copy: bool,
 ) {
     let nibble_count = 8;
     let number_count = to_copy.len() + to_move.len();
 
     for i in (0..nibble_count).rev() {
-        if move_before_copy {
-            for x in to_move.iter_mut().rev() {
-                stack.move_var_sub_n(x, i);
-            }
-            for x in &to_copy {
-                stack.copy_var_sub_n(*x, i);
-            }
-        } else {
-            for x in &to_copy {
-                stack.copy_var_sub_n(*x, i);
-            }
-            for x in &mut to_move {
-                stack.move_var_sub_n(x, i);
-            }
+        for x in &to_copy {
+            stack.copy_var_sub_n(*x, i);
+        }
+        for x in &mut to_move {
+            stack.move_var_sub_n(x, i);
         }
 
         for _ in 0..number_count - 1 {
@@ -596,19 +533,14 @@ fn g(
     mut m_two_i_plus_one: Option<CompressionMessageWord>,
     tables: &TablesVars,
     last_round: bool,
-    move_message_first: bool,
 ) {
     let vb = var_map[&b];
     let mut va = var_map.get_mut(&a).unwrap();
 
     match (last_round, m_two_i.as_mut()) {
-        (true, Some(CompressionMessageWord::Dynamic(message))) => u4_add_direct_ordered(
-            stack,
-            vec![vb],
-            vec![&mut va, message],
-            tables,
-            move_message_first,
-        ),
+        (true, Some(CompressionMessageWord::Dynamic(message))) => {
+            u4_add_direct(stack, vec![vb], vec![&mut va, message], tables)
+        }
         (false, Some(CompressionMessageWord::Dynamic(message))) => {
             u4_add_direct(stack, vec![vb, *message], vec![&mut va], tables)
         }
@@ -639,13 +571,9 @@ fn g(
     let vb = var_map[&b];
     let mut va = var_map.get_mut(&a).unwrap();
     match (last_round, m_two_i_plus_one.as_mut()) {
-        (true, Some(CompressionMessageWord::Dynamic(message))) => u4_add_direct_ordered(
-            stack,
-            vec![vb],
-            vec![&mut va, message],
-            tables,
-            move_message_first,
-        ),
+        (true, Some(CompressionMessageWord::Dynamic(message))) => {
+            u4_add_direct(stack, vec![vb], vec![&mut va, message], tables)
+        }
         (false, Some(CompressionMessageWord::Dynamic(message))) => {
             u4_add_direct(stack, vec![vb, *message], vec![&mut va], tables)
         }
@@ -684,7 +612,6 @@ fn round(
     round_index: u8,
     block_len: u32,
     skipped_columns: [bool; 4],
-    direct_short_layout: bool,
 ) {
     const COLUMN_STEPS: [(u8, u8, u8, u8, u8, u8); 4] = [
         (0, 4, 8, 12, 0, 1),
@@ -736,7 +663,6 @@ fn round(
                 message_var_map.get(&m1).copied(),
                 tables,
                 last_round,
-                last_round && direct_short_layout && block_len == 32,
             );
         }
     }
@@ -799,7 +725,6 @@ pub(crate) fn compress(
     tables: &TablesVars,
     final_rounds: u8,
     last_round: bool,
-    direct_short_layout: bool,
 ) {
     compress_mixed(
         stack,
@@ -814,7 +739,6 @@ pub(crate) fn compress(
         tables,
         final_rounds,
         last_round,
-        direct_short_layout,
     );
 }
 
@@ -833,7 +757,6 @@ pub(crate) fn compress_mixed(
     tables: &TablesVars,
     final_rounds: u8,
     last_round: bool,
-    direct_short_layout: bool,
 ) {
     assert!((1..=8).contains(&final_rounds));
     assert!(
@@ -849,15 +772,7 @@ pub(crate) fn compress_mixed(
     } else {
         let mut state = first_round_columns(stack, counter, block_len, flags, &message, tables);
         round(
-            stack,
-            &mut state,
-            &message,
-            tables,
-            false,
-            0,
-            block_len,
-            [true; 4],
-            direct_short_layout,
+            stack, &mut state, &message, tables, false, 0, block_len, [true; 4],
         );
         message = permutate(&message);
         (state, 1)
@@ -873,20 +788,11 @@ pub(crate) fn compress_mixed(
             round_index,
             block_len,
             [false; 4],
-            direct_short_layout,
         );
         message = permutate(&message);
     }
     round(
-        stack,
-        &mut state,
-        &message,
-        tables,
-        true,
-        6,
-        block_len,
-        [false; 4],
-        direct_short_layout,
+        stack, &mut state, &message, tables, true, 6, block_len, [false; 4],
     );
 
     for i in (0..final_rounds).rev() {
@@ -921,479 +827,6 @@ pub(crate) fn get_flags_for_block(i: u32, num_blocks: u32) -> u32 {
         return 0b00001010;
     }
     0
-}
-
-const DIGIT_R16_ORDER: [usize; 8] = [3, 1, 2, 0, 4, 5, 6, 7];
-const DIGIT_R12_ORDER: [usize; 8] = [2, 0, 1, 6, 4, 5, 3, 7];
-const DIGIT_R8_ORDER: [usize; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
-
-// Short inputs with eight live words keep each nibble as an independent
-// tracked register. That lets the generator choose physical emission order
-// without normalizing a word after every rotation; semantic indices in
-// `digits` remain canonical.
-#[derive(Clone, Debug, Copy)]
-pub(crate) struct DigitWord {
-    digits: [StackVariable; 8],
-}
-
-impl DigitWord {
-    pub(crate) fn from_physical_slice(digits: &[StackVariable], order: &[usize; 8]) -> Self {
-        let mut semantic = [StackVariable::null(); 8];
-        for (physical, semantic_index) in order.iter().copied().enumerate() {
-            semantic[semantic_index] = digits[physical];
-        }
-        Self { digits: semantic }
-    }
-
-    fn from_slice(digits: &[StackVariable]) -> Self {
-        Self {
-            digits: digits.try_into().unwrap(),
-        }
-    }
-
-    fn copy_digit(&self, stack: &mut StackTracker, index: usize) -> StackVariable {
-        stack.copy_var_sub_n(self.digits[index], 0)
-    }
-
-    fn move_digit(&mut self, stack: &mut StackTracker, index: usize) -> StackVariable {
-        stack.move_var_sub_n(&mut self.digits[index], 0)
-    }
-
-    fn from_altstack(stack: &mut StackTracker, name: &str) -> Self {
-        let values = stack.from_altstack_count(8);
-        for (index, value) in values.iter().enumerate() {
-            stack.rename(*value, &format!("{name}[{index}]"));
-        }
-        Self::from_slice(&values)
-    }
-
-    fn join(self, stack: &mut StackTracker) -> StackVariable {
-        let mut first = self.digits[0];
-        stack.join_count(&mut first, 7)
-    }
-}
-
-fn digit_add(
-    stack: &mut StackTracker,
-    copies: &[DigitWord],
-    moves: &mut [&mut DigitWord],
-    tables: &TablesVars,
-    move_before_copy: bool,
-) -> DigitWord {
-    let operand_count = copies.len() + moves.len();
-    for index in (0..8).rev() {
-        if move_before_copy {
-            for word in moves.iter_mut().rev() {
-                word.move_digit(stack, index);
-            }
-            for word in copies {
-                word.copy_digit(stack, index);
-            }
-        } else {
-            for word in copies {
-                word.copy_digit(stack, index);
-            }
-            for word in moves.iter_mut() {
-                word.move_digit(stack, index);
-            }
-        }
-        for _ in 1..operand_count {
-            stack.op_add();
-        }
-        if index < 7 {
-            stack.op_add();
-        }
-        split_addition(stack, tables, index as u8);
-    }
-    DigitWord::from_altstack(stack, "digit-add")
-}
-
-fn digit_add_constant(
-    stack: &mut StackTracker,
-    constant: u32,
-    dynamic: &DigitWord,
-    tables: &TablesVars,
-) -> DigitWord {
-    for index in (0..8).rev() {
-        dynamic.copy_digit(stack, index);
-        if index < 7 {
-            stack.op_add();
-        }
-        stack.op_dup();
-        stack.op_add();
-        let retained_adjustment = u32::from(index > 0);
-        let offset = stack.get_offset(tables.add_interleaved) - 1
-            + retained_adjustment
-            + 2 * constant_nibble(constant, index as u8);
-        stack.number(offset);
-        stack.op_add();
-        if index > 0 {
-            stack.op_dup();
-            stack.op_pick();
-            stack.to_altstack();
-            stack.op_pick();
-        } else {
-            stack.op_pick();
-            stack.to_altstack();
-        }
-    }
-    DigitWord::from_altstack(stack, "digit-constant-add")
-}
-
-fn digit_xor(
-    stack: &mut StackTracker,
-    x: &mut DigitWord,
-    x_index: usize,
-    y: &DigitWord,
-    y_index: usize,
-) -> StackVariable {
-    stack.op_depth();
-    stack.op_dup();
-    y.copy_digit(stack, y_index);
-    stack.op_sub();
-    stack.op_pick();
-    stack.op_add();
-    x.move_digit(stack, x_index);
-    stack.op_add();
-    stack.op_pick()
-}
-
-fn digit_xor_final_query(
-    stack: &mut StackTracker,
-    x: &mut DigitWord,
-    x_index: usize,
-    y: &DigitWord,
-    y_index: usize,
-) -> StackVariable {
-    stack.op_depth();
-    stack.op_dup();
-    y.copy_digit(stack, y_index);
-    stack.op_sub();
-    stack.op_pick();
-    stack.op_add();
-    x.move_digit(stack, x_index);
-    stack.op_add();
-    // Runtime destructively consumes the selected table item. The tracker
-    // intentionally models this as a PICK-shaped result; cleanup reconciles
-    // the one-item difference once no later table lookup can observe it.
-    stack
-        .custom(
-            script! { OP_ROLL },
-            1,
-            true,
-            0,
-            "final destructive XOR lookup",
-        )
-        .unwrap()
-}
-
-fn digit_rotation_order(rotation: usize) -> &'static [usize; 8] {
-    // Exhaustive host-time searches selected these orders for the fixed
-    // eight-word message layout. They affect routing only, not word semantics.
-    match rotation {
-        16 => &DIGIT_R16_ORDER,
-        12 => &DIGIT_R12_ORDER,
-        8 => &DIGIT_R8_ORDER,
-        _ => unreachable!(),
-    }
-}
-
-fn digit_xor_rotate_multiple_of_four(
-    stack: &mut StackTracker,
-    x: &mut DigitWord,
-    y: &DigitWord,
-    rotation: usize,
-) -> DigitWord {
-    let shift = 8 - rotation / 4;
-    let mut values = [StackVariable::null(); 8];
-    for output in digit_rotation_order(rotation) {
-        let source = (output + shift) % 8;
-        values[*output] = digit_xor(stack, x, source, y, source);
-    }
-    DigitWord { digits: values }
-}
-
-fn digit_xor_constant_rotate_multiple_of_four(
-    stack: &mut StackTracker,
-    constant: u32,
-    dynamic: &DigitWord,
-    rotation: usize,
-    tables: &TablesVars,
-) -> DigitWord {
-    let shift = 8 - rotation / 4;
-    let mut values = [StackVariable::null(); 8];
-    for output in digit_rotation_order(rotation) {
-        let source = (output + shift) % 8;
-        let nibble = constant_nibble(constant, source as u8);
-        values[*output] = if nibble == 0 {
-            dynamic.copy_digit(stack, source)
-        } else if nibble == 15 {
-            stack.number(15);
-            dynamic.copy_digit(stack, source);
-            stack.op_sub()
-        } else {
-            dynamic.copy_digit(stack, source);
-            stack.get_value_from_table(tables.xor_table, Some(packed_full_xor_row_offset(nibble)))
-        };
-    }
-    DigitWord { digits: values }
-}
-
-fn digit_xor_rotate_seven(
-    stack: &mut StackTracker,
-    x: &mut DigitWord,
-    y: &DigitWord,
-    tables: &TablesVars,
-    call: usize,
-) -> DigitWord {
-    // A bounded coordinate search over all eight starts for every G call.
-    const STARTS: [usize; 56] = [
-        1, 4, 1, 0, 1, 1, 4, 0, 4, 1, 1, 0, 4, 1, 1, 0, 4, 1, 1, 0, 4, 1, 1, 0, 4, 1, 1, 0, 4, 1,
-        1, 0, 4, 1, 1, 0, 4, 1, 1, 0, 4, 1, 1, 0, 4, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1,
-    ];
-    let start = STARTS[call];
-    let first_source = (start + 6) % 8;
-    let second_source = (start + 7) % 8;
-    let first = digit_xor(stack, x, first_source, y, first_source);
-    stack.copy_var(first);
-    stack.to_altstack();
-    let second = digit_xor(stack, x, second_source, y, second_source);
-    stack.copy_var(second);
-    stack.to_altstack();
-    let mut outputs = [StackVariable::null(); 8];
-    outputs[start] = u4_2_nib_shift_blake(stack, tables.shift_tables);
-    for offset in 0..6 {
-        stack.from_altstack();
-        let source = (start + offset) % 8;
-        let z = digit_xor(stack, x, source, y, source);
-        stack.copy_var(z);
-        stack.to_altstack();
-        outputs[(start + offset + 1) % 8] = u4_2_nib_shift_blake(stack, tables.shift_tables);
-    }
-    stack.from_altstack();
-    stack.from_altstack();
-    outputs[(start + 7) % 8] = u4_2_nib_shift_blake(stack, tables.shift_tables);
-    DigitWord { digits: outputs }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn digit_first_g(
-    stack: &mut StackTracker,
-    initial_a: u32,
-    initial_b: u32,
-    initial_c: u32,
-    initial_d: u32,
-    m0: &DigitWord,
-    m1: &DigitWord,
-    tables: &TablesVars,
-    call: usize,
-) -> [DigitWord; 4] {
-    let mut a = digit_add_constant(stack, initial_a.wrapping_add(initial_b), m0, tables);
-    let d = digit_xor_constant_rotate_multiple_of_four(stack, initial_d, &a, 16, tables);
-    let c = digit_add_constant(stack, initial_c, &d, tables);
-    let b = digit_xor_constant_rotate_multiple_of_four(stack, initial_b, &c, 12, tables);
-    a = digit_add(stack, &[b, *m1], &mut [&mut a], tables, false);
-    let mut d_tail = d;
-    d_tail = digit_xor_rotate_multiple_of_four(stack, &mut d_tail, &a, 8);
-    let mut c_tail = c;
-    c_tail = digit_add(stack, &[d_tail], &mut [&mut c_tail], tables, false);
-    let mut b_tail = b;
-    b_tail = digit_xor_rotate_seven(stack, &mut b_tail, &c_tail, tables, call);
-    [a, b_tail, c_tail, d_tail]
-}
-
-#[allow(clippy::too_many_arguments)]
-fn digit_g(
-    stack: &mut StackTracker,
-    state: &mut HashMap<u8, DigitWord>,
-    a: u8,
-    b: u8,
-    c: u8,
-    d: u8,
-    m0: Option<DigitWord>,
-    m1: Option<DigitWord>,
-    tables: &TablesVars,
-    last_round: bool,
-    call: usize,
-) {
-    let b_value = state[&b];
-    let a_value = state.get_mut(&a).unwrap();
-    *a_value = match (last_round, m0) {
-        (true, Some(mut message)) => digit_add(
-            stack,
-            &[b_value],
-            &mut [a_value, &mut message],
-            tables,
-            true,
-        ),
-        (false, Some(message)) => {
-            digit_add(stack, &[b_value, message], &mut [a_value], tables, false)
-        }
-        (_, None) => digit_add(stack, &[b_value], &mut [a_value], tables, false),
-    };
-    let a_value = state[&a];
-    let d_value = state.get_mut(&d).unwrap();
-    *d_value = digit_xor_rotate_multiple_of_four(stack, d_value, &a_value, 16);
-    let d_value = state[&d];
-    let c_value = state.get_mut(&c).unwrap();
-    *c_value = digit_add(stack, &[d_value], &mut [c_value], tables, false);
-    let c_value = state[&c];
-    let b_value = state.get_mut(&b).unwrap();
-    *b_value = digit_xor_rotate_multiple_of_four(stack, b_value, &c_value, 12);
-    let b_value = state[&b];
-    let a_value = state.get_mut(&a).unwrap();
-    *a_value = match (last_round, m1) {
-        (true, Some(mut message)) => digit_add(
-            stack,
-            &[b_value],
-            &mut [a_value, &mut message],
-            tables,
-            true,
-        ),
-        (false, Some(message)) => {
-            digit_add(stack, &[b_value, message], &mut [a_value], tables, false)
-        }
-        (_, None) => digit_add(stack, &[b_value], &mut [a_value], tables, false),
-    };
-    let a_value = state[&a];
-    let d_value = state.get_mut(&d).unwrap();
-    *d_value = digit_xor_rotate_multiple_of_four(stack, d_value, &a_value, 8);
-    let d_value = state[&d];
-    let c_value = state.get_mut(&c).unwrap();
-    *c_value = digit_add(stack, &[d_value], &mut [c_value], tables, false);
-    let c_value = state[&c];
-    let b_value = state.get_mut(&b).unwrap();
-    *b_value = digit_xor_rotate_seven(stack, b_value, &c_value, tables, call);
-}
-
-fn digit_permute(message: &HashMap<u8, DigitWord>) -> HashMap<u8, DigitWord> {
-    (0..16_u8)
-        .filter_map(|index| {
-            message
-                .get(&MSG_PERMUTATION[index as usize])
-                .copied()
-                .map(|word| (index, word))
-        })
-        .collect()
-}
-
-pub(crate) fn compress_short_digits(
-    stack: &mut StackTracker,
-    block_len: u32,
-    mut message: HashMap<u8, DigitWord>,
-    tables: &TablesVars,
-    output_words: u8,
-) {
-    // This backend is called only for a single root block with eight live
-    // message words (29..=32 bytes).
-    assert!((1..=8).contains(&output_words));
-    let initial = [
-        IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0,
-        block_len, 0b1011,
-    ];
-    let mut state = HashMap::new();
-    for index in 0..4_usize {
-        let words = digit_first_g(
-            stack,
-            initial[index],
-            initial[index + 4],
-            initial[index + 8],
-            initial[index + 12],
-            &message[&(index as u8 * 2)],
-            &message[&(index as u8 * 2 + 1)],
-            tables,
-            index,
-        );
-        for (lane, word) in [
-            (index, words[0]),
-            (index + 4, words[1]),
-            (index + 8, words[2]),
-            (index + 12, words[3]),
-        ] {
-            state.insert(lane as u8, word);
-        }
-    }
-
-    const COLUMNS: [(u8, u8, u8, u8, u8, u8); 4] = [
-        (0, 4, 8, 12, 0, 1),
-        (1, 5, 9, 13, 2, 3),
-        (2, 6, 10, 14, 4, 5),
-        (3, 7, 11, 15, 6, 7),
-    ];
-    const DIAGONALS: [(u8, u8, u8, u8, u8, u8); 4] = [
-        (0, 5, 10, 15, 8, 9),
-        (1, 6, 11, 12, 10, 11),
-        (2, 7, 8, 13, 12, 13),
-        (3, 4, 9, 14, 14, 15),
-    ];
-
-    for (position, index) in [2, 1, 3, 0].into_iter().enumerate() {
-        let (a, b, c, d, m0, m1) = DIAGONALS[index];
-        digit_g(
-            stack,
-            &mut state,
-            a,
-            b,
-            c,
-            d,
-            message.get(&m0).copied(),
-            message.get(&m1).copied(),
-            tables,
-            false,
-            4 + position,
-        );
-    }
-    message = digit_permute(&message);
-
-    let mut call = 8;
-    for round in 1..=6 {
-        let diagonal_order = if round == 6 {
-            [3, 0, 2, 1]
-        } else {
-            [3, 2, 1, 0]
-        };
-        for (steps, order) in [(&COLUMNS, [1, 2, 3, 0]), (&DIAGONALS, diagonal_order)] {
-            for index in order {
-                let (a, b, c, d, m0, m1) = steps[index];
-                digit_g(
-                    stack,
-                    &mut state,
-                    a,
-                    b,
-                    c,
-                    d,
-                    message.get(&m0).copied(),
-                    message.get(&m1).copied(),
-                    tables,
-                    round == 6,
-                    call,
-                );
-                call += 1;
-            }
-        }
-        if round < 6 {
-            message = digit_permute(&message);
-        }
-    }
-
-    for word in (0..output_words).rev() {
-        for digit in 0..8 {
-            let y = state[&(word + 8)];
-            let x = state.get_mut(&word).unwrap();
-            if output_words == 8 && block_len == 32 && word == 0 && digit == 7 {
-                digit_xor_final_query(stack, x, digit, &y, digit);
-            } else {
-                digit_xor(stack, x, digit, &y, digit);
-            }
-            if digit % 2 == 1 {
-                stack.to_altstack();
-                stack.to_altstack();
-            }
-        }
-    }
-    for word in 8..16_u8 {
-        state[&word].join(stack);
-    }
 }
 
 #[cfg(test)]
@@ -1436,36 +869,6 @@ mod tests {
             isolated_table_cleanup(tables).compile_with_policy().len(),
             166
         );
-
-        let mut stack = StackTracker::new();
-        let mut tables = TablesVars::new_late(&mut stack);
-        let initial_setup_bytes = stack.get_script().compile_with_policy().len();
-        tables.push_late_tables(&mut stack);
-        let complete_setup_bytes = stack.get_script().compile_with_policy().len();
-        assert_eq!(initial_setup_bytes, 241);
-        assert_eq!(complete_setup_bytes - initial_setup_bytes, 112);
-        assert_eq!(
-            isolated_table_cleanup(tables).compile_with_policy().len(),
-            166
-        );
-    }
-
-    #[test]
-    fn destructive_final_xor_query_cleanup_matches_runtime_shape() {
-        let mut stack = StackTracker::new();
-        let mut tables = TablesVars::new_late(&mut stack);
-        tables.push_late_tables(&mut stack);
-        stack.number(stack.get_offset(tables.xor_table));
-        let result = stack
-            .custom(script! { OP_ROLL }, 1, true, 0, "destructive table probe")
-            .unwrap();
-        stack.drop(result);
-        tables.drop_after_destructive_xor_query(&mut stack);
-        stack.op_depth();
-        stack.number(0);
-        stack.op_equalverify();
-        stack.op_true();
-        assert!(execute_script(stack.get_script()).success);
     }
 
     #[test]
@@ -1567,7 +970,6 @@ mod tests {
             Some(CompressionMessageWord::Constant(0)),
             &tables,
             false,
-            false,
         );
         for lane in (0..16_u8).rev() {
             let mut actual = state[&lane];
@@ -1634,7 +1036,7 @@ mod tests {
             .map(|(index, value)| (index as u8, stack.number_u32(value)))
             .collect::<HashMap<_, _>>();
         round(
-            &mut stack, &mut state, &message, &tables, false, 0, 64, [false; 4], false,
+            &mut stack, &mut state, &message, &tables, false, 0, 64, [false; 4],
         );
         for lane in (0..16_u8).rev() {
             let mut actual = state[&lane];
