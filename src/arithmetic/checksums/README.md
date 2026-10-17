@@ -114,7 +114,11 @@ and [reproduction guide](../../../research/adler32-delayed-reduction/README.md).
 inputs, ordering, both caller stacks, exact peaks and deliberate compiled
 guard mutations across checksum schedules and canonical/numeric word adapters.
 It checks 555 zlib oracle vectors and detects removal of either output predicate.
-The report test recomputes every artifact, hash, option and catalog binding.
+The report test reproduces every measured artifact, bytecode/witness hash,
+option and catalog binding. Historical source-file hashes, including the test's
+own hash, are checked separately against the pinned source commit in full clones.
+Unrelated shared-file changes are permitted; a compiled arithmetic mutation is
+still detected. The historical report and measurements are preserved.
 
 ```sh
 CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo test --locked --test adler32_contract

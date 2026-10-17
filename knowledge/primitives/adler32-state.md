@@ -69,7 +69,11 @@ the same rejection assertion fail with a clean valid control.
 the source revision, source-file SHA256s, locked compiler/interpreter pins,
 options, witness SHA256, input configuration, raw/final fragment and leaf sizes,
 hashes, peaks, terminal predicate and static counts for all 31 comparison rows.
-The reproduction test recomputes the report and every catalog configuration.
+The reproduction test compares every current measurement and catalog
+configuration while allowing whole-file source hashes to change independently.
+A separate historical audit checks the recorded hashes against the pinned
+commit, including the original test suite; the saved report is unchanged.
+A compiled arithmetic mutation is rejected by the measurement comparison.
 The [guide](../../research/adler32-delayed-reduction/README.md) gives commands.
 
 This checksum detects accidental corruption and has easy deliberate collisions;

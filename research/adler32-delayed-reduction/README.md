@@ -102,19 +102,33 @@ Measured source revision: 250f23861a87ee10b2a7e1ea3de07dcf8569e820.
 Compiler/interpreter identities are extracted from the binary's embedded
 Cargo.lock; metrics.json binds source SHA256s, the immutable source revision,
 all 31 comparison rows, options, witness hashes, final bytecode hashes and
-cost boundaries. The artifact test recomputes the entire report, checks each
-bound file against the named Git commit in full clones, and checks all seven
-catalog rows. Shallow CI recomputes current-tree file/hash bindings without
-fetching the historical source commit.
-A documentation-only follow-up records that source pin; the delivered clean
-tree must pass the required suite. Catalog record arithmetic/adler32-state
-is added without editing or dropping the 122 existing records.
+cost boundaries. Historical provenance and current reproduction are checked
+separately. In full clones, `historical_source_blobs_match_recorded_hashes`
+checks all 17 bound files against the named Git commit, including the original
+measurement code and test suite. Shallow CI skips that historical blob audit
+when the commit is unavailable; it does not fetch history.
+
+`report_and_catalog_bind_every_artifact_and_policy_boundary` reproduces all
+31 current measurements and checks all seven catalog rows. It compares every
+report field except `source_sha256`: current whole-file hashes can change when
+unrelated modules, metrics, documentation or tests are added. The immutable
+`metrics.json`, its source revision and its historical hashes remain unchanged.
+Compiler/interpreter pins, execution options, bytecode hashes, witness hashes,
+outputs and stack peaks still have to match. The regression suite accepts
+changed shared-file hashes and rejects an actually compiled/executed arithmetic
+mutation that changes B and fails its terminal predicate.
+
+The probe below emits current whole-file hashes for inspection, so its full
+JSON need not equal the historical report. Use the contract test for current
+measurement reproduction. To reproduce the original JSON byte-for-byte, run
+the original probe from the measured source revision. Catalog record
+arithmetic/adler32-state was added without editing or dropping the 122 existing
+records.
 
 ```sh
 python3 research/adler32-delayed-reduction/oracle.py > /tmp/adler32-oracle.json
 cmp /tmp/adler32-oracle.json research/adler32-delayed-reduction/oracle.json
 CARGO_PROFILE_DEV_OPT_LEVEL=1 cargo run --locked --example adler32_delayed_probe -- 250f23861a87ee10b2a7e1ea3de07dcf8569e820 > /tmp/adler32-metrics.json
-cmp /tmp/adler32-metrics.json research/adler32-delayed-reduction/metrics.json
 CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo test --locked --test adler32_contract
 CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo test --locked --test primitive_metrics adler32_state_metrics_are_current
 python3 tools/kb.py validate

@@ -72,6 +72,18 @@ fn artifact(generated: Script, witness: &[Vec<u8>]) -> Value {
         "validation_weight_charged":r.stats.start_validation_weight-r.stats.validation_weight,
         "final_stack":final_stack})
 }
+/// One measured configuration, also used to exercise real bytecode mutations.
+pub fn row(name: &str, g: fn(u32) -> Script, n: u32) -> Value {
+    let v = vec![255u8; n as usize];
+    let e = states(&v);
+    let w = vec![num(255); n as usize];
+    let serialized = serialize(&Witness::from_slice(&w));
+    let f = g(n);
+    json!({"algorithm":name,"n":n,"input":"all-255 canonical ScriptNums",
+        "state":e,"data_items":n,"hint_items":0,"witness_bytes":serialized.len(),
+        "witness_sha256":sha(&serialized),"fragment":artifact(f.clone(), &w),
+        "leaf":artifact(leaf(f,e),&w)})
+}
 pub fn report(source_revision: &str) -> Value {
     let mut rows = Vec::new();
     for (name, g, sizes) in [
@@ -97,17 +109,7 @@ pub fn report(source_revision: &str) -> Value {
         ),
     ] {
         for n in sizes {
-            let v = vec![255u8; n as usize];
-            let e = states(&v);
-            let w = vec![num(255); n as usize];
-            let serialized = serialize(&Witness::from_slice(&w));
-            let f = g(n);
-            rows.push(
-                json!({"algorithm":name,"n":n,"input":"all-255 canonical ScriptNums",
-                "state":e,"data_items":n,"hint_items":0,"witness_bytes":serialized.len(),
-                "witness_sha256":sha(&serialized),"fragment":artifact(f.clone(), &w),
-                "leaf":artifact(leaf(f,e),&w)}),
-            );
+            rows.push(row(name, g, n));
         }
     }
     let paths = [

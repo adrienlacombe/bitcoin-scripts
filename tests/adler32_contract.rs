@@ -321,22 +321,86 @@ fn both_terminal_bindings_detect_changes_and_predicate_mutations() {
         caught(&r, ExecError::EqualVerify);
     }
 }
-#[test]
-fn report_and_catalog_bind_every_artifact_and_policy_boundary() {
-    let report: serde_json::Value = serde_json::from_str(include_str!(
+/// Historical source hashes describe the pinned tree, not today's shared files.
+/// Everything else, including pins, profiles and every measured row, must match.
+fn reproduced_measurements(report: &serde_json::Value) -> serde_json::Value {
+    let mut measurements = report.clone();
+    assert!(measurements
+        .as_object_mut()
+        .unwrap()
+        .remove("source_sha256")
+        .unwrap()
+        .is_object());
+    measurements
+}
+fn recorded_report() -> serde_json::Value {
+    serde_json::from_str(include_str!(
         "../research/adler32-delayed-reduction/metrics.json"
     ))
-    .unwrap();
+    .unwrap()
+}
+#[test]
+fn artifact_comparison_allows_unrelated_source_changes_but_detects_bytecode_changes() {
+    let report = recorded_report();
+    let mut current = report.clone();
+    // Model adding a sibling module/metric, correcting shared documentation,
+    // and extending this test. The historical file hashes stay untouched.
+    for path in [
+        "src/arithmetic/mod.rs",
+        "src/arithmetic/checksums/mod.rs",
+        "src/arithmetic/u32/stack.rs",
+        "tests/primitive_metrics.rs",
+        "tests/adler32_contract.rs",
+        "research/adler32-delayed-reduction/measure.rs",
+    ] {
+        current["source_sha256"][path] = serde_json::json!(sha256::Hash::hash(
+            format!("unrelated addition to {path}").as_bytes()
+        )
+        .to_string());
+    }
+    assert_ne!(current["source_sha256"], report["source_sha256"]);
     assert_eq!(
-        measure::report(report["source_revision"].as_str().unwrap()),
-        report
+        reproduced_measurements(&current),
+        reproduced_measurements(&report)
     );
+
+    let index = report["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|r| r["algorithm"] == "delayed" && r["n"] == 32)
+        .unwrap();
+    assert_eq!(
+        measure::row("delayed", adler32_state, 32),
+        report["rows"][index]
+    );
+    // Actually compile and execute a changed arithmetic result, rather than
+    // merely corrupting a saved JSON hash. The terminal B predicate must fail.
+    let mutant = measure::row("delayed", |n| script! {{adler32_state(n)} OP_1ADD}, 32);
+    assert_ne!(
+        mutant["fragment"]["sha256"],
+        report["rows"][index]["fragment"]["sha256"]
+    );
+    assert_ne!(
+        mutant["fragment"]["final_stack"],
+        report["rows"][index]["fragment"]["final_stack"]
+    );
+    assert_eq!(mutant["leaf"]["error"], "EqualVerify");
+    current["rows"][index] = mutant;
+    assert_ne!(
+        reproduced_measurements(&current),
+        reproduced_measurements(&report)
+    );
+}
+#[test]
+fn historical_source_blobs_match_recorded_hashes() {
+    let report = recorded_report();
     assert_eq!(report["source_revision"].as_str().unwrap().len(), 40);
     let revision = report["source_revision"].as_str().unwrap();
     assert!(revision.bytes().all(|b| b.is_ascii_hexdigit()));
     assert_ne!(revision, "0000000000000000000000000000000000000000");
-    // Full clones additionally audit the immutable commit. Shallow CI retains
-    // the current-tree SHA256/recomputation checks above without fetching history.
+    // Full clones audit every historical blob, including the original test.
+    // Shallow CI still reproduces measurements without fetching history.
     let commit = std::process::Command::new("git")
         .args(["cat-file", "-e", revision])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
@@ -366,6 +430,15 @@ fn report_and_catalog_bind_every_artifact_and_policy_boundary() {
             hash.as_str().unwrap()
         );
     }
+}
+#[test]
+fn report_and_catalog_bind_every_artifact_and_policy_boundary() {
+    let report = recorded_report();
+    let current = measure::report(report["source_revision"].as_str().unwrap());
+    assert_eq!(
+        reproduced_measurements(&current),
+        reproduced_measurements(&report)
+    );
     let catalog: serde_json::Value =
         serde_json::from_str(include_str!("../knowledge/catalog.json")).unwrap();
     let r = catalog["records"]
@@ -432,9 +505,4 @@ fn report_and_catalog_bind_every_artifact_and_policy_boundary() {
     );
     assert_eq!(find("delayed", 0)["fragment"]["max_stack_items"], 2);
     assert_eq!(find("delayed", 0)["leaf"]["max_stack_items"], 1);
-    // Source bindings include this suite: changing the contract invalidates the artifact.
-    assert_eq!(
-        report["source_sha256"]["tests/adler32_contract.rs"],
-        sha256::Hash::hash(include_bytes!("adler32_contract.rs")).to_string()
-    );
 }
