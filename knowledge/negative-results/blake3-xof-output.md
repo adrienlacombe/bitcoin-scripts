@@ -14,13 +14,14 @@ counter. The generator already computed `v[8..16]` and then dropped it.
 
 In the single-block short profile, `cv` is the IV, the key, or the context key.
 All of these are constants when the script is generated. The second half
-therefore costs 64 copies and constant-row XOR lookups. The second half is
-emitted before the digest half, because the digest half consumes `v[0..8]`.
+therefore costs 64 constant-row XOR lookups on copies of `v[8..16]`.
 
 | 32-byte message `00 01 ... 1f` | Compute bytes | Static non-push opcodes | Strict peak |
 | --- | ---: | ---: | ---: |
-| 32-byte digest | 59,534 | 41,135 | 527 |
-| 64-byte XOF prefix | 60,131 | 41,442 | 527 |
+| 32-byte digest, 2026-10-11 backend | 59,534 | 41,135 | 527 |
+| 64-byte XOF prefix, 2026-10-11 backend | 60,131 | 41,442 | 527 |
+| 32-byte digest, 2026-10-16 stack-modelled generator | 43,930 | 28,854 | 499 |
+| 64-byte XOF prefix, 2026-10-16 stack-modelled generator | 44,500 | 29,134 | 499 |
 
 Both rows use 64 checked data items, zero hints, and a peak that includes the
 output verifier. The 64-byte output is 128 u4 items. Every length from 0 to 32

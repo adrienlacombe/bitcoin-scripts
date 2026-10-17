@@ -4,10 +4,10 @@ Measured fragments exclude input pushes and output comparison.
 
 | Construction | Configuration | Script bytes | Evidence | Principal limitation |
 | --- | --- | ---: | --- | --- |
-| BLAKE3 sparse direct u4 | 32-byte input | 59,534 | differentially-validated | Fixed length at generation time; at most 32 bytes |
-| BLAKE3 sparse direct u4, low 128 bits | 32-byte input | 59,105 | differentially-validated | Fixed length at generation time; standard digest prefix only |
-| BLAKE3 sparse direct u4, keyed / derive-key | 32-byte input | 59,532 / 59,521 | differentially-validated | Key or context fixed at generation time; size varies slightly with the key |
-| BLAKE3 sparse direct u4, 64-byte XOF | 32-byte input | 60,131 | differentially-validated | Complete root output; no extra compression; 128 output nibbles |
+| BLAKE3 sparse direct u4 | 32-byte input | 43,930 | differentially-validated | Fixed length at generation time; at most 32 bytes |
+| BLAKE3 sparse direct u4, low 128 bits | 32-byte input | 43,466 | differentially-validated | Fixed length at generation time; standard digest prefix only |
+| BLAKE3 sparse direct u4, keyed / derive-key | 32-byte input | 43,915 / 43,928 | differentially-validated | Key or context fixed at generation time; size varies slightly with the key |
+| BLAKE3 sparse direct u4, 64-byte XOF | 32-byte input | 44,500 | differentially-validated | Complete root output; no extra compression; 128 output nibbles |
 | BLAKE3 limb29 | 64-byte input | 72,293 | differentially-validated | Single 1,024-byte chunk only; includes table memory |
 | SHA-1 u32 | 32-byte input | 205,558 | differentially-validated | Collision-broken compatibility hash |
 | SHA-1 u32 prefix | 32-byte input, 8-byte prefix | 205,586 | differentially-validated | 32-bit collision bound; compression cost unchanged |
@@ -34,11 +34,12 @@ without fixing message length and full semantics. The short direct-u4 row does
 use a 32-byte input, but its 64-item input representation differs from each
 other backend. For protocol selection, include
 representation conversion, digest comparison, and any state-compression role.
-Its checked generator applies the pinned peephole optimizer to a fixed point;
-the row is `fragment-with-memory` because it owns full lookup-table setup and
-cleanup. The short-profile executor enforces the 1,000-item local limit, but it
-is not a pinned Bitcoin Core consensus run, so the result remains
-`research-unlimited` rather than consensus-validated.
+Its stack-modelled generator emits the script directly; the pinned peephole
+pass is a checked fixed point of its output. The row is
+`fragment-with-memory` because it owns full lookup-table setup and cleanup.
+The short-profile executor enforces the 1,000-item local limit, but it is not
+a pinned Bitcoin Core consensus run, so deployment is `unclassified` rather
+than consensus-validated.
 
 The u4 midstate continuation is smaller than the corresponding u32 boundary
 but carries twice as many suffix witness items and a higher measured stack peak
@@ -46,9 +47,9 @@ but carries twice as many suffix witness items and a higher measured stack peak
 fixed prefix.
 
 Every nontrivial row in the table exceeds the repository optimizer's 32 KiB
-input cutoff and is unoptimized by those upstream passes. BLAKE3 still applies
-its separately documented pinned peephole pass before the repository
-compilation policy.
+input cutoff and is unoptimized by those upstream passes. The BLAKE3 limb row
+still applies its separately documented pinned peephole pass before the
+repository compilation policy.
 
 Output-prefix rows are distinct result-shape cost points, not cheaper hash
 algorithms: each executes the full compression schedule and only routes the

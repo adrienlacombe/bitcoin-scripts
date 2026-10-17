@@ -63,6 +63,8 @@ to 32 for empty, short, and 150-byte (three-block) contexts against the
 111-byte representative witness of 64 data items, zero hints, and a 527-item
 strict peak. Evidence is `differentially-validated`; deployment is
 `unclassified`. Contexts over 1,024 bytes are rejected by the host helper.
+Remeasured on 2026-10-16 with the stack-modelled generator: 43,928 bytes and
+a 499-item strict peak.
 See the corrected [NR-061](negative-results/index.md#nr-061-blake3-derive-key-mode-is-not-a-drop-in-unkeyed-extension).
 
 ## OP-019 — PRINCEv2 M-hat circuit frontier
@@ -524,25 +526,29 @@ vulnerability from the adjacent advisory without this analysis.
 
 ## OP-013 — BLAKE3 circuit-superoptimization frontier
 
-The checked short-input frontier is 59,529 bytes and 527 stack items for 32
-bytes. The preceding digit-routing criterion is bounded: a
-shortest-common-superstring DP reduced the XOR table, row-zero suffixes fused
-the modulo table, table-lifetime search delayed shift/addition memory, and an
-independent-nibble backend searched global and per-call rotation orders. Every
-retained length from 0 through 32 passed differential and malformed-input
-tests. Alternate radices, expanded witness schedules, eager routing,
+The checked short-input frontier is 43,930 bytes and 499 stack items for 32
+bytes (2026-10-16). It comes from a stack-modelled generator that stores
+addition outputs and carries biased so that most lookup values are directly
+`OP_PICK` depths, folds constants into lookup offsets, packs the XOR rows as
+superstring pieces, and fixes a searched G-call order; see the
+[primitive page](primitives/blake3-short-u4.md). It replaced the 59,529-byte
+tracked-stack frontier, whose digit-routing searches (superstring XOR table,
+fused modulo suffix, delayed tables, independent-nibble rotation orders) are
+recorded with alternate radices, expanded witness schedules, eager routing,
 little-endian state, raw-sum add-to-XOR fusion, final-round pair fusion, and
-extra low-XOR planes are measured or bounded in the negative-results index.
-Deep state routing still dominates, with 473 items of strict stack headroom in
-the representative short configuration.
+extra low-XOR planes in the negative-results index. Generator variants that
+did not pay are in [NR-086](negative-results/index.md#nr-086-short-blake3-generator-variants-that-did-not-pay).
+Operand fetches, mostly 3-byte rolls of deep state nibbles and 4-byte message
+picks, are about 45% of the bytes. There are 501 items of strict stack
+headroom in the representative short configuration.
 
 **Complete when:** a reproducible joint circuit search or proof-producing
 superoptimizer covers a precisely stated space of digit lifetimes, G-stage
-fusion, lookup layouts, and per-call schedules on the same checked
-`fragment-with-memory` boundary; every retained candidate passes all short
-lengths and malformed inputs; and it either beats 59,529 bytes below the
-1,000-item peak or records a machine-checkable lower bound for that search
-space.
+fusion, lookup layouts, value biases, and per-call schedules on the same
+checked `fragment-with-memory` boundary; every retained candidate passes all
+short lengths, modes and malformed inputs; and it either beats 43,930 bytes
+below the 1,000-item peak or records a machine-checkable lower bound for that
+search space.
 
 ## OP-023 — BLAKE3 parent-tree composition
 
@@ -997,7 +1003,8 @@ complete root compression output, so no output-block compression is needed.
 the constant chaining value through fixed XOR-table rows, and returns 128 u4
 items. For the 32-byte message it measures 60,131 script bytes (+597 over the
 digest), 64 data items, zero hints, and a 527-item strict peak including the
-verifier. It matches the `blake3` crate in all three modes for every length up
+verifier. Remeasured on 2026-10-16 with the stack-modelled generator: 44,500
+bytes (+570) and a 499-item peak. It matches the `blake3` crate in all three modes for every length up
 to 32. Output beyond 64 bytes, which needs a counter-1 root compression, and
 a multi-block limb-API XOF remain unimplemented. Neither is tracked as an open
 problem until a caller needs it. See the corrected
@@ -1151,7 +1158,9 @@ shape and routing are unchanged. For the 32-byte message and official key, it
 measures 59,532 script bytes versus 59,534 unkeyed, under the same compilation
 policy and the same 527-item strict peak, with zero hints. Script size varies
 slightly with the key; the all-`0x42` key gives 59,557. A key supplied in the
-witness is not implemented. See the retracted
+witness is not implemented. Remeasured on 2026-10-16 with the stack-modelled
+generator: 43,915 bytes keyed (43,904 with the all-`0x42` key) versus 43,930
+unkeyed, at a 499-item peak. See the retracted
 [keyed record](negative-results/blake3-keyed-mode.md).
 
 ## OP-041 — Permutation decoding consumer frontier
