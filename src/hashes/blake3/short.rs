@@ -15,10 +15,8 @@
 //!
 //! Every lookup derives any residual index adjustment from the modelled stack
 //! (round zero, the finalization and constant operands). Constant words are
-//! folded into lookup addresses at generation time; a variant that instead
-//! pushes the initial state is also generated and the shorter script kept.
-//! Witness nibbles are range-checked when they are first fetched, before any
-//! use.
+//! folded into lookup addresses at generation time and never pushed. Witness
+//! nibbles are range-checked when they are first fetched, before any use.
 //!
 //! While generating, the model also carries the concrete value of every item
 //! for a fixed sample message. Each lookup asserts that it reaches the
@@ -42,13 +40,16 @@ const N_REF: i64 = 128;
 
 // Table layout. Entries are counted downwards from the topmost table item.
 //
-//   0..16     left shift: (2z) mod 16
-//   16..32    lut: depth of XOR row `y` for an `A` nibble
-//   32, 48, 64  carry q + KAPPA for q = 0, 1, 2 (gaps are padding)
-//   65..161   XOR rows 0..6
-//   161..176  padding
-//   176..224  modulo: (s mod 16) + MU at E_MOD + s
-//   224..384  XOR rows 6..16
+//   0..16        left shift: (2z) mod 16
+//   16..32       lut: depth of XOR row `y` for an `A` nibble
+//   32, 48, 64   carry q + KAPPA for q = 0, 1, 2 (gaps are padding)
+//   65..151      XOR rows, first eight-row superstring piece
+//   151..167     XOR row, single-row piece (167..176 is padding)
+//   176..224     modulo: (s mod 16) + MU at E_MOD + s
+//   224..302     XOR rows, final seven-row superstring piece
+//
+// The shift, lut, carry and modulo positions keep every steady-state shift
+// adjustment below 128, so it pushes as one data byte.
 const E_LSH: usize = 0;
 const E_LUT: usize = 16;
 /// Bias of `A` nibbles: their value is directly the depth of their lut entry.
@@ -58,7 +59,67 @@ const MU: i64 = N_REF + E_LUT as i64;
 const KAPPA: i64 = 160;
 const E_MOD: usize = (MU + KAPPA - N_REF) as usize;
 const E_CARRY: usize = (KAPPA - N_REF) as usize;
-const TABLE_ITEMS: usize = 384;
+
+/// The 16 fixed-orientation XOR rows, packed as pieces of their 171-item
+/// shortest common superstring. Consecutive rows `r, r ^ 8`, `r, r ^ 12`,
+/// `r, r ^ 14` and `r, r ^ 15` overlap by 8, 4, 2 and 1 entries. The rows
+/// are relabelled by `y ^ 11` relative to the superstring that ends in row
+/// zero; the order was selected by generating every relabelling.
+const XOR_PIECES: [(usize, &[usize]); 3] = [
+    (65, &[4, 12, 0, 8, 6, 14, 2, 10]),
+    (151, &[5]),
+    (E_MOD + 48, &[13, 1, 9, 7, 15, 3, 11]),
+];
+const TABLE_ITEMS: usize = E_MOD + 48 + 78;
+
+const fn xor_row_overlap(left: usize, right: usize) -> usize {
+    match left ^ right {
+        8 => 8,
+        12 => 4,
+        14 => 2,
+        15 => 1,
+        _ => 0,
+    }
+}
+
+const XOR_ROW_STARTS: [usize; 16] = {
+    let mut starts = [usize::MAX; 16];
+    let mut piece = 0;
+    while piece < XOR_PIECES.len() {
+        let (mut start, rows) = XOR_PIECES[piece];
+        let mut index = 0;
+        while index < rows.len() {
+            if index > 0 {
+                start += 16 - xor_row_overlap(rows[index - 1], rows[index]);
+            }
+            starts[rows[index]] = start;
+            index += 1;
+        }
+        piece += 1;
+    }
+    starts
+};
+
+/// Disjoint G-call order of the column and diagonal phase of each round,
+/// selected by a coordinate search over all 24 orders of every phase.
+const COLUMN_ORDER: [[usize; 4]; 7] = [
+    [3, 0, 2, 1],
+    [0, 2, 3, 1],
+    [2, 3, 0, 1],
+    [2, 3, 0, 1],
+    [2, 3, 0, 1],
+    [2, 3, 0, 1],
+    [2, 3, 0, 1],
+];
+const DIAGONAL_ORDER: [[usize; 4]; 7] = [
+    [0, 1, 2, 3],
+    [0, 3, 2, 1],
+    [0, 3, 2, 1],
+    [0, 3, 2, 1],
+    [0, 3, 2, 1],
+    [0, 3, 2, 1],
+    [0, 1, 3, 2],
+];
 
 const COLUMNS: [(usize, usize, usize, usize); 4] =
     [(0, 4, 8, 12), (1, 5, 9, 13), (2, 6, 10, 14), (3, 7, 11, 15)];
@@ -78,11 +139,7 @@ fn e_carry(s: usize) -> usize {
 }
 
 fn e_xor_row(y: usize) -> usize {
-    if y < 6 {
-        65 + 16 * y
-    } else {
-        224 + 16 * (y - 6)
-    }
+    XOR_ROW_STARTS[y]
 }
 
 fn e_xor(y: usize, x: usize) -> usize {
@@ -98,8 +155,8 @@ fn table_values() -> Vec<i64> {
     let mut values = vec![None; TABLE_ITEMS];
     let mut set = |entry: usize, value: i64| {
         assert!(
-            values[entry].is_none(),
-            "table entry {entry} assigned twice"
+            values[entry].is_none_or(|old| old == value),
+            "table entry {entry} assigned two values"
         );
         values[entry] = Some(value);
     };
@@ -141,33 +198,13 @@ pub(super) struct ShortSpec<'a> {
     pub layout: &'a [(usize, usize)],
 }
 
-/// Generation choices that do not affect semantics.
-#[derive(Clone, Copy, Debug)]
-pub(super) struct Variant {
-    /// Push the initial state instead of folding it as constants.
-    pub materialize: bool,
-    /// Pre-bias the low nibble of each message word by `KAPPA`.
-    pub bias_message: bool,
+/// One table-construction step.
+enum TablePush {
+    Literal,
+    /// `depth PICK`.
+    Copy(usize),
+    Ops(Vec<Opcode>),
 }
-
-pub(super) const VARIANTS: [Variant; 4] = [
-    Variant {
-        materialize: true,
-        bias_message: true,
-    },
-    Variant {
-        materialize: false,
-        bias_message: true,
-    },
-    Variant {
-        materialize: true,
-        bias_message: false,
-    },
-    Variant {
-        materialize: false,
-        bias_message: false,
-    },
-];
 
 #[derive(Clone, Copy, Debug)]
 struct Slot {
@@ -552,69 +589,69 @@ impl Gen {
         word.const_value().unwrap_or_else(|| self.word_value(word))
     }
 
+    /// Pushes the tables from the deepest entry upwards. Each step emits the
+    /// cheapest way to produce the next one to three entries, copying earlier
+    /// table items where that is shorter than a literal.
     fn push_tables(&mut self) {
         self.table_bottom = self.main.len();
         let values = table_values();
-        // Push from the deepest entry upwards.
         let mut entry = TABLE_ITEMS;
         while entry > 0 {
-            entry -= 1;
-            let value = values[entry];
-            if (e_mod(0)..e_mod(32)).contains(&entry) {
-                // Repeat the previous sixteen-entry period.
-                debug_assert_eq!(values[entry + 16], value);
-                self.emit_int(15);
-                self.op(OP_PICK);
-                let slot = self.fresh(value);
-                self.push_slot(slot);
-                continue;
+            // `top(d)` is the table item `d` below the top; `next(k)` is the
+            // `k`-th entry still to push.
+            let top = |depth: usize| values.get(entry + depth).copied();
+            let next = |k: usize| (k < entry).then(|| values[entry - 1 - k]);
+            let value = values[entry - 1];
+            let mut options = vec![(int_cost(value), 1, TablePush::Literal)];
+            if let Some(depth) = (2..=16).find(|depth| top(*depth) == Some(value)) {
+                options.push((2, 1, TablePush::Copy(depth)));
             }
-            if (e_mod(32)..e_mod(47)).contains(&entry) {
-                debug_assert_eq!(values[entry + 1], value + 1);
-                self.op(OP_DUP);
-                self.op(OP_1SUB);
-                let slot = self.fresh(value);
-                self.push_slot(slot);
-                continue;
+            let mut ops = |cost, items, opcodes: &[Opcode]| {
+                options.push((cost, items, TablePush::Ops(opcodes.to_vec())));
+            };
+            if next(2).is_some() && [next(0), next(1), next(2)] == [top(2), top(1), top(0)] {
+                ops(1, 3, &[OP_3DUP]);
             }
-            // Push a run of equal values with DUP/2DUP/3DUP.
-            let mut run = 1;
-            while entry >= run
-                && values[entry - run] == value
-                && !(e_mod(0)..e_mod(48)).contains(&(entry - run))
-            {
-                run += 1;
+            if next(1).is_some() && [next(0), next(1)] == [top(1), top(0)] {
+                ops(1, 2, &[OP_2DUP]);
             }
-            self.emit_int(value);
-            let mut remaining = run - 1;
-            let mut copies = Vec::new();
-            if remaining >= 1 {
-                copies.push(1);
-                remaining -= 1;
+            if next(1).is_some() && [next(0), next(1)] == [top(3), top(2)] {
+                ops(1, 2, &[OP_2OVER]);
             }
-            if remaining >= 2 {
-                copies.push(2);
-                remaining -= 2;
+            if top(0) == Some(value) {
+                ops(1, 1, &[OP_DUP]);
             }
-            while remaining >= 3 {
-                copies.push(3);
-                remaining -= 3;
+            if top(1) == Some(value) {
+                ops(1, 1, &[OP_OVER]);
             }
-            if remaining > 0 {
-                copies.push(remaining);
+            if top(0) == Some(value - 1) {
+                ops(2, 1, &[OP_DUP, OP_1ADD]);
             }
-            for copy in copies {
-                self.op(match copy {
-                    1 => OP_DUP,
-                    2 => OP_2DUP,
-                    _ => OP_3DUP,
-                });
+            if top(0) == Some(value + 1) {
+                ops(2, 1, &[OP_DUP, OP_1SUB]);
             }
-            for _ in 0..run {
-                let slot = self.fresh(value);
+            // Cheapest bytes per entry; ties prefer covering more entries.
+            let (_, items, push) = options
+                .into_iter()
+                .min_by(|a, b| (a.0 * b.1).cmp(&(b.0 * a.1)).then(b.1.cmp(&a.1)))
+                .unwrap();
+            match push {
+                TablePush::Literal => self.emit_int(value),
+                TablePush::Copy(depth) => {
+                    self.emit_int(depth as i64);
+                    self.op(OP_PICK);
+                }
+                TablePush::Ops(opcodes) => {
+                    for opcode in opcodes {
+                        self.op(opcode);
+                    }
+                }
+            }
+            for k in 0..items {
+                let slot = self.fresh(values[entry - 1 - k]);
                 self.push_slot(slot);
             }
-            entry -= run - 1;
+            entry -= items;
         }
         assert_eq!(self.main.len(), self.table_bottom + TABLE_ITEMS);
         for (entry, value) in values.iter().enumerate() {
@@ -811,6 +848,15 @@ impl Gen {
             order.sort_by_key(|&k| key(depth_of(x.nibs[k]), depth_of(y.nibs[k])));
             if !orders.contains(&order) {
                 orders.push(order);
+            }
+        }
+        // Cyclic orders in both directions from every start.
+        for start in 0..8 {
+            for step in [1, 7] {
+                let order: Vec<usize> = (0..8).map(|i| (start + step * i) % 8).collect();
+                if !orders.contains(&order) {
+                    orders.push(order);
+                }
             }
         }
         orders
@@ -1038,7 +1084,7 @@ fn word_from_le(message: &[u8], word: usize) -> u32 {
     u32::from_le_bytes(bytes)
 }
 
-pub(super) fn generate(spec: &ShortSpec, variant: Variant) -> Generated {
+pub(super) fn short_compute_script(spec: &ShortSpec) -> Generated {
     let message_len = spec.message_len;
     assert!((1..=32).contains(&message_len));
     assert!((1..=8).contains(&spec.output_words));
@@ -1085,7 +1131,7 @@ pub(super) fn generate(spec: &ShortSpec, variant: Variant) -> Generated {
     gen.op(OP_DEPTH);
     gen.emit_int(input_items as i64);
     gen.op(OP_EQUALVERIFY);
-    if variant.bias_message {
+    {
         // Store the least significant nibble of each message word as
         // `m + KAPPA`, so a message-bearing addition needs no explicit carry
         // bias on its first nibble.
@@ -1117,46 +1163,11 @@ pub(super) fn generate(spec: &ShortSpec, variant: Variant) -> Generated {
             _ => spec.flags,
         })
     });
-    if variant.materialize {
-        // Push words in reverse order of first use so the first used word
-        // ends on top.
-        let mut first_use = Vec::new();
-        for column in COLUMNS {
-            let (a, b, c, d) = column;
-            first_use.extend([a, b, c, d]);
-        }
-        let mut pushed: Vec<(u32, Kind, Word)> = Vec::new();
-        for &index in first_use.iter().rev() {
-            let value = state[index].const_value().unwrap();
-            let kind = if index % 8 < 4 { Kind::A } else { Kind::X };
-            // An identical word already on the stack can be copied.
-            let twin = pushed
-                .iter()
-                .find(|(v, k, _)| *v == value && *k == kind)
-                .map(|(_, _, word)| *word);
-            let mut nibs = [Nib::Const(0); 8];
-            for (n, nib) in nibs.iter_mut().enumerate() {
-                let nibble = i64::from((value >> (28 - 4 * n)) & 15);
-                let literal = nibble + kind.bias();
-                let id = match twin.map(|word| word.nibs[n]) {
-                    Some(Nib::Dyn(source))
-                        if fetch_cost(gen.depth(source), false) < int_cost(literal) =>
-                    {
-                        gen.fetch(source, false)
-                    }
-                    _ => gen.push_int(literal),
-                };
-                *nib = Nib::Dyn(id);
-            }
-            let word = Word { nibs, kind };
-            pushed.push((value, kind, word));
-            state[index] = word;
-        }
-    }
     let mut schedule: Vec<Option<Word>> = (0..16).map(|i| message.get(i).copied()).collect();
 
     for round in 0..7 {
-        for (column, &lanes) in COLUMNS.iter().enumerate() {
+        for column in COLUMN_ORDER[round] {
+            let lanes = COLUMNS[column];
             gen.g(
                 &mut state,
                 lanes,
@@ -1164,7 +1175,8 @@ pub(super) fn generate(spec: &ShortSpec, variant: Variant) -> Generated {
                 round,
             );
         }
-        for (diagonal, &lanes) in DIAGONALS.iter().enumerate() {
+        for diagonal in DIAGONAL_ORDER[round] {
+            let lanes = DIAGONALS[diagonal];
             gen.g(
                 &mut state,
                 lanes,
@@ -1222,15 +1234,6 @@ pub(super) fn generate(spec: &ShortSpec, variant: Variant) -> Generated {
     }
 }
 
-/// The smallest generated script over all variants.
-pub(super) fn short_compute_script(spec: &ShortSpec) -> Generated {
-    VARIANTS
-        .iter()
-        .map(|variant| generate(spec, *variant))
-        .min_by_key(|generated| generated.script.len())
-        .unwrap()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1249,6 +1252,30 @@ mod tests {
         let result = execute_script_buf(gen.script);
         assert!(result.success, "{result}");
         assert_eq!(result.stats.max_nb_stack_items, TABLE_ITEMS + 1);
+    }
+
+    #[test]
+    fn xor_pieces_pack_every_row_once() {
+        let mut rows: Vec<usize> = XOR_PIECES
+            .iter()
+            .flat_map(|(_, rows)| rows.iter().copied())
+            .collect();
+        rows.sort();
+        assert_eq!(rows, (0..16).collect::<Vec<_>>());
+        // The 171-item superstring plus the 1 + 8 overlap items lost at the
+        // two splits.
+        let packed: usize = XOR_PIECES
+            .iter()
+            .map(|(_, rows)| {
+                16 * rows.len()
+                    - rows
+                        .windows(2)
+                        .map(|pair| xor_row_overlap(pair[0], pair[1]))
+                        .sum::<usize>()
+            })
+            .sum();
+        assert_eq!(packed, 171 + 9);
+        assert_eq!(TABLE_ITEMS, 302);
     }
 
     #[test]

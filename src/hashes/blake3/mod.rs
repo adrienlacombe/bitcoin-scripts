@@ -1451,7 +1451,7 @@ mod tests {
     #[test]
     fn test_short_32_table_lifecycle_bytes() {
         for (output_words, extended, setup, cleanup, script) in
-            [(8, false, 447, 224, 44305), (4, false, 447, 240, 43841)]
+            [(8, false, 362, 183, 43930), (4, false, 362, 199, 43466)]
         {
             let generated = blake3_short_generated(32, output_words, &Blake3Mode::Hash, extended);
             assert_eq!(
