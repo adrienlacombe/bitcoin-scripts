@@ -503,17 +503,20 @@ linked, and the catalog-wide `as_of` date is advanced.
 
 ## OP-011 — Reproduce Binohash
 
-The deterministic core is now locally reproduced: selected serialized
-signature pushes are removed at opcode boundaries before rust-bitcoin's legacy
-sighash, including the out-of-range `SIGHASH_SINGLE` constant. The full
-protocol remains open because grinding, valid ECDSA signatures, transaction
-mutation boundaries, Script extraction, and pinned Core regtest behavior are
-not yet reproduced.
+The deterministic core is locally reproduced: selected serialized signature
+pushes are removed at opcode boundaries before rust-bitcoin's legacy sighash,
+including the out-of-range `SIGHASH_SINGLE` constant. A reduced two-choice
+fixture now uses valid ECDSA signatures and confirms selected funded P2SH
+spends and wrong-selection failures against pinned Core v30.3. Default Core
+relay policy rejects the valid spends under `CONST_SCRIPTCODE`. The full
+protocol remains open because two-round grinding, transaction mutation
+boundaries, Script extraction, and complete protocol costs are not reproduced.
 
 Implement the specified legacy signature-grinding construction and validate it
 against a pinned Bitcoin Core regtest. **Complete when:** extraction correctness,
 collision/work parameters, full transaction costs, mutation boundaries, and
-malformed/grinding failure cases are reproduced from deterministic fixtures.
+malformed/grinding failure cases are reproduced from deterministic fixtures;
+document how any policy barrier is handled without claiming default relay.
 
 ## OP-012 — Audit BN254 residue-witness subfield constraints
 
