@@ -5120,11 +5120,11 @@
       "id": "introspection/binohash-legacy-core",
       "name": "Binohash legacy core",
       "class": "introspection/transaction",
-      "summary": "Reproduces opcode-boundary FindAndDelete and subset-dependent legacy sighash mutation for Binohash-style transaction digests.",
+      "summary": "Reproduces opcode-boundary FindAndDelete and validates a reduced two-choice legacy P2SH spend against Bitcoin Core.",
       "status": "experimental",
       "evidence": "locally-reproduced",
       "execution": "unclassified",
-      "as_of": "2026-09-11",
+      "as_of": "2026-10-21",
       "knowledge_page": "knowledge/primitives/binohash-legacy-core.md",
       "implementation": "src/introspection/binohash.rs",
       "documentation": "src/introspection/README.md",
@@ -5132,7 +5132,10 @@
         "introspection::binohash::tests::deletes_only_opcode_aligned_signature_pushes",
         "introspection::binohash::tests::subset_selection_changes_legacy_digest",
         "introspection::binohash::tests::reproduces_legacy_single_bug_digest",
-        "introspection::binohash::tests::rejects_invalid_selection_and_input"
+        "introspection::binohash::tests::rejects_invalid_selection_and_input",
+        "examples/binohash_core_fixtures.rs",
+        "tools/test_binohash_core_regtest.py",
+        "tools/binohash_core_regtest.py"
       ],
       "references": [
         "binohash-paper",
@@ -5142,7 +5145,7 @@
       "techniques": [
         "hash-chain"
       ],
-      "security": "This record covers deterministic legacy mechanics only; Binohash collision resistance, grinding work, ECDSA validity, and downstream Script authentication remain unproven.",
+      "security": "The host helper models deterministic legacy mechanics. A reduced funded fixture verifies fixed ECDSA signatures against Core, but Binohash collision resistance, grinding work, and downstream Script authentication remain unproven.",
       "stack_contract": "Host API: transaction, legacy scriptCode, candidate signature vectors, and selected indices -> 32-byte legacy sighash.",
       "configurations": [
         {
@@ -5163,13 +5166,39 @@
           "setup_script_bytes": null,
           "per_use_script_bytes": null,
           "metric_keys": []
+        },
+        {
+          "id": "funded-two-choice-core-v30.3",
+          "label": "Two selected funded P2SH spends under pinned Bitcoin Core",
+          "parameters": {
+            "bitcoin_core_commit": "49faec4f87f5cd19c88db01a82e5c68b087c8227",
+            "candidate_signatures": 2,
+            "selected_signatures_per_spend": 1,
+            "redeem_script_bytes": 220,
+            "complete_transaction_weights_wu": [1744, 1740],
+            "hint_items": 0,
+            "witness_items": 0,
+            "policy_result": "rejected: Signature is found in scriptCode"
+          },
+          "includes": "complete-transaction: two inputs, one output, complete scriptSigs, and funded prevouts; script_bytes is the 23-byte P2SH locking scriptPubKey, while the 220-byte redeemScript is included in scriptSig and recorded in parameters; witness_bytes is zero because these are legacy spends; excludes funding transaction, grinding, digest extraction, and a Script consumer",
+          "script_bytes": 23,
+          "witness_bytes": 0,
+          "witness_bytes_max": 0,
+          "max_stack_items": null,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": [],
+          "evidence": "differentially-validated",
+          "execution": "consensus-validated"
         }
       ],
       "limitations": [
         "Host-side legacy model, not a locking-script fragment",
-        "Full two-round Binohash grinding and ECDSA signature validity are not implemented",
-        "No complete transaction has been compared against a pinned Bitcoin Core regtest",
-        "No script, witness, stack, or validation-weight metric applies to this host-only boundary"
+        "Full two-round Binohash grinding and Script-readable digest extraction are not implemented",
+        "The reduced valid Core spends are consensus-valid but fail default relay policy under CONST_SCRIPTCODE",
+        "The host-only boundary has no Script cost; combined stack peak and executed opcodes are unmeasured for the funded fixture"
       ],
       "open_problems": [
         "OP-002",
