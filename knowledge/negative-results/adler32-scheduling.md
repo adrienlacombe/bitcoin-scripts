@@ -1,4 +1,4 @@
-# NR-087: Adler input validation overlapping accumulators loses stack capacity
+# NR-109: Adler input validation overlapping accumulators loses stack capacity
 
 As of 2026-10-02: `locally-reproduced`, `unclassified` local tapscript.
 

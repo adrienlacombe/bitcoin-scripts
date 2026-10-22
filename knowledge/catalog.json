@@ -5175,7 +5175,10 @@
             "candidate_signatures": 2,
             "selected_signatures_per_spend": 1,
             "redeem_script_bytes": 220,
-            "complete_transaction_weights_wu": [1744, 1740],
+            "complete_transaction_weights_wu": [
+              1744,
+              1740
+            ],
             "hint_items": 0,
             "witness_items": 0,
             "policy_result": "rejected: Signature is found in scriptCode"
@@ -21950,7 +21953,7 @@
         "Executed non-push opcode counts unavailable; full transaction signature budget unmeasured"
       ],
       "open_problems": [
-        "OP-043"
+        "OP-065"
       ]
     },
     {

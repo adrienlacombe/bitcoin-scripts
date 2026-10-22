@@ -1840,7 +1840,7 @@ result does not rule out a ternary path when protocol state is naturally
 three-valued or when a different consumer amortizes its dispatcher; see
 [OP-030](../open-problems.md#op-030--ternary-commitment-composition-frontier).
 
-## NR-087: Adler byte validation overlapping accumulators loses capacity
+## NR-109: Adler byte validation overlapping accumulators loses capacity
 
 The initial interleaved canonical-byte schedule peaks at n+5 and rejects
 n996/997 with typed StackSize. Prevalidating before allocating A/B reaches

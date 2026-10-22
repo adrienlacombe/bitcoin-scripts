@@ -424,6 +424,28 @@ mod tests {
                 let probe =
                     execute_raw_script_with_inputs_strict(compiled.to_bytes(), items.clone());
                 assert_eq!(probe.stats.opcode_count, compiled.instructions().count());
+                if name == "network" {
+                    // Pin the published zero-hint comparison, not just the winner.
+                    let expected = match n {
+                        1 => (12, 3, 5, 9),
+                        2 => (30, 5, 6, 24),
+                        4 => (88, 9, 8, 73),
+                        8 => (266, 17, 12, 231),
+                        16 => (862, 32, 20, 787),
+                        32 => (3044, 63, 36, 2859),
+                        _ => unreachable!(),
+                    };
+                    assert_eq!(
+                        (
+                            compiled.len(),
+                            serialize(&Witness::from_slice(&items)).len(),
+                            probe.stats.max_nb_stack_items,
+                            ops
+                        ),
+                        expected,
+                        "zero-hint baseline n={n}"
+                    );
+                }
                 assert_eq!(probe.final_stack.len(), n as usize);
                 for (i, x) in sorted.iter().enumerate() {
                     assert_eq!(probe.final_stack.get(i), num((*x).into()));

@@ -1069,7 +1069,7 @@ independent BLAKE3 implementation, records the eight key words and
 `KEYED_HASH` flag handling, reports witness and combined-stack costs, and
 compares the result with the unkeyed profile under the same compilation policy.
 
-## OP-043 — Complete Adler-state leaf validation
+## OP-065 — Complete Adler-state leaf validation
 
 Build a complete, independently bound error-detection computation leaf for
 the canonical Adler-32 state fragment. **Complete when:** a funded fixture

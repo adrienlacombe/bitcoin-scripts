@@ -71,7 +71,7 @@ changing final script size. The shared suite observes both caller stacks
 and every output at the exact 1000 frontier, then rejects one additional
 item. Empty fragment peak 2 is separate from constant empty leaf peak 1.
 The public API rejects n998; the retained prevalidated streaming n998 probe
-also rejects at 1001. These failures are recorded in NR-087.
+also rejects at 1001. These failures are recorded in NR-109.
 
 ## Independent result oracle and shared contracts
 
@@ -140,4 +140,4 @@ Host optimization keeps debug assertions and overflow checks; it does not
 change Script compilation policy. No field tests are run. Source:
 [RFC 1950](https://www.rfc-editor.org/rfc/rfc1950.txt), May 1996 version 3.3,
 sections 2.2/8.2/9. Independent complete Core/relay-policy validation remains
-OP-043, with an explicit non-authentication scope and no class inheritance.
+OP-065, with an explicit non-authentication scope and no class inheritance.
