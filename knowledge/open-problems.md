@@ -31,7 +31,11 @@ mutated, and malformed control paths with pinned Core. The recorded comparisons
 are `differentially-validated`; the preflight is not a complete transaction
 validator. A separate [confirmed-output BIP68 comparison](tapscript-csv-validation.md#confirmed-output-bip68-maturity-follow-up-2026-09-28)
 now matches Core immediately before and at exact height/MTP maturity while
-preserving a missing-context `Unsupported` result. Next, validate the remaining
+preserving a missing-context `Unsupported` result.
+The [absolute-finality comparison](tapscript-finality-validation.md) now checks
+`nLockTime` at exact height and parent-MTP boundaries against Core, including
+the all-final-sequence escape. It is a separate preflight, not an integration
+with commitment, BIP68 and script validation. Next, validate the remaining
 transaction context:
 **complete when** valid and mutated Taproot commitments, annexes and Schnorr
 signatures produce supported local verdicts that agree with pinned Core,
