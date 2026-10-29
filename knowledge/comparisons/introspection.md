@@ -15,3 +15,7 @@ The funded fixture has a 23-byte P2SH locking scriptPubKey, a 220-byte
 redeemScript, and complete transaction weights
 of 1,744/1,740 WU; it has zero witness/hint items and no measured stack peak.
 Full protocol costs remain [OP-011](../open-problems.md#op-011--reproduce-binohash).
+The [8-of-n planning report](../../research/binohash-parameters/README.md)
+separately checks exact subset counts and applies the paper's approximate
+resource formulas. Its modeled hit probabilities depend on independent uniform
+trials; they are not a Core execution or security result.
