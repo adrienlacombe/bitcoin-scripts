@@ -1582,6 +1582,12 @@ against pinned Core v30.3, but default relay policy rejects them under
 resistance, grinding work, mutation boundaries, Script-readable digest
 extraction, or downstream authentication. Those remain under OP-011.
 
+A separate raw-byte census confirms that 250 noncanonical legacy sighash flag
+bytes can sign under consensus but fail default `STRICTENC` relay policy. The
+fixed-template digest distinction is not a measured independent entropy gain
+for Binohash's full grind; treating all 256 bytes as policy-deployable or as
+eight proven extra security bits would overstate this result.
+
 ## NR-056: Optional-SHA256 hash paths do not bind a free starting preimage
 
 For `F0(x)=R(x)` and `F1(x)=R(S(x))`, `F1(x)=F0(S(x))` exactly.

@@ -10,7 +10,9 @@ transaction-dependent digest that Bitcoin Script can extract and authenticate.
   [deterministic legacy core](binohash-legacy-core.md) is locally reproduced,
   and a reduced two-choice funded P2SH configuration is differentially
   validated against pinned Core v30.3 under consensus but rejected by default
-  relay policy.
+  relay policy. A separate [raw sighash-byte census](binohash-sighash-flags.md)
+  validates 256 signed P2SH spends under pinned Core consensus; only the six
+  canonical byte values pass default relay policy.
 - **Reported profile:** the paper proposes a two-round nonce extraction design
   with tunable work/collision parameters and a Lamport-signable output.
 - **Execution context:** relies on legacy signature semantics, not the local

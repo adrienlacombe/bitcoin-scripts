@@ -534,6 +534,12 @@ relay policy rejects the valid spends under `CONST_SCRIPTCODE`. The full
 protocol remains open because two-round grinding, transaction mutation
 boundaries, Script extraction, and complete protocol costs are not reproduced.
 
+A separate pinned-Core raw sighash-byte census confirms that all 256 byte
+values admit signed legacy P2SH spends, but only six canonical bytes pass
+default `STRICTENC` policy. A fixed host template yields 256 distinct digests;
+this does not establish independent or usable entropy after the full
+Binohash script, pinning and grinding constraints are imposed.
+
 Implement the specified legacy signature-grinding construction and validate it
 against a pinned Bitcoin Core regtest. **Complete when:** extraction correctness,
 collision/work parameters, full transaction costs, mutation boundaries, and

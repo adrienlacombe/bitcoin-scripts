@@ -24,3 +24,9 @@ with the default tapscript executor: its legacy signature context and
 transaction template are essential semantics. Full reproduction still needs
 grinding parameters, mutation constraints, Script extraction, and full costs.
 See `introspection/binohash` and `OP-011`.
+
+The [raw sighash-byte census](../primitives/binohash-sighash-flags.md)
+confirms that 256 byte values can be signed under legacy consensus while
+default relay policy accepts only six canonical values. This is an input to
+grinding-space analysis, not a measurement of independent nonce entropy or a
+full transaction-introspection protocol.
