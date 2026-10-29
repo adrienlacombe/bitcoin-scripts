@@ -10,14 +10,16 @@ transaction-dependent digest that Bitcoin Script can extract and authenticate.
   [deterministic legacy core](binohash-legacy-core.md) is locally reproduced,
   and a reduced two-choice funded P2SH configuration is differentially
   validated against pinned Core v30.3 under consensus but rejected by default
-  relay policy.
+  relay policy. A separate
+  [CODESEPARATOR fixture](binohash-codesep-core.md) differentially validates
+  selected signature pushes on both sides of the operative legacy boundary.
 - **Reported profile:** the paper proposes a two-round nonce extraction design
   with tunable work/collision parameters and a Lamport-signable output.
 - **Execution context:** relies on legacy signature semantics, not the local
   tapscript-only executor defaults.
 - **Research need:** reproduce the full two-round grind and Script extraction,
   catalog its complete costs and mutation boundaries, and model grinding
-  economics. The reduced Core fixture does not establish these properties.
+  economics. Neither reduced Core fixture establishes these properties.
 
 See source `binohash-paper`, the [transaction-introspection discussion](https://delvingbitcoin.org/t/binohash-transaction-introspection-without-softforks/2288),
 and open problem `OP-011`.

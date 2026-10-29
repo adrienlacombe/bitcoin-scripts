@@ -123,6 +123,7 @@ the source. Read a page together with its comparison page and evidence record.
 
 - [Binohash transaction digest](binohash.md)
 - [Binohash legacy core](binohash-legacy-core.md)
+- [Binohash legacy CODESEPARATOR and FindAndDelete fixture](binohash-codesep-core.md)
 
 ## Hashes and ciphers
 

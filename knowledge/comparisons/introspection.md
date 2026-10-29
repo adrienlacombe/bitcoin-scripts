@@ -9,9 +9,13 @@ default relay acceptance.
 | Binohash transaction digest | Full two-round signature grinding, transaction mutation, and Script extraction | reported | unclassified | No complete local reproduction or Core regtest |
 | Binohash legacy core | Opcode-boundary `FindAndDelete` plus legacy sighash | locally-reproduced | unclassified | No grinding, complete spend, or Script consumer |
 | Binohash two-choice fixture | Two signed P2SH spends with selected embedded signatures and a wrong-selection control | differentially-validated | consensus-validated | Default policy rejects `CONST_SCRIPTCODE`; no grinding or Script consumer |
+| Binohash CODESEPARATOR fixture | Executed/dead separator boundaries plus before/after-boundary `FindAndDelete` in two funded P2SH spends | differentially-validated | consensus-validated | Default policy rejects executed legacy `OP_CODESEPARATOR`; no grinding or full protocol |
 
 The host-side core has no script, witness, stack, or validation-weight metric.
 The funded fixture has a 23-byte P2SH locking scriptPubKey, a 220-byte
 redeemScript, and complete transaction weights
 of 1,744/1,740 WU; it has zero witness/hint items and no measured stack peak.
+The CODESEPARATOR fixture has a 23-byte P2SH scriptPubKey, a 229-byte
+redeemScript and two 1,780-WU complete transactions. It also has zero
+witness/hint items and no measured stack peak.
 Full protocol costs remain [OP-011](../open-problems.md#op-011--reproduce-binohash).

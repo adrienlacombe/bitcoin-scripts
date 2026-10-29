@@ -1578,8 +1578,11 @@ The local helper reproduces opcode-boundary `FindAndDelete`, subset-dependent
 legacy sighashes, and the historical `SIGHASH_SINGLE` constant. A separate
 two-choice fixture verifies fixed signatures in complete funded P2SH spends
 against pinned Core v30.3, but default relay policy rejects them under
-`CONST_SCRIPTCODE`. Neither result proves Binohash's two-round collision
-resistance, grinding work, mutation boundaries, Script-readable digest
+`CONST_SCRIPTCODE`. A second funded fixture validates one exact composition of
+executed/dead `OP_CODESEPARATOR` views and before/after-boundary
+`FindAndDelete`; default policy rejects it at the executed separator. These
+results still do not prove Binohash's two-round collision resistance, grinding
+work, broader transaction mutation boundaries, Script-readable digest
 extraction, or downstream authentication. Those remain under OP-011.
 
 ## NR-056: Optional-SHA256 hash paths do not bind a free starting preimage

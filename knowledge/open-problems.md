@@ -531,8 +531,12 @@ including the out-of-range `SIGHASH_SINGLE` constant. A reduced two-choice
 fixture now uses valid ECDSA signatures and confirms selected funded P2SH
 spends and wrong-selection failures against pinned Core v30.3. Default Core
 relay policy rejects the valid spends under `CONST_SCRIPTCODE`. The full
-protocol remains open because two-round grinding, transaction mutation
-boundaries, Script extraction, and complete protocol costs are not reproduced.
+protocol remains open. A separate two-spend fixture now differentially checks
+an executed separator, a dead-branch separator, legacy separator stripping,
+and before/after-boundary `FindAndDelete` against pinned Core v30.3. It closes
+that exact scriptCode-view gap, but two-round grinding, broader transaction
+mutation boundaries, Script extraction, and complete protocol costs are not
+reproduced.
 
 Implement the specified legacy signature-grinding construction and validate it
 against a pinned Bitcoin Core regtest. **Complete when:** extraction correctness,
