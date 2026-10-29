@@ -173,6 +173,62 @@ mod tests {
     }
 
     #[test]
+    fn deletes_canonical_pushes_across_pushdata_boundaries() {
+        for length in [3, 76, 256] {
+            let signature = vec![0x31; length];
+            let canonical = push_data(&signature);
+            let mut embedded = vec![0xaa];
+            embedded.extend_from_slice(&canonical);
+            embedded.push(0xbb);
+            let embedded_push = push_data(&embedded);
+            let script = ScriptBuf::from_bytes(
+                [
+                    canonical.clone(),
+                    embedded_push.clone(),
+                    vec![0x51],
+                    canonical,
+                ]
+                .concat(),
+            );
+
+            let deleted = find_and_delete(&script, &[signature]);
+            assert_eq!(deleted.as_bytes(), [embedded_push, vec![0x51]].concat());
+        }
+    }
+
+    #[test]
+    fn leaves_nonminimal_signature_pushes_untouched() {
+        let cases = [
+            (vec![0x31; 3], vec![0x4c, 3]),
+            (vec![0x31; 76], vec![0x4d, 76, 0]),
+            (vec![0x31; 256], vec![0x4e, 0, 1, 0, 0]),
+        ];
+        for (signature, mut nonminimal) in cases {
+            nonminimal.extend_from_slice(&signature);
+            let canonical = push_data(&signature);
+            let script = ScriptBuf::from_bytes([nonminimal.clone(), canonical].concat());
+
+            let deleted = find_and_delete(&script, &[signature]);
+            assert_eq!(deleted.as_bytes(), nonminimal);
+        }
+    }
+
+    #[test]
+    fn malformed_trailing_push_stops_boundary_scanning() {
+        let signature = b"sig".to_vec();
+        let canonical = push_data(&signature);
+        // OP_PUSHDATA1 declares six payload bytes but only five follow. The
+        // canonical signature bytes inside that truncated payload are not a
+        // subsequent opcode boundary. This is parser-parity coverage only: a
+        // script containing this malformed push is not consensus-valid.
+        let malformed_tail = [vec![0x4c, 6, 0xaa], canonical.clone()].concat();
+        let script = ScriptBuf::from_bytes([canonical, malformed_tail.clone()].concat());
+
+        let deleted = find_and_delete(&script, &[signature]);
+        assert_eq!(deleted.as_bytes(), malformed_tail);
+    }
+
+    #[test]
     fn subset_selection_changes_legacy_digest() {
         let transaction = transaction_with_two_outputs();
         let signatures = vec![b"sig0".to_vec(), b"sig1".to_vec(), b"sig2".to_vec()];
