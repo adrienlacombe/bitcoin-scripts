@@ -534,6 +534,12 @@ relay policy rejects the valid spends under `CONST_SCRIPTCODE`. The full
 protocol remains open because two-round grinding, transaction mutation
 boundaries, Script extraction, and complete protocol costs are not reproduced.
 
+A host-only 10-choose-5 enumeration now finds distinct digests for all 252
+ascending subsets of one fixed template. It also shows reversed order and
+duplicate selections alias unless the eventual Script consumer validates
+length, range, uniqueness, order, and canonical encoding. The experiment uses
+DER-shaped deletion targets rather than Core-validated ECDSA signatures.
+
 Implement the specified legacy signature-grinding construction and validate it
 against a pinned Bitcoin Core regtest. **Complete when:** extraction correctness,
 collision/work parameters, full transaction costs, mutation boundaries, and

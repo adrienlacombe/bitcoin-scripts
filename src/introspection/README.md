@@ -20,3 +20,9 @@ the legacy `SIGHASH_SINGLE` bug constant, invalid selections, and invalid input
 indices. The host helper alone remains `unclassified`; the separate funded
 configuration is `differentially-validated` against Core v30.3 and
 `consensus-validated`, but fails default relay policy.
+
+The [10-choose-5 host probe](../../research/binohash-ten-choose-five/README.md)
+enumerates all 252 ascending subsets for one fixed transaction and scriptCode.
+It finds distinct local digests for this fixture, while permutations and
+duplicate index vectors alias unless a Script consumer validates them. It does
+not execute ECDSA or Core consensus.

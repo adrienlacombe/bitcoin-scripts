@@ -1582,6 +1582,11 @@ against pinned Core v30.3, but default relay policy rejects them under
 resistance, grinding work, mutation boundaries, Script-readable digest
 extraction, or downstream authentication. Those remain under OP-011.
 
+In a fixed 10-choose-5 host probe, permutations of the same selected set
+produce the same digest, and a repeated index aliases a shorter selection.
+Distinct digests for the 252 canonical subsets therefore do not make an
+unvalidated index vector a canonical or collision-resistant protocol digest.
+
 ## NR-056: Optional-SHA256 hash paths do not bind a free starting preimage
 
 For `F0(x)=R(x)` and `F1(x)=R(S(x))`, `F1(x)=F0(S(x))` exactly.

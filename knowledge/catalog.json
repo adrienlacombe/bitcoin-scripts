@@ -5124,7 +5124,7 @@
       "status": "experimental",
       "evidence": "locally-reproduced",
       "execution": "unclassified",
-      "as_of": "2026-10-21",
+      "as_of": "2026-10-29",
       "knowledge_page": "knowledge/primitives/binohash-legacy-core.md",
       "implementation": "src/introspection/binohash.rs",
       "documentation": "src/introspection/README.md",
@@ -5133,6 +5133,7 @@
         "introspection::binohash::tests::subset_selection_changes_legacy_digest",
         "introspection::binohash::tests::reproduces_legacy_single_bug_digest",
         "introspection::binohash::tests::rejects_invalid_selection_and_input",
+        "tests/binohash_ten_choose_five.rs",
         "examples/binohash_core_fixtures.rs",
         "tools/test_binohash_core_regtest.py",
         "tools/binohash_core_regtest.py"
@@ -5157,6 +5158,30 @@
             "hash_type": 1
           },
           "includes": "complete-transaction: host-side deterministic digest only: opcode-boundary signature deletion and rust-bitcoin legacy sighash; excludes ECDSA grinding, complete transaction execution, Script consumer, and transaction weight",
+          "script_bytes": null,
+          "witness_bytes": null,
+          "witness_bytes_max": null,
+          "max_stack_items": null,
+          "executed_opcodes": null,
+          "validation_weight": null,
+          "setup_script_bytes": null,
+          "per_use_script_bytes": null,
+          "metric_keys": []
+        },
+        {
+          "id": "ten-choose-five-host-subsets",
+          "label": "All 252 ascending 5-of-10 subsets in one fixed host template",
+          "parameters": {
+            "candidate_signatures": 10,
+            "selected_signatures": 5,
+            "canonical_subset_count": 252,
+            "distinct_local_digests": 252,
+            "deletion_target_bytes": 9,
+            "script_code_bytes_not_locking_script": 101,
+            "hash_type": 1,
+            "hint_items": 0
+          },
+          "includes": "complete-transaction: fixed host transaction and raw scriptCode for rust-bitcoin legacy sighash after selected-push deletion; excludes valid ECDSA signatures, Script execution, locking-script and witness serialization, Core consensus/policy, and complete Binohash grinding",
           "script_bytes": null,
           "witness_bytes": null,
           "witness_bytes_max": null,

@@ -8,6 +8,7 @@ default relay acceptance.
 | --- | --- | --- | --- | --- |
 | Binohash transaction digest | Full two-round signature grinding, transaction mutation, and Script extraction | reported | unclassified | No complete local reproduction or Core regtest |
 | Binohash legacy core | Opcode-boundary `FindAndDelete` plus legacy sighash | locally-reproduced | unclassified | No grinding, complete spend, or Script consumer |
+| Binohash 10-choose-5 host probe | All 252 ascending subsets over one fixed template | locally-reproduced | unclassified | Dummy deletion targets; order/duplicate aliases need Script-side canonicalization |
 | Binohash two-choice fixture | Two signed P2SH spends with selected embedded signatures and a wrong-selection control | differentially-validated | consensus-validated | Default policy rejects `CONST_SCRIPTCODE`; no grinding or Script consumer |
 
 The host-side core has no script, witness, stack, or validation-weight metric.
