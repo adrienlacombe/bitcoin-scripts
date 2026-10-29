@@ -1582,6 +1582,9 @@ against pinned Core v30.3, but default relay policy rejects them under
 resistance, grinding work, mutation boundaries, Script-readable digest
 extraction, or downstream authentication. Those remain under OP-011.
 
+A separate nine-byte `SIGHASH_SINGLE` anchor validates the constant-digest
+boundary under Core, but that digest commits to no transaction field.
+
 ## NR-056: Optional-SHA256 hash paths do not bind a free starting preimage
 
 For `F0(x)=R(x)` and `F1(x)=R(S(x))`, `F1(x)=F0(S(x))` exactly.

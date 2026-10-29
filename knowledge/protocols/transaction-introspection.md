@@ -24,3 +24,9 @@ with the default tapscript executor: its legacy signature context and
 transaction template are essential semantics. Full reproduction still needs
 grinding parameters, mutation constraints, Script extraction, and full costs.
 See `introspection/binohash` and `OP-011`.
+
+The [nine-byte SIGHASH_SINGLE anchor](../primitives/binohash-single-anchor.md)
+confirms under pinned Core that a hardcoded legacy signature can use the
+out-of-range constant digest. Adding an output or moving it to an earlier
+input invalidates the same signature. This is an anchor primitive, not proof
+that transaction fields are pinned or that a nonce is authenticated.

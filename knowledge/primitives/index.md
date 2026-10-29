@@ -123,6 +123,7 @@ the source. Read a page together with its comparison page and evidence record.
 
 - [Binohash transaction digest](binohash.md)
 - [Binohash legacy core](binohash-legacy-core.md)
+- [Binohash nine-byte SIGHASH_SINGLE anchor](binohash-single-anchor.md)
 
 ## Hashes and ciphers
 

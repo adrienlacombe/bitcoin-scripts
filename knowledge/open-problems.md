@@ -531,7 +531,9 @@ including the out-of-range `SIGHASH_SINGLE` constant. A reduced two-choice
 fixture now uses valid ECDSA signatures and confirms selected funded P2SH
 spends and wrong-selection failures against pinned Core v30.3. Default Core
 relay policy rejects the valid spends under `CONST_SCRIPTCODE`. The full
-protocol remains open because two-round grinding, transaction mutation
+protocol remains open. A separate nine-byte anchor fixture confirms the
+out-of-range `SIGHASH_SINGLE` signature boundary against Core but does not
+commit to transaction fields. Two-round grinding, transaction mutation
 boundaries, Script extraction, and complete protocol costs are not reproduced.
 
 Implement the specified legacy signature-grinding construction and validate it
